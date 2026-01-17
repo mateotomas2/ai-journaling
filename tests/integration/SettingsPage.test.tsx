@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ApiKeySection } from '@/components/settings/ApiKeySection';
 import { PromptCustomization } from '@/components/settings/PromptCustomization';
+import { DataManagement } from '@/components/settings/DataManagement';
 
 // Mock useSettings hook
 const mockSaveApiKey = vi.fn();

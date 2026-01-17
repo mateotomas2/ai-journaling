@@ -1,0 +1,195 @@
+/**
+ * Prompt Customization Section Styles
+ */
+
+.prompt-customization {
+  padding: 1.5rem;
+  background: var(--bg-secondary, #f9f9f9);
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.prompt-customization h2 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem;
+  color: var(--text-primary, #333);
+}
+
+.prompt-description {
+  margin: 0 0 1.5rem 0;
+  color: var(--text-secondary, #666);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.prompt-field {
+  margin-bottom: 1rem;
+}
+
+.prompt-field label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: var(--text-primary, #333);
+  font-size: 0.95rem;
+}
+
+.prompt-field textarea {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 0.95rem;
+  border: 2px solid var(--border-color, #ddd);
+  border-radius: 6px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 150px;
+  transition: border-color 0.2s ease;
+}
+
+.prompt-field textarea:focus {
+  outline: none;
+  border-color: var(--primary-color, #007bff);
+}
+
+.prompt-field textarea.error {
+  border-color: var(--error-color, #dc3545);
+}
+
+.prompt-field textarea:disabled {
+  background-color: var(--bg-disabled, #f5f5f5);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.prompt-meta {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.25rem;
+}
+
+.char-count {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #666);
+}
+
+.char-count.over-limit {
+  color: var(--error-color, #dc3545);
+  font-weight: 600;
+}
+
+.error-message {
+  margin: 0.5rem 0 0 0;
+  color: var(--error-color, #dc3545);
+  font-size: 0.9rem;
+}
+
+.prompt-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.prompt-actions button {
+  padding: 0.625rem 1.25rem;
+  font-size: 0.95rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.prompt-actions .btn-primary {
+  background: var(--primary-color, #007bff);
+  color: white;
+}
+
+.prompt-actions .btn-primary:hover:not(:disabled) {
+  background: var(--primary-hover, #0056b3);
+}
+
+.prompt-actions .btn-secondary {
+  background: var(--bg-tertiary, #e9ecef);
+  color: var(--text-primary, #333);
+}
+
+.prompt-actions .btn-secondary:hover:not(:disabled) {
+  background: var(--bg-hover, #d3d6d9);
+}
+
+.prompt-actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.prompt-info {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: var(--bg-info, #e7f3ff);
+  border-left: 4px solid var(--primary-color, #007bff);
+  border-radius: 4px;
+}
+
+.info-note {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-primary, #333);
+  line-height: 1.5;
+}
+
+.info-note strong {
+  color: var(--primary-color, #007bff);
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .prompt-customization {
+    background: var(--bg-secondary-dark, #2a2a2a);
+  }
+
+  .prompt-customization h2 {
+    color: var(--text-primary-dark, #e0e0e0);
+  }
+
+  .prompt-description {
+    color: var(--text-secondary-dark, #b0b0b0);
+  }
+
+  .prompt-field label {
+    color: var(--text-primary-dark, #e0e0e0);
+  }
+
+  .prompt-field textarea {
+    background: var(--bg-input-dark, #1a1a1a);
+    color: var(--text-primary-dark, #e0e0e0);
+    border-color: var(--border-dark, #444);
+  }
+
+  .prompt-actions .btn-secondary {
+    background: var(--bg-tertiary-dark, #3a3a3a);
+    color: var(--text-primary-dark, #e0e0e0);
+  }
+
+  .prompt-info {
+    background: var(--bg-info-dark, #1a3a4a);
+  }
+
+  .info-note {
+    color: var(--text-primary-dark, #e0e0e0);
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .prompt-customization {
+    padding: 1rem;
+  }
+
+  .prompt-actions {
+    flex-direction: column;
+  }
+
+  .prompt-actions button {
+    width: 100%;
+  }
+}

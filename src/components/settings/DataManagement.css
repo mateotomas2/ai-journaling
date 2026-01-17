@@ -1,0 +1,214 @@
+/**
+ * Data Management Section Styles
+ */
+
+.data-management {
+  padding: 1.5rem;
+  background: var(--bg-secondary, #f9f9f9);
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.data-management h2 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem;
+  color: var(--text-primary, #333);
+}
+
+.data-management-description {
+  margin: 0 0 1.5rem 0;
+  color: var(--text-secondary, #666);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.data-management-section {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #ddd);
+}
+
+.data-management-section h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.2rem;
+  color: var(--text-primary, #333);
+}
+
+.data-management-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.data-management-actions button {
+  padding: 0.625rem 1.25rem;
+  font-size: 0.95rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background: var(--primary-color, #007bff);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--primary-hover, #0056b3);
+}
+
+.btn-secondary {
+  background: var(--bg-tertiary, #e9ecef);
+  color: var(--text-primary, #333);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--bg-hover, #d3d6d9);
+}
+
+.btn-danger {
+  background: var(--error-color, #dc3545);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--error-hover, #c82333);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.import-result {
+  padding: 1rem;
+  background: var(--bg-info, #e7f3ff);
+  border-left: 4px solid var(--primary-color, #007bff);
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+.import-result h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  color: var(--primary-color, #007bff);
+}
+
+.import-result p {
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+  color: var(--text-primary, #333);
+}
+
+.import-errors {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-color, #ddd);
+}
+
+.import-errors ul {
+  margin: 0.5rem 0 0 1.5rem;
+  padding: 0;
+}
+
+.import-errors li {
+  font-size: 0.85rem;
+  color: var(--error-color, #dc3545);
+  margin: 0.25rem 0;
+}
+
+.data-management-info {
+  font-size: 0.9rem;
+  color: var(--text-secondary, #666);
+  line-height: 1.5;
+}
+
+.data-management-info p {
+  margin: 0.75rem 0;
+}
+
+.data-management-info strong {
+  color: var(--text-primary, #333);
+}
+
+.danger-zone {
+  border-color: var(--error-color, #dc3545);
+  background: #fff5f5;
+}
+
+.danger-zone h3 {
+  color: var(--error-color, #dc3545);
+}
+
+.warning-text {
+  font-size: 0.95rem;
+  color: var(--error-color, #dc3545);
+  margin-bottom: 1rem;
+  font-weight: 500;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .data-management {
+    background: var(--bg-secondary-dark, #2a2a2a);
+  }
+
+  .data-management h2 {
+    color: var(--text-primary-dark, #e0e0e0);
+  }
+
+  .data-management-description {
+    color: var(--text-secondary-dark, #b0b0b0);
+  }
+
+  .data-management-section {
+    background: var(--bg-tertiary-dark, #1a1a1a);
+    border-color: var(--border-dark, #444);
+  }
+
+  .data-management-section h3 {
+    color: var(--text-primary-dark, #e0e0e0);
+  }
+
+  .btn-secondary {
+    background: var(--bg-tertiary-dark, #3a3a3a);
+    color: var(--text-primary-dark, #e0e0e0);
+  }
+
+  .import-result {
+    background: var(--bg-info-dark, #1a3a4a);
+  }
+
+  .data-management-info {
+    color: var(--text-secondary-dark, #b0b0b0);
+  }
+
+  .data-management-info strong {
+    color: var(--text-primary-dark, #e0e0e0);
+  }
+
+  .danger-zone {
+    background: #3a1a1a;
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .data-management {
+    padding: 1rem;
+  }
+
+  .data-management-actions {
+    flex-direction: column;
+  }
+
+  .data-management-actions button {
+    width: 100%;
+  }
+}

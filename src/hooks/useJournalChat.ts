@@ -12,13 +12,14 @@ interface UseJournalChatOptions {
 export function useJournalChat({ dayId }: UseJournalChatOptions) {
   const { messages, isLoading: messagesLoading, addMessage, updateMessage } = useMessages(dayId);
   const { createOrUpdateDay } = useDay(dayId);
-  const { apiKey } = useSettings();
+  const { apiKey, systemPrompt } = useSettings();
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Debug logging for API key state
   console.log('[useJournalChat] API key available:', !!apiKey);
+  console.log('[useJournalChat] Using system prompt:', systemPrompt || 'default');
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -48,7 +49,9 @@ export function useJournalChat({ dayId }: UseJournalChatOptions) {
           role: msg.role as 'user' | 'assistant',
           content: msg.content,
         }));
-        const chatMessages = buildChatMessages(JOURNAL_SYSTEM_PROMPT, conversationHistory);
+        // Use custom system prompt from settings, fallback to default
+        const activePrompt = systemPrompt || JOURNAL_SYSTEM_PROMPT;
+        const chatMessages = buildChatMessages(activePrompt, conversationHistory);
 
         // Send to API
         setIsSending(true);
@@ -70,7 +73,7 @@ export function useJournalChat({ dayId }: UseJournalChatOptions) {
         abortControllerRef.current = null;
       }
     },
-    [messages, addMessage, updateMessage, createOrUpdateDay, isSending, apiKey]
+    [messages, addMessage, updateMessage, createOrUpdateDay, isSending, apiKey, systemPrompt]
   );
 
   const stopSending = useCallback(() => {

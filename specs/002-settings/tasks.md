@@ -90,26 +90,26 @@
 
 ### Tests for User Story 2 (TDD Required)
 
-- [ ] T025 [P] [US2] Write unit tests for system prompt validation in tests/unit/validation.test.ts
-- [ ] T026 [P] [US2] Write unit tests for getSystemPrompt and updateSystemPrompt in tests/unit/settings.service.test.ts
-- [ ] T027 [P] [US2] Write unit tests for resetSystemPrompt in tests/unit/settings.service.test.ts
-- [ ] T028 [P] [US2] Write integration tests for PromptCustomization component in tests/integration/SettingsPage.test.tsx
+- [X] T025 [P] [US2] Write unit tests for system prompt validation in tests/unit/validation.test.ts
+- [X] T026 [P] [US2] Write unit tests for getSystemPrompt and updateSystemPrompt in tests/unit/settings.service.test.ts
+- [X] T027 [P] [US2] Write unit tests for resetSystemPrompt in tests/unit/settings.service.test.ts
+- [X] T028 [P] [US2] Write integration tests for PromptCustomization component in tests/integration/SettingsPage.test.tsx
 
 ### Implementation for User Story 2
 
-- [ ] T029 [US2] Implement validateSystemPrompt function in src/services/settings/validation.ts
-- [ ] T030 [US2] Implement getSystemPrompt function in src/services/settings/settings.service.ts
-- [ ] T031 [US2] Implement updateSystemPrompt function in src/services/settings/settings.service.ts
-- [ ] T032 [US2] Implement resetSystemPrompt function in src/services/settings/settings.service.ts
-- [ ] T033 [US2] Update useSettings hook to expose systemPrompt operations in src/hooks/useSettings.ts
-- [ ] T034 [US2] Create PromptCustomization component in src/components/settings/PromptCustomization.tsx
-- [ ] T035 [US2] Add PromptCustomization component styles in src/components/settings/PromptCustomization.css
-- [ ] T036 [US2] Integrate PromptCustomization into SettingsPage in src/pages/SettingsPage.tsx
-- [ ] T037 [US2] Add toast notifications for save/reset operations in PromptCustomization component
-- [ ] T038 [US2] Update AI chat service to use custom system prompt in src/services/ai/chat.ts
-- [ ] T039 [US2] Test character limit validation (5000 chars max)
-- [ ] T040 [US2] Test reset to default functionality
-- [ ] T041 [US2] Test custom prompt application in new chat session
+- [X] T029 [US2] Implement validateSystemPrompt function in src/services/settings/validation.ts
+- [X] T030 [US2] Implement getSystemPrompt function in src/services/settings/settings.service.ts
+- [X] T031 [US2] Implement updateSystemPrompt function in src/services/settings/settings.service.ts
+- [X] T032 [US2] Implement resetSystemPrompt function in src/services/settings/settings.service.ts
+- [X] T033 [US2] Update useSettings hook to expose systemPrompt operations in src/hooks/useSettings.ts
+- [X] T034 [US2] Create PromptCustomization component in src/components/settings/PromptCustomization.tsx
+- [X] T035 [US2] Add PromptCustomization component styles in src/components/settings/PromptCustomization.css
+- [X] T036 [US2] Integrate PromptCustomization into SettingsPage in src/pages/SettingsPage.tsx
+- [X] T037 [US2] Add toast notifications for save/reset operations in PromptCustomization component
+- [X] T038 [US2] Update AI chat service to use custom system prompt in src/services/ai/chat.ts
+- [X] T039 [US2] Test character limit validation (5000 chars max)
+- [X] T040 [US2] Test reset to default functionality
+- [X] T041 [US2] Test custom prompt application in new chat session
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently - users can manage API keys and customize prompts
 
@@ -123,25 +123,25 @@
 
 ### Tests for User Story 3 (TDD Required)
 
-- [ ] T042 [P] [US3] Write unit tests for exportAllData in tests/unit/data-management.test.ts
-- [ ] T043 [P] [US3] Write unit tests for importData in tests/unit/data-management.test.ts
-- [ ] T044 [P] [US3] Write integration tests for DataManagement component in tests/integration/SettingsPage.test.tsx
+- [X] T042 [P] [US3] Write unit tests for exportAllData in tests/unit/data-management.test.ts
+- [X] T043 [P] [US3] Write unit tests for importData in tests/unit/data-management.test.ts
+- [X] T044 [P] [US3] Write integration tests for DataManagement component in tests/integration/SettingsPage.test.tsx
 
 ### Implementation for User Story 3
 
-- [ ] T045 [US3] Implement exportAllData function in src/services/settings/data-management.service.ts (reuse export.ts)
-- [ ] T046 [US3] Implement importData function in src/services/settings/data-management.service.ts (reuse import.ts)
-- [ ] T047 [US3] Create DataManagement component in src/components/settings/DataManagement.tsx
-- [ ] T048 [US3] Add DataManagement component styles in src/components/settings/DataManagement.css
-- [ ] T049 [US3] Integrate DataManagement into SettingsPage in src/pages/SettingsPage.tsx
-- [ ] T050 [US3] Add file picker for import in DataManagement component
-- [ ] T051 [US3] Add export download trigger in DataManagement component
-- [ ] T052 [US3] Display import statistics (imported count, skipped duplicates) with toast notifications
-- [ ] T053 [US3] Add error handling for invalid file formats with clear error messages
-- [ ] T054 [US3] Test export with 1 year of sample data (performance check)
-- [ ] T055 [US3] Test import validation rejects incompatible schema versions
-- [ ] T056 [US3] Test duplicate ID detection and skip behavior
-- [ ] T057 [US3] Test round-trip: export → clear → import → verify data integrity
+- [X] T045 [US3] Implement exportAllData function in src/services/settings/data-management.service.ts (reuse export.ts)
+- [X] T046 [US3] Implement importData function in src/services/settings/data-management.service.ts (reuse import.ts)
+- [X] T047 [US3] Create DataManagement component in src/components/settings/DataManagement.tsx
+- [X] T048 [US3] Add DataManagement component styles in src/components/settings/DataManagement.css
+- [X] T049 [US3] Integrate DataManagement into SettingsPage in src/pages/SettingsPage.tsx
+- [X] T050 [US3] Add file picker for import in DataManagement component
+- [X] T051 [US3] Add export download trigger in DataManagement component
+- [X] T052 [US3] Display import statistics (imported count, skipped duplicates) with toast notifications
+- [X] T053 [US3] Add error handling for invalid file formats with clear error messages
+- [X] T054 [US3] Test export with 1 year of sample data (performance check)
+- [X] T055 [US3] Test import validation rejects incompatible schema versions
+- [X] T056 [US3] Test duplicate ID detection and skip behavior
+- [X] T057 [US3] Test round-trip: export → clear → import → verify data integrity
 
 **Checkpoint**: All user stories should now be independently functional - users can manage settings and backup/restore data
 
@@ -160,14 +160,14 @@
 
 ### Implementation for User Story 4
 
-- [ ] T060 [US4] Implement clearAllData function in src/services/settings/data-management.service.ts
-- [ ] T061 [US4] Create ClearDataConfirmation modal component in src/components/settings/ClearDataConfirmation.tsx
-- [ ] T062 [US4] Add ClearDataConfirmation component styles in src/components/settings/ClearDataConfirmation.css
-- [ ] T063 [US4] Add Clear All Data button to DataManagement component in src/components/settings/DataManagement.tsx
-- [ ] T064 [US4] Integrate ClearDataConfirmation modal into DataManagement component
-- [ ] T065 [US4] Implement typed confirmation phrase validation in ClearDataConfirmation component
-- [ ] T066 [US4] Add redirect to setup page after successful data clearing
-- [ ] T067 [US4] Add prominent warning message in confirmation dialog
+- [X] T060 [US4] Implement clearAllData function in src/services/settings/data-management.service.ts
+- [X] T061 [US4] Create ClearDataConfirmation modal component in src/components/settings/ClearDataConfirmation.tsx
+- [X] T062 [US4] Add ClearDataConfirmation component styles in src/components/settings/ClearDataConfirmation.css
+- [X] T063 [US4] Add Clear All Data button to DataManagement component in src/components/settings/DataManagement.tsx
+- [X] T064 [US4] Integrate ClearDataConfirmation modal into DataManagement component
+- [X] T065 [US4] Implement typed confirmation phrase validation in ClearDataConfirmation component
+- [X] T066 [US4] Add redirect to setup page after successful data clearing
+- [X] T067 [US4] Add prominent warning message in confirmation dialog
 - [ ] T068 [US4] Test cancel behavior (no data deleted)
 - [ ] T069 [US4] Test successful clear redirects to setup page
 - [ ] T070 [US4] Test confirmation phrase must match exactly (case-sensitive)
@@ -181,11 +181,11 @@
 
 **Purpose**: Improvements that affect multiple user stories and final quality assurance
 
-- [ ] T072 [P] Add responsive styles for mobile in src/components/settings/*.css
-- [ ] T073 [P] Add keyboard navigation support (Tab, Enter) to all settings forms
-- [ ] T074 [P] Add ARIA labels and accessibility attributes to settings components
-- [ ] T075 [P] Add loading states for all async operations in settings components
-- [ ] T076 Update SettingsPage styles in src/pages/SettingsPage.css
+- [X] T072 [P] Add responsive styles for mobile in src/components/settings/*.css
+- [X] T073 [P] Add keyboard navigation support (Tab, Enter) to all settings forms
+- [X] T074 [P] Add ARIA labels and accessibility attributes to settings components
+- [X] T075 [P] Add loading states for all async operations in settings components
+- [X] T076 Update SettingsPage styles in src/pages/SettingsPage.css
 - [ ] T077 [P] Test offline functionality for all settings operations
 - [ ] T078 [P] Test encryption of API key and system prompt in IndexedDB
 - [ ] T079 Code review and refactoring for DRY principles across settings services

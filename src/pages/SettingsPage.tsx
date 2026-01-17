@@ -4,6 +4,9 @@
  */
 
 import { ApiKeySection } from '@/components/settings/ApiKeySection';
+import { PromptCustomization } from '@/components/settings/PromptCustomization';
+import { DataManagement } from '@/components/settings/DataManagement';
+import { exportAllData, importData, clearAllData } from '@/services/settings/data-management.service';
 import './SettingsPage.css';
 
 export function SettingsPage() {
@@ -13,8 +16,12 @@ export function SettingsPage() {
       <p>Configure your journal preferences</p>
 
       <ApiKeySection />
-
-      {/* Additional settings sections will be added in subsequent user story phases */}
+      <PromptCustomization />
+      <DataManagement
+        onExport={exportAllData}
+        onImport={importData}
+        onClearData={clearAllData}
+      />
     </div>
   );
 }

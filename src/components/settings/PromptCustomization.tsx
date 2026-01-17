@@ -26,8 +26,15 @@ export function PromptCustomization() {
   }, [systemPrompt]);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setEditValue(e.target.value);
-    setError('');
+    const newValue = e.target.value;
+    setEditValue(newValue);
+
+    // Show error immediately if over limit
+    if (newValue.length > MAX_PROMPT_LENGTH) {
+      setError(`System prompt is too long (${newValue.length} chars). Maximum is 5000 characters.`);
+    } else {
+      setError('');
+    }
   };
 
   const handleSave = async () => {

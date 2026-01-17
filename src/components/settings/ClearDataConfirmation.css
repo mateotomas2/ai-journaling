@@ -1,0 +1,170 @@
+/**
+ * Clear Data Confirmation Modal Styles
+ */
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 8px;
+  max-width: 500px;
+  width: 100%;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  padding: 1.5rem 1.5rem 1rem 1.5rem;
+  border-bottom: 2px solid var(--error-color, #dc3545);
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--error-color, #dc3545);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.warning-message {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  color: var(--text-primary, #333);
+}
+
+.warning-details {
+  margin: 0 0 0.75rem 0;
+  color: var(--text-secondary, #666);
+  font-size: 0.95rem;
+}
+
+.deletion-list {
+  margin: 0.75rem 0 1.5rem 1.5rem;
+  padding: 0;
+  list-style: disc;
+}
+
+.deletion-list li {
+  margin: 0.5rem 0;
+  color: var(--text-primary, #333);
+  font-size: 0.95rem;
+}
+
+.confirmation-instruction {
+  margin: 1.5rem 0 0.75rem 0;
+  font-size: 0.95rem;
+  color: var(--text-primary, #333);
+}
+
+.confirmation-instruction code {
+  background: var(--bg-code, #f5f5f5);
+  padding: 0.2rem 0.4rem;
+  border-radius: 3px;
+  font-family: monospace;
+  font-weight: 600;
+  color: var(--error-color, #dc3545);
+}
+
+.confirmation-input {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 1rem;
+  border: 2px solid var(--border-color, #ddd);
+  border-radius: 6px;
+  font-family: monospace;
+  transition: border-color 0.2s ease;
+}
+
+.confirmation-input:focus {
+  outline: none;
+  border-color: var(--error-color, #dc3545);
+}
+
+.modal-footer {
+  padding: 1rem 1.5rem 1.5rem 1.5rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  border-top: 1px solid var(--border-color, #ddd);
+}
+
+.modal-footer button {
+  padding: 0.625rem 1.5rem;
+  font-size: 0.95rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .modal-content {
+    background: var(--bg-primary-dark, #1a1a1a);
+  }
+
+  .warning-message {
+    color: var(--text-primary-dark, #e0e0e0);
+  }
+
+  .warning-details {
+    color: var(--text-secondary-dark, #b0b0b0);
+  }
+
+  .deletion-list li {
+    color: var(--text-primary-dark, #e0e0e0);
+  }
+
+  .confirmation-instruction {
+    color: var(--text-primary-dark, #e0e0e0);
+  }
+
+  .confirmation-instruction code {
+    background: var(--bg-code-dark, #2a2a2a);
+  }
+
+  .confirmation-input {
+    background: var(--bg-input-dark, #2a2a2a);
+    color: var(--text-primary-dark, #e0e0e0);
+    border-color: var(--border-dark, #444);
+  }
+
+  .modal-footer {
+    border-top-color: var(--border-dark, #444);
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .modal-content {
+    max-width: 100%;
+    margin: 1rem;
+  }
+
+  .modal-footer {
+    flex-direction: column-reverse;
+  }
+
+  .modal-footer button {
+    width: 100%;
+  }
+}
