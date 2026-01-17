@@ -164,12 +164,24 @@ router.post('/summary', async (req: Request<object, unknown, SummaryRequestBody>
 
     // Strip markdown code fences if present (```json ... ``` or ``` ... ```)
     let jsonContent = content.trim();
-    if (jsonContent.startsWith('```')) {
-      // Remove opening fence (```json or just ```)
-      jsonContent = jsonContent.replace(/^```(?:json)?\s*\n?/i, '');
-      // Remove closing fence
-      jsonContent = jsonContent.replace(/\n?```\s*$/, '');
+    // Match code blocks with optional language specifier
+    const codeBlockMatch = jsonContent.match(/^```(?:\w+)?\s*\n?([\s\S]*?)\n?```\s*$/);
+    if (codeBlockMatch) {
+      jsonContent = codeBlockMatch[1].trim();
+    } else if (jsonContent.startsWith('```')) {
+      // Fallback: manually strip fences line by line
+      const lines = jsonContent.split('\n');
+      if (lines[0].startsWith('```')) {
+        lines.shift(); // Remove opening fence line
+      }
+      if (lines.length > 0 && lines[lines.length - 1].trim() === '```') {
+        lines.pop(); // Remove closing fence line
+      }
+      jsonContent = lines.join('\n').trim();
     }
+
+    console.log('[/api/summary] Raw AI content:', content.substring(0, 200));
+    console.log('[/api/summary] Parsed jsonContent:', jsonContent.substring(0, 200));
 
     const sections = JSON.parse(jsonContent) as {
       journal: string;

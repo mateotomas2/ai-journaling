@@ -87,9 +87,9 @@ function DayPageContent({ dayId, viewMode, setViewMode }: DayPageContentProps) {
   }, [apiKey, autoGenerating, dayId, summary, messages.length, handleGenerateSummary]);
 
   // Auto-generate summary when returning to app
-  // useVisibilityChange({
-  //   onVisible: checkAndGenerateSummary,
-  // });
+  useVisibilityChange({
+    onVisible: checkAndGenerateSummary,
+  });
 
   // Also check on initial load
   useEffect(() => {

@@ -1,7 +1,7 @@
-import { createRxDatabase, addRxPlugin, type RxDatabase, type RxCollection } from 'rxdb';
+import { createRxDatabase, addRxPlugin, type RxDatabase, type RxCollection, type RxDocumentData, type RxJsonSchema } from 'rxdb';
 import { RxDBDevModePlugin } from 'rxdb/plugins/dev-mode';
 import { getRxStorageDexie } from 'rxdb/plugins/storage-dexie';
-import { wrappedValidateStorageFactory } from 'rxdb/plugins/core';
+import { wrappedValidateStorageFactory } from 'rxdb';
 import { wrappedKeyEncryptionCryptoJsStorage } from 'rxdb/plugins/encryption-crypto-js';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
@@ -12,52 +12,36 @@ import { summarySchema } from './schemas/summary.schema';
 import type { Settings } from '../types';
 import type { Day, Message, Summary } from '../types/entities';
 
+// Custom AJV validator with strict mode disabled (RxDB's default has strict: true hardcoded)
+const ajv = new Ajv({ strict: false });
+ajv.addKeyword('version');
+ajv.addKeyword('keyCompression');
+ajv.addKeyword('primaryKey');
+ajv.addKeyword('indexes');
+ajv.addKeyword('encrypted');
+ajv.addKeyword('final');
+ajv.addKeyword('sharding');
+ajv.addKeyword('internalIndexes');
+ajv.addKeyword('attachments');
+ajv.addKeyword('ref');
+ajv.addKeyword('crdt');
+addFormats(ajv);
+
+function getValidator(schema: RxJsonSchema<unknown>) {
+  const validator = ajv.compile(schema);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (docData: RxDocumentData<unknown>): any[] => {
+    const isValid = validator(docData);
+    return isValid ? [] : (validator.errors ?? []);
+  };
+}
+
+const wrappedValidateCustomAjvStorage = wrappedValidateStorageFactory(getValidator, 'ajv-custom');
+
 // Add dev mode plugin in development
 if (import.meta.env.DEV) {
   addRxPlugin(RxDBDevModePlugin);
 }
-
-// Custom AJV validator with strict mode disabled
-let ajv: Ajv | undefined;
-function getAjv() {
-  if (!ajv) {
-    ajv = new Ajv({
-      strict: false, // Disable strict mode to prevent issues with RxDB's custom keywords
-    });
-    // Add RxDB's custom keywords
-    ajv.addKeyword('version');
-    ajv.addKeyword('keyCompression');
-    ajv.addKeyword('primaryKey');
-    ajv.addKeyword('indexes');
-    ajv.addKeyword('encrypted');
-    ajv.addKeyword('final');
-    ajv.addKeyword('sharding');
-    ajv.addKeyword('internalIndexes');
-    ajv.addKeyword('attachments');
-    ajv.addKeyword('ref');
-    ajv.addKeyword('crdt');
-    addFormats(ajv);
-  }
-  return ajv;
-}
-
-function getValidator(schema: any) {
-  const validator = getAjv().compile(schema);
-  return (docData: any) => {
-    const isValid = validator(docData);
-    if (isValid) {
-      return [];
-    } else {
-      // Convert AJV errors to RxDB's expected format
-      return (validator.errors || []).map(error => ({
-        field: error.instancePath || error.schemaPath || '',
-        message: error.message || '',
-      }));
-    }
-  };
-}
-
-const wrappedValidateAjvStorage = wrappedValidateStorageFactory(getValidator, 'ajv');
 
 export type JournalCollections = {
   settings: RxCollection<Settings>;
@@ -77,7 +61,7 @@ export async function createDatabase(passphrase: string): Promise<JournalDatabas
 
   // Build storage chain: Dexie → Validator (for dev mode) → Encryption
   const baseStorage = getRxStorageDexie();
-  const validatedStorage = wrappedValidateAjvStorage({ storage: baseStorage });
+  const validatedStorage = wrappedValidateCustomAjvStorage({ storage: baseStorage });
   const encryptedStorage = wrappedKeyEncryptionCryptoJsStorage({
     storage: validatedStorage,
   });
