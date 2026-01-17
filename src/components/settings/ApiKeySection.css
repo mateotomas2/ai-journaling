@@ -1,0 +1,141 @@
+.api-key-section {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.api-key-section h2 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.25rem;
+  color: var(--text-primary);
+}
+
+.api-key-description {
+  margin: 0 0 1.5rem 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.api-key-field {
+  margin-bottom: 1.5rem;
+}
+
+.api-key-field label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.api-key-input-group {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.api-key-input-group input {
+  flex: 1;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.9rem;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transition: border-color 0.2s;
+}
+
+.api-key-input-group input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+.api-key-input-group input:disabled {
+  background: var(--bg-tertiary);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.api-key-input-group input.error {
+  border-color: var(--error-color);
+}
+
+.api-key-input-group button {
+  padding: 0.75rem 1.25rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.api-key-input-group button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.api-key-input-group .btn-primary {
+  background: var(--accent-color);
+  color: white;
+}
+
+.api-key-input-group .btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.api-key-input-group .btn-secondary {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.api-key-input-group .btn-secondary:hover:not(:disabled) {
+  background: var(--bg-secondary);
+}
+
+.error-message {
+  margin: 0.5rem 0 0 0;
+  color: var(--error-color);
+  font-size: 0.85rem;
+}
+
+.api-key-info {
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.api-key-info p {
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.api-key-info a {
+  color: var(--accent-color);
+  text-decoration: none;
+}
+
+.api-key-info a:hover {
+  text-decoration: underline;
+}
+
+.info-note {
+  font-size: 0.85rem !important;
+  font-style: italic;
+  opacity: 0.8;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .api-key-input-group {
+    flex-direction: column;
+  }
+
+  .api-key-input-group button {
+    width: 100%;
+  }
+}

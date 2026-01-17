@@ -1,0 +1,174 @@
+.setup-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 1rem;
+}
+
+.setup-container {
+  background: white;
+  border-radius: 1rem;
+  padding: 2rem;
+  max-width: 28rem;
+  width: 100%;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.setup-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 0.5rem;
+  color: #1a202c;
+}
+
+.setup-subtitle {
+  text-align: center;
+  color: #718096;
+  margin-bottom: 2rem;
+}
+
+/* Password Setup Styles */
+.password-setup form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.password-setup .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.password-setup label {
+  font-weight: 500;
+  color: #4a5568;
+}
+
+.password-setup input {
+  padding: 0.75rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.password-setup input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+}
+
+.password-setup button {
+  padding: 0.75rem 1.5rem;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-top: 0.5rem;
+}
+
+.password-setup button:hover:not(:disabled) {
+  background: #5a67d8;
+}
+
+.password-setup button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.password-setup .error-message {
+  color: #e53e3e;
+  font-size: 0.875rem;
+  padding: 0.5rem;
+  background: #fed7d7;
+  border-radius: 0.375rem;
+}
+
+.password-setup .password-requirements {
+  font-size: 0.875rem;
+  color: #718096;
+  margin-top: 0.5rem;
+}
+
+/* Password Warning Styles */
+.password-warning {
+  text-align: center;
+}
+
+.password-warning .warning-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.password-warning h2 {
+  color: #c53030;
+  margin-bottom: 1rem;
+}
+
+.password-warning .warning-content {
+  text-align: left;
+  margin-bottom: 1.5rem;
+}
+
+.password-warning .warning-content p {
+  margin-bottom: 0.75rem;
+  color: #4a5568;
+}
+
+.password-warning .warning-content ul {
+  margin: 0.75rem 0;
+  padding-left: 1.5rem;
+  color: #4a5568;
+}
+
+.password-warning .warning-content li {
+  margin-bottom: 0.5rem;
+}
+
+.password-warning .warning-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.password-warning button {
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.password-warning button.secondary {
+  background: white;
+  color: #4a5568;
+  border: 1px solid #e2e8f0;
+}
+
+.password-warning button.secondary:hover:not(:disabled) {
+  background: #f7fafc;
+}
+
+.password-warning button.primary {
+  background: #667eea;
+  color: white;
+  border: none;
+}
+
+.password-warning button.primary:hover:not(:disabled) {
+  background: #5a67d8;
+}
+
+.password-warning button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
