@@ -38,6 +38,8 @@ vi.mock('@/services/settings/settings.service', () => ({
   updateSystemPrompt: vi.fn(),
   getSummarizerModel: vi.fn(),
   updateSummarizerModel: vi.fn(),
+  getChatModel: vi.fn(),
+  updateChatModel: vi.fn(),
 }));
 
 // Mock models service
@@ -66,6 +68,7 @@ describe('Settings Page - Model Selection', () => {
     vi.mocked(settingsService.getApiKey).mockResolvedValue('sk-test-key');
     vi.mocked(settingsService.getSystemPrompt).mockResolvedValue('Default prompt');
     vi.mocked(settingsService.getSummarizerModel).mockResolvedValue('openai/gpt-4o');
+    vi.mocked(settingsService.getChatModel).mockResolvedValue('openai/gpt-4o');
 
     // Mock models to return some data
     vi.mocked(modelsService.fetchModels).mockResolvedValue([
@@ -84,8 +87,8 @@ describe('Settings Page - Model Selection', () => {
     );
 
     await waitFor(() => {
-      const modelSelector = screen.getByRole('combobox');
-      expect(modelSelector).toBeInTheDocument();
+      const modelSelectors = screen.getAllByRole('combobox');
+      expect(modelSelectors).toHaveLength(2); // Chat and Summarizer models
     });
   });
 
@@ -99,8 +102,10 @@ describe('Settings Page - Model Selection', () => {
     );
 
     await waitFor(() => {
-      const trigger = screen.getByRole('combobox');
-      expect(trigger).toHaveTextContent(/Gemini/i); // Checking text content, not value
+      const triggers = screen.getAllByRole('combobox');
+      // Find the summarizer model selector (second one)
+      const summarizerSelector = triggers[1];
+      expect(summarizerSelector).toHaveTextContent(/Gemini/i); // Checking text content, not value
     });
   });
 
@@ -115,11 +120,12 @@ describe('Settings Page - Model Selection', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole('combobox')).toBeInTheDocument();
+      expect(screen.getAllByRole('combobox')).toHaveLength(2);
     });
 
-    const trigger = screen.getByRole('combobox');
-    await user.click(trigger);
+    const triggers = screen.getAllByRole('combobox');
+    const summarizerSelector = triggers[1]!; // Summarizer is second
+    await user.click(summarizerSelector);
 
     // Select an option
     // Assuming 'Claude Sonnet' is available in the fallback list or fetched list
@@ -147,12 +153,13 @@ describe('Settings Page - Model Selection', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole('combobox')).toBeInTheDocument();
+      expect(screen.getAllByRole('combobox')).toHaveLength(2);
     });
 
     // Change model
-    const trigger = screen.getByRole('combobox');
-    await user.click(trigger);
+    const triggers = screen.getAllByRole('combobox');
+    const summarizerSelector = triggers[1]!; // Summarizer is second
+    await user.click(summarizerSelector);
 
     // Find a different model
     const option = await screen.findByRole('option', { name: /GPT-4o Mini/i }); // Adjusted to probable name
@@ -176,8 +183,9 @@ describe('Settings Page - Model Selection', () => {
     );
 
     await waitFor(() => {
-      const triggerAfterRefresh = screen.getByRole('combobox');
-      expect(triggerAfterRefresh).toHaveTextContent(/Mini/i);
+      const triggersAfterRefresh = screen.getAllByRole('combobox');
+      const summarizerSelectorAfterRefresh = triggersAfterRefresh[1];
+      expect(summarizerSelectorAfterRefresh).toHaveTextContent(/Mini/i);
     });
   });
 });

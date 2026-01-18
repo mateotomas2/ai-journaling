@@ -48,7 +48,7 @@
 
 **Model selector per chat:**
 ```
-/speckit.specify Add model selection dropdown in the chat interface. Selection should persist across sessions, stored in settings or per-day.
+/speckit.specify Add model selection dropdown in the chat interface. Selection should persist across sessions stored in settings where you can also change the default model. Follow the same approach we did for the summarizer and add the same model selector icon next to the generate summary button. It should be a small icon that opens a popup with the model selection combobox.
 ```
 
 ---
@@ -108,3 +108,7 @@ This requires:
 --- manually added
 
 /speckit.specify add vector memory for the AI. It should be able to query over the user's journal data and return relevant context for the conversation from any chat.
+
+
+
+add vercel deployment

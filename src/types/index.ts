@@ -7,6 +7,7 @@ export interface Settings {
   openRouterApiKey?: string;
   systemPrompt?: string;
   summarizerModel?: string;
+  chatModel?: string;
   timezone: string;
   setupComplete: boolean;
   createdAt: number;
@@ -56,6 +57,7 @@ export interface ChatMessage {
 export interface ChatRequest {
   messages: ChatMessage[];
   apiKey: string;
+  model?: string;
 }
 
 export interface ChatResponse {

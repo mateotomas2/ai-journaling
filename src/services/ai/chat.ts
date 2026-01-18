@@ -10,12 +10,17 @@ import type { ChatRequest, ChatResponse, ChatMessage } from '@/types';
  */
 export async function sendChatMessage(
   messages: ChatMessage[],
-  apiKey: string
+  apiKey: string,
+  model?: string
 ): Promise<string> {
   const request: ChatRequest = {
     messages,
     apiKey,
   };
+
+  if (model) {
+    request.model = model;
+  }
 
   const response = await fetch('/api/chat', {
     method: 'POST',

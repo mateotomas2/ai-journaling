@@ -7,9 +7,10 @@ import { sendChatMessage, buildChatMessages, JOURNAL_SYSTEM_PROMPT } from '@/ser
 
 interface UseJournalChatOptions {
   dayId: string;
+  model?: string;
 }
 
-export function useJournalChat({ dayId }: UseJournalChatOptions) {
+export function useJournalChat({ dayId, model }: UseJournalChatOptions) {
   const { messages, isLoading: messagesLoading, addMessage, updateMessage } = useMessages(dayId);
   const { createOrUpdateDay } = useDay(dayId);
   const { apiKey, systemPrompt } = useSettings();
@@ -57,7 +58,7 @@ export function useJournalChat({ dayId }: UseJournalChatOptions) {
         setIsSending(true);
         abortControllerRef.current = new AbortController();
 
-        const responseContent = await sendChatMessage(chatMessages, apiKey);
+        const responseContent = await sendChatMessage(chatMessages, apiKey, model);
 
         // Update the assistant message with the response
         await updateMessage(assistantMessage.id, responseContent);
@@ -73,7 +74,7 @@ export function useJournalChat({ dayId }: UseJournalChatOptions) {
         abortControllerRef.current = null;
       }
     },
-    [messages, addMessage, updateMessage, createOrUpdateDay, isSending, apiKey, systemPrompt]
+    [messages, addMessage, updateMessage, createOrUpdateDay, isSending, apiKey, systemPrompt, model]
   );
 
   const stopSending = useCallback(() => {

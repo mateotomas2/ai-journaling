@@ -1,84 +1,114 @@
 import { useState, useEffect } from 'react';
 import { ModelSelector } from './ModelSelector';
 import { useDatabase } from '@/hooks/useDatabase';
-import { getSummarizerModel, updateSummarizerModel } from '@/services/settings/settings.service';
+import { getSummarizerModel, updateSummarizerModel, getChatModel, updateChatModel } from '@/services/settings/settings.service';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export function ModelSelectionSection() {
   const { db } = useDatabase();
-  const [selectedModel, setSelectedModel] = useState<string>('openai/gpt-4o');
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string>('');
+  const [summarizerModel, setSummarizerModel] = useState<string>('openai/gpt-4o');
+  const [summarizerLoading, setSummarizerLoading] = useState(true);
+  const [summarizerError, setSummarizerError] = useState<string>('');
 
-  // Load current model selection on mount
+  const [chatModel, setChatModel] = useState<string>('openai/gpt-4o');
+  const [chatLoading, setChatLoading] = useState(true);
+  const [chatError, setChatError] = useState<string>('');
+
+  // Load current model selections on mount
   useEffect(() => {
-    async function loadModel() {
+    async function loadModels() {
       if (!db) {
         return;
       }
       try {
-        setIsLoading(true);
-        const model = await getSummarizerModel(db);
-        setSelectedModel(model);
+        setSummarizerLoading(true);
+        setChatLoading(true);
+        const [summarizer, chat] = await Promise.all([
+          getSummarizerModel(db),
+          getChatModel(db),
+        ]);
+        setSummarizerModel(summarizer);
+        setChatModel(chat);
       } catch (err) {
-        console.error('Failed to load summarizer model:', err);
-        setError('Failed to load model selection');
+        console.error('Failed to load models:', err);
+        setSummarizerError('Failed to load summarizer model');
+        setChatError('Failed to load chat model');
       } finally {
-        setIsLoading(false);
+        setSummarizerLoading(false);
+        setChatLoading(false);
       }
     }
 
-    loadModel();
+    loadModels();
   }, [db]);
 
-  // Handle model selection change
-  const handleModelChange = async (modelId: string) => {
+  // Handle summarizer model selection change
+  const handleSummarizerChange = async (modelId: string) => {
     if (!db) {
       return;
     }
     try {
-      setError('');
+      setSummarizerError('');
       await updateSummarizerModel(db, modelId);
-      setSelectedModel(modelId);
+      setSummarizerModel(modelId);
     } catch (err) {
       console.error('Failed to update summarizer model:', err);
-      setError('Failed to save model selection');
+      setSummarizerError('Failed to save model selection');
     }
   };
 
-  if (isLoading) {
-    return (
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>AI Model Selection</CardTitle>
-          <CardDescription>Loading...</CardDescription>
-        </CardHeader>
-      </Card>
-    );
-  }
+  // Handle chat model selection change
+  const handleChatChange = async (modelId: string) => {
+    if (!db) {
+      return;
+    }
+    try {
+      setChatError('');
+      await updateChatModel(db, modelId);
+      setChatModel(modelId);
+    } catch (err) {
+      console.error('Failed to update chat model:', err);
+      setChatError('Failed to save model selection');
+    }
+  };
 
   return (
     <Card className="mb-6">
       <CardHeader>
         <CardTitle>AI Model Selection</CardTitle>
         <CardDescription>
-          Choose which AI model to use for generating your daily summaries. Different models offer
-          different trade-offs in cost, speed, and quality.
+          Choose which AI models to use for chat and summaries.
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        {error && <div className="text-destructive text-sm mb-4">{error}</div>}
-
-        <ModelSelector value={selectedModel} onChange={handleModelChange} />
-
-        <div className="mt-4 p-4 bg-muted/50 rounded-md border-l-4 border-primary">
-          <p className="mb-2 text-sm">
-            Current selection: <strong className="font-medium">{selectedModel}</strong>
+      <CardContent className="space-y-6">
+        {/* Chat Model Selector */}
+        <div>
+          <h4 className="text-sm font-medium mb-2">Chat Model</h4>
+          <p className="text-xs text-muted-foreground mb-3">
+            Default model for chat. You can override per-session in the chat interface.
           </p>
-          <p className="text-xs text-muted-foreground italic">
-            <strong className="text-primary not-italic">Tip:</strong> More expensive models typically provide higher quality summaries, while
-            cheaper models are faster and more cost-effective for everyday use.
+          {chatError && <div className="text-destructive text-sm mb-4">{chatError}</div>}
+          {chatLoading ? (
+            <div className="text-sm text-muted-foreground">Loading...</div>
+          ) : (
+            <ModelSelector value={chatModel} onChange={handleChatChange} />
+          )}
+        </div>
+
+        <div className="border-t" />
+
+        {/* Summarizer Model Selector */}
+        <div>
+          <h4 className="text-sm font-medium mb-2">Summarizer Model</h4>
+          <p className="text-xs text-muted-foreground mb-3">
+            Used for generating daily summaries.
           </p>
+          {summarizerError && <div className="text-destructive text-sm mb-4">{summarizerError}</div>}
+          {summarizerLoading ? (
+            <div className="text-sm text-muted-foreground">Loading...</div>
+          ) : (
+            <ModelSelector value={summarizerModel} onChange={handleSummarizerChange} />
+          )}
         </div>
       </CardContent>
     </Card>

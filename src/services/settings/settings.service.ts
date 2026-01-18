@@ -78,3 +78,22 @@ export async function updateSummarizerModel(db: JournalDatabase, modelId: string
   }
   await settings.patch({ summarizerModel: modelId });
 }
+
+/**
+ * Get the current chat model (returns default if not set)
+ */
+export async function getChatModel(db: JournalDatabase): Promise<string> {
+  const settings = await db.settings.findOne('settings').exec();
+  return settings?.chatModel || 'openai/gpt-4o';
+}
+
+/**
+ * Update the chat model
+ */
+export async function updateChatModel(db: JournalDatabase, modelId: string): Promise<void> {
+  const settings = await db.settings.findOne('settings').exec();
+  if (!settings) {
+    throw new Error('Settings not initialized');
+  }
+  await settings.patch({ chatModel: modelId });
+}

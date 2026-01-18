@@ -21,6 +21,10 @@ export const settingsSchema: RxJsonSchema<Settings> = {
       type: 'string',
       maxLength: 100,
     },
+    chatModel: {
+      type: 'string',
+      maxLength: 100,
+    },
     timezone: {
       type: 'string',
       maxLength: 50,

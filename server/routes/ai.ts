@@ -9,14 +9,16 @@ const MODEL = 'openai/gpt-4o';
 interface ChatRequestBody {
   messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
   apiKey: string;
+  model?: string;
 }
 
 router.post('/chat', async (req: Request<object, unknown, ChatRequestBody>, res: Response) => {
-  const { messages, apiKey } = req.body;
+  const { messages, apiKey, model } = req.body;
 
   console.log('[/api/chat] Received request');
   console.log('[/api/chat] Messages count:', messages?.length || 0);
   console.log('[/api/chat] API key present:', !!apiKey);
+  console.log('[/api/chat] Model:', model || MODEL);
 
   if (!messages?.length) {
     console.log('[/api/chat] ERROR: No messages');
@@ -41,7 +43,7 @@ router.post('/chat', async (req: Request<object, unknown, ChatRequestBody>, res:
         'X-Title': 'Reflekt Journal',
       },
       body: JSON.stringify({
-        model: MODEL,
+        model: model || MODEL,
         messages,
       }),
     });
