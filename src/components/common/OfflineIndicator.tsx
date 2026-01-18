@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
-import './OfflineIndicator.css';
+import { Wifi, WifiOff } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 export function OfflineIndicator() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -8,7 +10,6 @@ export function OfflineIndicator() {
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
-      // Show "back online" message briefly
       setShowIndicator(true);
       setTimeout(() => setShowIndicator(false), 3000);
     };
@@ -21,7 +22,6 @@ export function OfflineIndicator() {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Show indicator if starting offline
     if (!navigator.onLine) {
       setShowIndicator(true);
     }
@@ -37,12 +37,23 @@ export function OfflineIndicator() {
   }
 
   return (
-    <div className={`offline-indicator ${isOnline ? 'online' : 'offline'}`}>
-      {isOnline ? (
-        <span>Back online</span>
-      ) : (
-        <span>You're offline. Messages will be saved locally.</span>
-      )}
+    <div className="fixed bottom-4 right-4 z-50 animate-in slide-in-from-bottom-2 fade-in">
+      <Badge
+        variant={isOnline ? "default" : "destructive"}
+        className={cn("flex items-center gap-2 px-4 py-2 text-sm shadow-lg")}
+      >
+        {isOnline ? (
+          <>
+            <Wifi className="w-4 h-4" />
+            <span>Back online</span>
+          </>
+        ) : (
+          <>
+            <WifiOff className="w-4 h-4" />
+            <span>You're offline. Messages saved locally.</span>
+          </>
+        )}
+      </Badge>
     </div>
   );
 }

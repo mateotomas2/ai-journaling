@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Calendar } from '../components/navigation/Calendar';
 import { DayList } from '../components/navigation/DayList';
 import { useDays } from '../hooks/useDay';
-import './CalendarPage.css';
+import { Button } from '@/components/ui/button';
+import { CalendarDays, List, BookOpen } from 'lucide-react';
 
 type ViewMode = 'calendar' | 'list';
 
@@ -12,26 +13,42 @@ export function CalendarPage() {
   const { days, isLoading } = useDays();
 
   return (
-    <div className="calendar-page">
-      <div className="calendar-page-header">
-        <h2>Your Journal</h2>
-        <div className="view-toggle">
-          <button
+    <div className="flex flex-col gap-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 text-primary">
+            <BookOpen className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight m-0">Your Journal</h2>
+            <p className="text-sm text-muted-foreground m-0">Browse your past entries</p>
+          </div>
+        </div>
+        <div className="flex gap-1 p-1 bg-muted rounded-lg">
+          <Button
+            variant={viewMode === 'calendar' ? 'default' : 'ghost'}
+            size="sm"
             onClick={() => setViewMode('calendar')}
-            className={viewMode === 'calendar' ? 'active' : ''}
+            className="gap-2"
           >
+            <CalendarDays className="w-4 h-4" />
             Calendar
-          </button>
-          <button
+          </Button>
+          <Button
+            variant={viewMode === 'list' ? 'default' : 'ghost'}
+            size="sm"
             onClick={() => setViewMode('list')}
-            className={viewMode === 'list' ? 'active' : ''}
+            className="gap-2"
           >
+            <List className="w-4 h-4" />
             List
-          </button>
+          </Button>
         </div>
       </div>
 
-      <div className="calendar-page-content">
+      {/* Content */}
+      <div className="rounded-xl border border-border bg-card shadow-sm p-6">
         {viewMode === 'calendar' ? (
           <Calendar
             currentMonth={currentMonth}

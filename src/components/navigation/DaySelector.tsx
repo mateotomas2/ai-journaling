@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { format, addDays, subDays, parseISO } from 'date-fns';
 import { isDayToday } from '../../utils/date.utils';
-import './DaySelector.css';
+import { Button } from '@/components/ui/button';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface DaySelectorProps {
   currentDayId: string;
@@ -36,16 +37,26 @@ export function DaySelector({ currentDayId }: DaySelectorProps) {
     currentDate > new Date();
 
   return (
-    <div className="day-selector">
-      <button onClick={goToPrevious} title="Previous day">
-        &lt;
-      </button>
-      <button onClick={goToToday} className="today-button">
+    <div className="flex items-center gap-2">
+      <Button variant="outline" size="icon" onClick={goToPrevious} title="Previous day">
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+      <Button
+        variant={isDayToday(currentDayId) ? "default" : "outline"}
+        onClick={goToToday}
+        className="min-w-[80px]"
+      >
         Today
-      </button>
-      <button onClick={goToNext} disabled={isTodayOrFuture} title="Next day">
-        &gt;
-      </button>
+      </Button>
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={goToNext}
+        disabled={isTodayOrFuture}
+        title="Next day"
+      >
+        <ChevronRight className="h-4 w-4" />
+      </Button>
     </div>
   );
 }

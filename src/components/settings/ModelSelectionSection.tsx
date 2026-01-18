@@ -1,13 +1,8 @@
-/**
- * Model Selection Section
- * Allows users to choose which AI model to use for summarization
- */
-
 import { useState, useEffect } from 'react';
 import { ModelSelector } from './ModelSelector';
 import { useDatabase } from '@/hooks/useDatabase';
 import { getSummarizerModel, updateSummarizerModel } from '@/services/settings/settings.service';
-import './ModelSelectionSection.css';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export function ModelSelectionSection() {
   const { db } = useDatabase();
@@ -53,34 +48,39 @@ export function ModelSelectionSection() {
 
   if (isLoading) {
     return (
-      <div className="model-selection-section">
-        <h2>AI Model Selection</h2>
-        <p className="model-selection-description">Loading...</p>
-      </div>
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>AI Model Selection</CardTitle>
+          <CardDescription>Loading...</CardDescription>
+        </CardHeader>
+      </Card>
     );
   }
 
   return (
-    <div className="model-selection-section">
-      <h2>AI Model Selection</h2>
-      <p className="model-selection-description">
-        Choose which AI model to use for generating your daily summaries. Different models offer
-        different trade-offs in cost, speed, and quality.
-      </p>
+    <Card className="mb-6">
+      <CardHeader>
+        <CardTitle>AI Model Selection</CardTitle>
+        <CardDescription>
+          Choose which AI model to use for generating your daily summaries. Different models offer
+          different trade-offs in cost, speed, and quality.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {error && <div className="text-destructive text-sm mb-4">{error}</div>}
 
-      {error && <div className="error-message">{error}</div>}
+        <ModelSelector value={selectedModel} onChange={handleModelChange} />
 
-      <ModelSelector value={selectedModel} onChange={handleModelChange} />
-
-      <div className="model-selection-info">
-        <p>
-          Current selection: <strong>{selectedModel}</strong>
-        </p>
-        <p className="info-note">
-          <strong>Tip:</strong> More expensive models typically provide higher quality summaries, while
-          cheaper models are faster and more cost-effective for everyday use.
-        </p>
-      </div>
-    </div>
+        <div className="mt-4 p-4 bg-muted/50 rounded-md border-l-4 border-primary">
+          <p className="mb-2 text-sm">
+            Current selection: <strong className="font-medium">{selectedModel}</strong>
+          </p>
+          <p className="text-xs text-muted-foreground italic">
+            <strong className="text-primary not-italic">Tip:</strong> More expensive models typically provide higher quality summaries, while
+            cheaper models are faster and more cost-effective for everyday use.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

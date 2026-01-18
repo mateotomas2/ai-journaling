@@ -1,6 +1,6 @@
 import { useDatabase } from '@/hooks/useDatabase';
 import { PasswordSetup } from '@/components/auth';
-import './Setup.css';
+
 
 export function Setup() {
   const { setupPassword, isLoading, error } = useDatabase();
@@ -11,8 +11,8 @@ export function Setup() {
   };
 
   return (
-    <div className="setup-page">
-      <div className="setup-container">
+    <div className="h-screen flex items-center justify-center bg-background p-4">
+      <div className="w-full max-w-md">
         <PasswordSetup
           onSetup={handleSetup}
           isLoading={isLoading}

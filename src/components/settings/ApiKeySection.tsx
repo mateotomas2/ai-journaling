@@ -1,13 +1,11 @@
-/**
- * API Key Section Component
- * Allows users to view and update their OpenRouter API key
- */
-
 import { useState, useEffect } from 'react';
 import { useSettings } from '@/hooks/useSettings';
 import { useToast } from '@/hooks/useToast';
 import { validateApiKey } from '@/services/settings/validation';
-import './ApiKeySection.css';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export function ApiKeySection() {
   const { apiKey, isLoading, saveApiKey } = useSettings();
@@ -70,79 +68,67 @@ export function ApiKeySection() {
 
   if (isLoading) {
     return (
-      <div className="api-key-section">
-        <h2>OpenRouter API Key</h2>
-        <p className="api-key-description">Loading...</p>
-      </div>
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>OpenRouter API Key</CardTitle>
+          <CardDescription>Loading...</CardDescription>
+        </CardHeader>
+      </Card>
     );
   }
 
   return (
-    <div className="api-key-section">
-      <h2>OpenRouter API Key</h2>
-      <p className="api-key-description">
-        Your API key is encrypted and stored locally. It's used to communicate with OpenRouter's AI services.
-      </p>
-
-      <div className="api-key-field">
-        <label htmlFor="api-key-input">API Key</label>
-        <div className="api-key-input-group">
-          <input
-            id="api-key-input"
-            type="text"
-            value={isEditing ? editValue : maskApiKey(apiKey)}
-            onChange={(e) => setEditValue(e.target.value)}
-            disabled={!isEditing}
-            className={error ? 'error' : ''}
-            aria-label="API key"
-          />
-          {!isEditing && (
-            <button
-              type="button"
-              onClick={handleEdit}
-              className="btn-secondary"
-              aria-label="Edit API key"
-            >
-              Edit
-            </button>
-          )}
+    <Card className="mb-6">
+      <CardHeader>
+        <CardTitle>OpenRouter API Key</CardTitle>
+        <CardDescription>
+          Your API key is encrypted and stored locally. It's used to communicate with OpenRouter's AI services.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="api-key-input">API Key</Label>
+          <div className="flex gap-2">
+            <Input
+              id="api-key-input"
+              type="text"
+              value={isEditing ? editValue : maskApiKey(apiKey)}
+              onChange={(e) => setEditValue(e.target.value)}
+              disabled={!isEditing}
+              className={error ? 'border-destructive font-mono' : 'font-mono'}
+              aria-label="API key"
+            />
+            {!isEditing && (
+              <Button variant="secondary" onClick={handleEdit}>
+                Edit
+              </Button>
+            )}
+          </div>
           {isEditing && (
-            <>
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={isSaving}
-                className="btn-primary"
-                aria-label="Save API key"
-              >
+            <div className="flex gap-2 mt-2">
+              <Button onClick={handleSave} disabled={isSaving}>
                 {isSaving ? 'Saving...' : 'Save'}
-              </button>
-              <button
-                type="button"
-                onClick={handleCancel}
-                disabled={isSaving}
-                className="btn-secondary"
-                aria-label="Cancel editing"
-              >
+              </Button>
+              <Button variant="outline" onClick={handleCancel} disabled={isSaving}>
                 Cancel
-              </button>
-            </>
+              </Button>
+            </div>
           )}
+          {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
-        {error && <p className="error-message">{error}</p>}
-      </div>
 
-      <div className="api-key-info">
-        <p>
-          <strong>Don't have an API key?</strong> Get one from{' '}
-          <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer">
-            OpenRouter
-          </a>
-        </p>
-        <p className="info-note">
-          Note: Your API key is stored encrypted in your browser's local database and never sent to our servers.
-        </p>
-      </div>
-    </div>
+        <div className="pt-4 border-t text-sm text-muted-foreground">
+          <p className="mb-2">
+            <strong>Don't have an API key?</strong> Get one from{' '}
+            <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+              OpenRouter
+            </a>
+          </p>
+          <p className="italic text-xs opacity-80">
+            Note: Your API key is stored encrypted in your browser's local database and never sent to our servers.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

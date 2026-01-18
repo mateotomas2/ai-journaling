@@ -109,17 +109,22 @@ describe('Chat Components', () => {
       expect(screen.getByText('Test message')).toBeInTheDocument();
     });
 
-    it('applies user class for user messages', () => {
+    it('applies user styles for user messages', () => {
       const { container } = render(<MessageBubble message={baseMessage} />);
 
-      expect(container.querySelector('.message-user')).toBeInTheDocument();
+      // Check for Tailwind classes used in migrated component
+      const bubble = container.firstChild as HTMLElement;
+      expect(bubble).toHaveClass('bg-primary');
+      expect(bubble).toHaveClass('ml-auto');
     });
 
-    it('applies assistant class for assistant messages', () => {
+    it('applies assistant styles for assistant messages', () => {
       const assistantMessage = { ...baseMessage, role: 'assistant' as const };
       const { container } = render(<MessageBubble message={assistantMessage} />);
 
-      expect(container.querySelector('.message-assistant')).toBeInTheDocument();
+      const bubble = container.firstChild as HTMLElement;
+      expect(bubble).toHaveClass('bg-muted');
+      expect(bubble).toHaveClass('mr-auto');
     });
 
     it('shows placeholder for empty content', () => {

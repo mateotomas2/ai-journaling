@@ -1,5 +1,3 @@
-import './SummarySection.css';
-
 interface SummarySectionProps {
   title: string;
   content: string;
@@ -7,9 +5,9 @@ interface SummarySectionProps {
 
 export function SummarySection({ title, content }: SummarySectionProps) {
   return (
-    <div className="summary-section">
-      <h4>{title}</h4>
-      <p>{content}</p>
+    <div className="mb-4 last:mb-0">
+      <h4 className="text-sm font-semibold text-muted-foreground mb-2 uppercase tracking-wide">{title}</h4>
+      <p className="text-foreground leading-relaxed">{content}</p>
     </div>
   );
 }

@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
 import type { Day } from '../../types/entities';
 import { formatDayId, isDayToday } from '../../utils/date.utils';
-import './DayList.css';
+import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 interface DayListProps {
   days: Day[];
@@ -10,31 +11,39 @@ interface DayListProps {
 
 export function DayList({ days, isLoading }: DayListProps) {
   if (isLoading) {
-    return <div className="day-list loading">Loading days...</div>;
+    return <div className="flex flex-col items-center justify-center p-12 text-muted-foreground gap-4">Loading days...</div>;
   }
 
   if (days.length === 0) {
     return (
-      <div className="day-list empty">
+      <div className="flex flex-col items-center justify-center p-12 text-muted-foreground gap-4">
         <p>No journal entries yet.</p>
-        <Link to="/today">Start journaling today</Link>
+        <Link to="/today" className="text-primary hover:underline font-medium">Start journaling today</Link>
       </div>
     );
   }
 
   return (
-    <div className="day-list">
+    <div className="flex flex-col">
       {days.map((day) => {
         const linkTo = isDayToday(day.id) ? '/today' : `/day/${day.id}`;
+        const isToday = isDayToday(day.id);
 
         return (
-          <Link key={day.id} to={linkTo} className="day-list-item">
-            <div className="day-info">
-              <span className="day-date">{formatDayId(day.id)}</span>
-              {isDayToday(day.id) && <span className="today-badge">Today</span>}
+          <Link
+            key={day.id}
+            to={linkTo}
+            className={cn(
+              "flex justify-between items-center p-4 border-b border-border text-foreground transition-colors hover:bg-muted/50",
+              isToday && "bg-muted/30"
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <span className="font-medium">{formatDayId(day.id)}</span>
+              {isToday && <Badge>Today</Badge>}
             </div>
-            <div className="day-meta">
-              {day.hasSummary && <span className="summary-badge">Summary</span>}
+            <div className="flex gap-2">
+              {day.hasSummary && <Badge variant="outline" className="text-primary border-primary/20 bg-primary/5">Summary</Badge>}
             </div>
           </Link>
         );

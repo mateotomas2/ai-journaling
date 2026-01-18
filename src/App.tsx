@@ -43,12 +43,18 @@ function AppRoutes() {
   );
 }
 
+import { ThemeProvider } from "@/components/theme-provider"
+import { Toaster } from "@/components/ui/sonner"
+
 export function App() {
   return (
-    <BrowserRouter>
-      <DatabaseProvider>
-        <AppRoutes />
-      </DatabaseProvider>
-    </BrowserRouter>
+    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
+      <BrowserRouter>
+        <DatabaseProvider>
+          <AppRoutes />
+          <Toaster />
+        </DatabaseProvider>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }

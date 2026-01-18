@@ -1,18 +1,16 @@
-/**
- * Prompt Customization Component
- * Allows users to customize and reset the AI system prompt
- */
-
 import { useState, useEffect } from 'react';
 import { useSettings } from '@/hooks/useSettings';
 import { useToast } from '@/hooks/useToast';
 import { validateSystemPrompt } from '@/services/settings/validation';
-import './PromptCustomization.css';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 const MAX_PROMPT_LENGTH = 5000;
 
 export function PromptCustomization() {
-  const { systemPrompt, isLoading, updateSystemPrompt, resetSystemPrompt } = useSettings();
+  const { systemPrompt, isLoading, saveSystemPrompt: updateSystemPrompt, resetPrompt: resetSystemPrompt } = useSettings();
   const { showToast } = useToast();
 
   const [editValue, setEditValue] = useState('');
@@ -31,7 +29,7 @@ export function PromptCustomization() {
 
     // Show error immediately if over limit
     if (newValue.length > MAX_PROMPT_LENGTH) {
-      setError(`System prompt is too long (${newValue.length} chars). Maximum is 5000 characters.`);
+      setError(`System prompt is too long (${newValue.length} chars). Maximum is ${MAX_PROMPT_LENGTH} characters.`);
     } else {
       setError('');
     }
@@ -77,10 +75,12 @@ export function PromptCustomization() {
 
   if (isLoading) {
     return (
-      <div className="prompt-customization">
-        <h2>System Prompt Customization</h2>
-        <p className="prompt-description">Loading...</p>
-      </div>
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>System Prompt Customization</CardTitle>
+          <CardDescription>Loading...</CardDescription>
+        </CardHeader>
+      </Card>
     );
   }
 
@@ -88,59 +88,61 @@ export function PromptCustomization() {
   const isOverLimit = charCount > MAX_PROMPT_LENGTH;
 
   return (
-    <div className="prompt-customization">
-      <h2>System Prompt Customization</h2>
-      <p className="prompt-description">
-        Customize the AI's behavior by modifying the system prompt. This will affect how the AI responds
-        to your journal entries.
-      </p>
-
-      <div className="prompt-field">
-        <label htmlFor="system-prompt-input">System Prompt</label>
-        <textarea
-          id="system-prompt-input"
-          value={editValue}
-          onChange={handleChange}
-          className={error || isOverLimit ? 'error' : ''}
-          rows={8}
-          placeholder="Enter your custom system prompt..."
-          aria-label="System prompt"
-        />
-        <div className="prompt-meta">
-          <span className={`char-count ${isOverLimit ? 'over-limit' : ''}`}>
-            {charCount} / {MAX_PROMPT_LENGTH}
-          </span>
+    <Card className="mb-6">
+      <CardHeader>
+        <CardTitle>System Prompt Customization</CardTitle>
+        <CardDescription>
+          Customize the AI's behavior by modifying the system prompt. This will affect how the AI responds
+          to your journal entries.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="system-prompt-input">System Prompt</Label>
+          <Textarea
+            id="system-prompt-input"
+            value={editValue}
+            onChange={handleChange}
+            className={error || isOverLimit ? 'border-destructive min-h-[200px]' : 'min-h-[200px]'}
+            rows={8}
+            placeholder="Enter your custom system prompt..."
+            aria-label="System prompt"
+          />
+          <div className="flex justify-end text-xs text-muted-foreground">
+            <span className={isOverLimit ? 'text-destructive font-medium' : ''}>
+              {charCount} / {MAX_PROMPT_LENGTH}
+            </span>
+          </div>
+          {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
-        {error && <p className="error-message">{error}</p>}
-      </div>
 
-      <div className="prompt-actions">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={isSaving || isOverLimit}
-          className="btn-primary"
-          aria-label="Save system prompt"
-        >
-          {isSaving ? 'Saving...' : 'Save'}
-        </button>
-        <button
-          type="button"
-          onClick={handleReset}
-          disabled={isSaving}
-          className="btn-secondary"
-          aria-label="Reset to default"
-        >
-          Reset to Default
-        </button>
-      </div>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            onClick={handleSave}
+            disabled={isSaving || isOverLimit}
+            aria-label="Save system prompt"
+          >
+            {isSaving ? 'Saving...' : 'Save'}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleReset}
+            disabled={isSaving}
+            aria-label="Reset to default"
+          >
+            Reset to Default
+          </Button>
+        </div>
 
-      <div className="prompt-info">
-        <p className="info-note">
-          <strong>Tip:</strong> The system prompt guides the AI's tone, style, and focus when responding
-          to your journal entries. Experiment to find what works best for you!
-        </p>
-      </div>
-    </div>
+        <div className="pt-4 border-t text-sm text-muted-foreground italic">
+          <p>
+            <strong className="not-italic text-primary">Tip:</strong> The system prompt guides the AI's tone, style, and focus when responding
+            to your journal entries. Experiment to find what works best for you!
+          </p>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

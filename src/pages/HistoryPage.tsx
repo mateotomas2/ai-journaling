@@ -5,7 +5,11 @@ import { useSettings } from '../hooks/useSettings';
 import { queryHistory } from '../services/ai/query';
 import type { QueryResponse } from '@/types';
 import { format, subDays } from 'date-fns';
-import './HistoryPage.css';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loader2, Search, History } from 'lucide-react';
 
 type DateRangePreset = '7d' | '30d' | '90d' | 'all';
 
@@ -62,76 +66,111 @@ export function HistoryPage() {
   };
 
   return (
-    <div className="history-page">
-      <div className="history-header">
-        <h2>Query Your Journal History</h2>
-        <div className="date-range-selector">
-          <label>Date range:</label>
-          <select value={dateRange} onChange={(e) => setDateRange(e.target.value as DateRangePreset)}>
-            <option value="7d">Last 7 days</option>
-            <option value="30d">Last 30 days</option>
-            <option value="90d">Last 90 days</option>
-            <option value="all">All time</option>
-          </select>
+    <div className="flex flex-col gap-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 text-primary">
+            <History className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight m-0">Query Your History</h2>
+            <p className="text-sm text-muted-foreground m-0">Ask questions about your journal</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground whitespace-nowrap">Date range:</span>
+          <Select value={dateRange} onValueChange={(val) => setDateRange(val as DateRangePreset)}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Select range" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7d">Last 7 days</SelectItem>
+              <SelectItem value="30d">Last 30 days</SelectItem>
+              <SelectItem value="90d">Last 90 days</SelectItem>
+              <SelectItem value="all">All time</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
-      <div className="history-status">
+      <div className="mb-6 text-sm text-muted-foreground">
         {summariesLoading ? (
-          <p>Loading summaries...</p>
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" /> Loading summaries...
+          </div>
         ) : (
           <p>{summaries.length} day{summaries.length !== 1 ? 's' : ''} with summaries available</p>
         )}
       </div>
 
       {!apiKey && (
-        <div className="query-error">
+        <div className="bg-destructive/10 text-destructive p-4 rounded-md mb-6 text-sm">
           Please configure your OpenRouter API key in settings to use this feature.
         </div>
       )}
 
-      <div className="query-input">
-        <textarea
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Ask a question about your journal history (e.g., 'How was my sleep last week?')"
-          disabled={isQuerying || summariesLoading || !apiKey}
-          rows={2}
-        />
-        <button
-          onClick={handleQuery}
-          disabled={!query.trim() || summaries.length === 0 || summariesLoading || isQuerying || !apiKey}
-        >
-          {isQuerying ? 'Searching...' : 'Search'}
-        </button>
+      <div className="flex flex-col gap-4 mb-8">
+        <div className="relative">
+          <Textarea
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Ask a question about your journal history (e.g., 'How was my sleep last week?')"
+            disabled={isQuerying || summariesLoading || !apiKey}
+            className="min-h-[80px] pr-24 resize-none"
+          />
+          <div className="absolute bottom-3 right-3">
+            <Button
+              onClick={handleQuery}
+              disabled={!query.trim() || summaries.length === 0 || summariesLoading || isQuerying || !apiKey}
+              size="sm"
+            >
+              {isQuerying ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Search className="h-4 w-4 mr-2" />}
+              {isQuerying ? 'Searching' : 'Search'}
+            </Button>
+          </div>
+        </div>
       </div>
 
-      {error && <div className="query-error">{error}</div>}
+      {error && <div className="bg-destructive/10 text-destructive p-4 rounded-md mb-6">{error}</div>}
 
       {result && (
-        <div className="query-response">
-          <h3>Response</h3>
-          <div className="response-content">{result.response}</div>
-
-          {result.citations.length > 0 && (
-            <div className="citations">
-              <h4>Sources</h4>
-              {result.citations.map((citation, idx) => (
-                <div key={idx} className="citation">
-                  <Link to={"/day/" + citation.date}>{citation.date}</Link>
-                  <span className="citation-excerpt">"{citation.excerpt}"</span>
-                </div>
-              ))}
+        <Card className="bg-muted/30">
+          <CardHeader>
+            <CardTitle className="text-lg">Response</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="whitespace-pre-wrap leading-relaxed text-sm">
+              {result.response}
             </div>
-          )}
-        </div>
+
+            {result.citations.length > 0 && (
+              <div className="mt-6 pt-4 border-t border-border">
+                <h4 className="text-sm font-semibold text-muted-foreground mb-3">Sources</h4>
+                <div className="space-y-3">
+                  {result.citations.map((citation, idx) => (
+                    <div key={idx} className="bg-background p-3 rounded-md border border-border text-sm">
+                      <Link
+                        to={"/day/" + citation.date}
+                        className="text-primary hover:underline font-medium block mb-1"
+                      >
+                        {citation.date}
+                      </Link>
+                      <span className="text-muted-foreground italic">"{citation.excerpt}"</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {!result && !isQuerying && summaries.length === 0 && !summariesLoading && (
-        <div className="no-summaries">
-          <p>No summaries found for the selected date range.</p>
-          <p>Generate summaries on past days to enable historical queries.</p>
+        <div className="text-center py-12 text-muted-foreground">
+          <p className="mb-2">No summaries found for the selected date range.</p>
+          <p className="text-sm">Generate summaries on past days to enable historical queries.</p>
         </div>
       )}
     </div>

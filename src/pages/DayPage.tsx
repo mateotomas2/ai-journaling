@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Button } from '@/components/ui/button';
+
 import { useParams, Link } from 'react-router-dom';
 import { ChatInterface } from '../components/chat/ChatInterface';
 import { DailySummary } from '../components/summary/DailySummary';
@@ -10,7 +12,7 @@ import { useVisibilityChange } from '../hooks/useVisibilityChange';
 import { generateSummary, shouldGenerateSummary } from '@/services/summary';
 import { getSummarizerModel } from '@/services/settings/settings.service';
 import { formatDayId, isValidDayId, isDayToday } from '../utils/date.utils';
-import './DayPage.css';
+
 
 type ViewMode = 'chat' | 'summary';
 
@@ -109,22 +111,24 @@ function DayPageContent({ dayId, viewMode, setViewMode }: DayPageContentProps) {
   }, []);
 
   return (
-    <div className="day-page">
-      <div className="day-header">
-        <h2>{formatDayId(dayId)}</h2>
-        <div className="day-tabs">
-          <button
+    <div className="flex flex-col h-full">
+      <div className="flex justify-between items-center p-4 border-b bg-muted/30">
+        <h2 className="text-base font-medium text-muted-foreground m-0">{formatDayId(dayId)}</h2>
+        <div className="flex gap-2">
+          <Button
+            variant={viewMode === 'summary' ? 'default' : 'outline'}
+            size="sm"
             onClick={() => setViewMode('summary')}
-            className={viewMode === 'summary' ? 'active' : ''}
           >
             Summary
-          </button>
-          <button
+          </Button>
+          <Button
+            variant={viewMode === 'chat' ? 'default' : 'outline'}
+            size="sm"
             onClick={() => setViewMode('chat')}
-            className={viewMode === 'chat' ? 'active' : ''}
           >
             Chat
-          </button>
+          </Button>
         </div>
       </div>
 

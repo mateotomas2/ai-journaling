@@ -1,5 +1,7 @@
 import { useState, type FormEvent, type KeyboardEvent } from 'react';
-import './MessageInput.css';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Send, Square } from 'lucide-react';
 
 interface MessageInputProps {
   onSend: (message: string) => void;
@@ -22,28 +24,47 @@ export function MessageInput({ onSend, isDisabled, isStreaming, onStop }: Messag
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit(e);
+      // We need to call handleSubmit with a synthetic event or just call logic directly
+      // FormEvent type might mismatch if we pass keyboard event directly, so let's call logic
+      if (message.trim() && !isDisabled && !isStreaming) {
+        onSend(message.trim());
+        setMessage('');
+      }
     }
   };
 
   return (
-    <form className="message-input" onSubmit={handleSubmit}>
-      <textarea
+    <form className="flex gap-3 items-end p-4 border-t border-border bg-card/50 backdrop-blur-sm" onSubmit={handleSubmit}>
+      <Textarea
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="What's on your mind?"
         disabled={isDisabled}
+        className="min-h-[40px] max-h-[200px] resize-none py-2"
         rows={1}
       />
       {isStreaming ? (
-        <button type="button" onClick={onStop} className="stop-button">
-          Stop
-        </button>
+        <Button
+          type="button"
+          onClick={onStop}
+          variant="destructive"
+          size="icon"
+          className="mb-0.5 shrink-0"
+        >
+          <Square className="h-4 w-4" />
+          <span className="sr-only">Stop</span>
+        </Button>
       ) : (
-        <button type="submit" disabled={isDisabled || !message.trim()}>
-          Send
-        </button>
+        <Button
+          type="submit"
+          disabled={isDisabled || !message.trim()}
+          size="icon"
+          className="mb-0.5 shrink-0"
+        >
+          <Send className="h-4 w-4" />
+          <span className="sr-only">Send</span>
+        </Button>
       )}
     </form>
   );

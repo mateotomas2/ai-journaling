@@ -1,5 +1,5 @@
 import { Component, type ReactNode, type ErrorInfo } from 'react';
-import './ErrorBoundary.css';
+
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -36,13 +36,16 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       }
 
       return (
-        <div className="error-boundary">
-          <div className="error-boundary-content">
-            <h2>Something went wrong</h2>
-            <p className="error-message">
+        <div className="h-screen flex items-center justify-center p-4 bg-background">
+          <div className="max-w-md w-full p-6 text-center space-y-4 rounded-lg border bg-card text-card-foreground shadow-sm">
+            <h2 className="text-2xl font-bold">Something went wrong</h2>
+            <p className="text-muted-foreground">
               {this.state.error?.message || 'An unexpected error occurred'}
             </p>
-            <button onClick={this.handleReset} className="error-reset-button">
+            <button
+              onClick={this.handleReset}
+              className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+            >
               Try again
             </button>
           </div>

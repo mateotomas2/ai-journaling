@@ -2,7 +2,6 @@ import { useJournalChat } from '../../hooks/useJournalChat';
 import { MessageList } from './MessageList';
 import { MessageInput } from './MessageInput';
 import { ApiKeySetup } from './ApiKeySetup';
-import './ChatInterface.css';
 
 interface ChatInterfaceProps {
   dayId: string;
@@ -24,9 +23,13 @@ export function ChatInterface({ dayId }: ChatInterfaceProps) {
   }
 
   return (
-    <div className="chat-interface">
+    <div className="flex flex-col h-full bg-background">
       <MessageList messages={messages} isLoading={isLoading} />
-      {error && <div className="chat-error">{error}</div>}
+      {error && (
+        <div className="px-4 py-2 bg-destructive/10 text-destructive text-center text-sm">
+          {error}
+        </div>
+      )}
       <MessageInput
         onSend={sendMessage}
         isDisabled={isLoading}

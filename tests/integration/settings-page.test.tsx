@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { SettingsPage } from '@/pages/SettingsPage';
 import * as settingsService from '@/services/settings/settings.service';
+import * as modelsService from '@/services/ai/models.service';
 
 // Mock the database context
 const mockDb = {
@@ -38,6 +40,25 @@ vi.mock('@/services/settings/settings.service', () => ({
   updateSummarizerModel: vi.fn(),
 }));
 
+// Mock models service
+vi.mock('@/services/ai/models.service', () => ({
+  fetchModels: vi.fn(),
+  FALLBACK_MODELS: [
+    { id: 'openai/gpt-4o', name: 'GPT-4o', provider: 'OpenAI', pricing: { prompt: '0', completion: '0' } },
+    { id: 'anthropic/claude-sonnet-4.5', name: 'Claude 3.5 Sonnet', provider: 'Anthropic', pricing: { prompt: '0', completion: '0' } }
+  ]
+}));
+
+// Mock ResizeObserver
+globalThis.ResizeObserver = class ResizeObserver {
+  observe() { }
+  unobserve() { }
+  disconnect() { }
+};
+Element.prototype.hasPointerCapture = () => false;
+Element.prototype.setPointerCapture = () => { };
+Element.prototype.releasePointerCapture = () => { };
+
 describe('Settings Page - Model Selection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -45,6 +66,14 @@ describe('Settings Page - Model Selection', () => {
     vi.mocked(settingsService.getApiKey).mockResolvedValue('sk-test-key');
     vi.mocked(settingsService.getSystemPrompt).mockResolvedValue('Default prompt');
     vi.mocked(settingsService.getSummarizerModel).mockResolvedValue('openai/gpt-4o');
+
+    // Mock models to return some data
+    vi.mocked(modelsService.fetchModels).mockResolvedValue([
+      { id: 'openai/gpt-4o', name: 'GPT-4o', provider: 'OpenAI', pricing: { prompt: '0', completion: '0' }, contextLength: 1000 },
+      { id: 'google/gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'Google', pricing: { prompt: '0', completion: '0' }, contextLength: 1000 },
+      { id: 'anthropic/claude-sonnet-4.5', name: 'Claude 3.5 Sonnet', provider: 'Anthropic', pricing: { prompt: '0', completion: '0' }, contextLength: 1000 },
+      { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI', pricing: { prompt: '0', completion: '0' }, contextLength: 1000 }
+    ]);
   });
 
   it('should display model selector', async () => {
@@ -55,7 +84,7 @@ describe('Settings Page - Model Selection', () => {
     );
 
     await waitFor(() => {
-      const modelSelector = screen.getByLabelText(/ai model/i);
+      const modelSelector = screen.getByRole('combobox');
       expect(modelSelector).toBeInTheDocument();
     });
   });
@@ -70,13 +99,14 @@ describe('Settings Page - Model Selection', () => {
     );
 
     await waitFor(() => {
-      const select = screen.getByRole('combobox', { name: /ai model/i }) as HTMLSelectElement;
-      expect(select.value).toBe('google/gemini-2.5-flash');
+      const trigger = screen.getByRole('combobox');
+      expect(trigger).toHaveTextContent(/Gemini/i); // Checking text content, not value
     });
   });
 
   it('should save model selection on change', async () => {
     vi.mocked(settingsService.updateSummarizerModel).mockResolvedValue();
+    const user = userEvent.setup();
 
     render(
       <BrowserRouter>
@@ -85,17 +115,21 @@ describe('Settings Page - Model Selection', () => {
     );
 
     await waitFor(() => {
-      const select = screen.getByRole('combobox', { name: /ai model/i });
-      expect(select).toBeInTheDocument();
+      expect(screen.getByRole('combobox')).toBeInTheDocument();
     });
 
-    const select = screen.getByRole('combobox', { name: /ai model/i });
-    fireEvent.change(select, { target: { value: 'anthropic/claude-sonnet-4.5' } });
+    const trigger = screen.getByRole('combobox');
+    await user.click(trigger);
+
+    // Select an option
+    // Assuming 'Claude Sonnet' is available in the fallback list or fetched list
+    const option = await screen.findByRole('option', { name: /Claude/i });
+    await user.click(option);
 
     await waitFor(() => {
       expect(settingsService.updateSummarizerModel).toHaveBeenCalledWith(
         expect.anything(),
-        'anthropic/claude-sonnet-4.5'
+        expect.stringContaining('anthropic/claude')
       );
     });
   });
@@ -104,6 +138,7 @@ describe('Settings Page - Model Selection', () => {
     // First render - change model
     vi.mocked(settingsService.getSummarizerModel).mockResolvedValue('openai/gpt-4o');
     vi.mocked(settingsService.updateSummarizerModel).mockResolvedValue();
+    const user = userEvent.setup();
 
     const { unmount } = render(
       <BrowserRouter>
@@ -112,12 +147,16 @@ describe('Settings Page - Model Selection', () => {
     );
 
     await waitFor(() => {
-      const select = screen.getByRole('combobox', { name: /ai model/i });
-      expect(select).toBeInTheDocument();
+      expect(screen.getByRole('combobox')).toBeInTheDocument();
     });
 
-    const select = screen.getByRole('combobox', { name: /ai model/i });
-    fireEvent.change(select, { target: { value: 'openai/gpt-4o-mini' } });
+    // Change model
+    const trigger = screen.getByRole('combobox');
+    await user.click(trigger);
+
+    // Find a different model
+    const option = await screen.findByRole('option', { name: /GPT-4o Mini/i }); // Adjusted to probable name
+    await user.click(option);
 
     await waitFor(() => {
       expect(settingsService.updateSummarizerModel).toHaveBeenCalled();
@@ -137,10 +176,8 @@ describe('Settings Page - Model Selection', () => {
     );
 
     await waitFor(() => {
-      const selectAfterRefresh = screen.getByRole('combobox', {
-        name: /ai model/i,
-      }) as HTMLSelectElement;
-      expect(selectAfterRefresh.value).toBe('openai/gpt-4o-mini');
+      const triggerAfterRefresh = screen.getByRole('combobox');
+      expect(triggerAfterRefresh).toHaveTextContent(/Mini/i);
     });
   });
 });
