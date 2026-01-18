@@ -82,6 +82,7 @@ interface SummaryRequestBody {
   messages: Array<{ role: 'user' | 'assistant'; content: string; timestamp: number }>;
   date: string;
   apiKey: string;
+  model?: string;
 }
 
 const SUMMARY_SYSTEM_PROMPT = `You are a journal summarization assistant. Given a day's worth of journal entries (conversation between user and assistant), create a structured summary with the following sections:
@@ -102,7 +103,7 @@ Respond ONLY with valid JSON in this exact format:
 }`;
 
 router.post('/summary', async (req: Request<object, unknown, SummaryRequestBody>, res: Response) => {
-  const { messages, date, apiKey } = req.body;
+  const { messages, date, apiKey, model } = req.body;
 
   if (!messages?.length) {
     res.status(400).json({ error: 'Messages required' });
@@ -120,6 +121,9 @@ router.post('/summary', async (req: Request<object, unknown, SummaryRequestBody>
     return;
   }
 
+  // Use provided model or fall back to default
+  const summarizerModel = model || MODEL;
+
   try {
     const conversationText = messages
       .sort((a, b) => a.timestamp - b.timestamp)
@@ -135,7 +139,7 @@ router.post('/summary', async (req: Request<object, unknown, SummaryRequestBody>
         'X-Title': 'Reflekt Journal',
       },
       body: JSON.stringify({
-        model: MODEL,
+        model: summarizerModel,
         messages: [
           { role: 'system', content: SUMMARY_SYSTEM_PROMPT },
           {

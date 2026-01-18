@@ -568,4 +568,270 @@ SpecKit adds overhead. Skip it for:
 
 ---
 
+## Practical SpecKit Workflow FAQ
+
+> **This section answers real-world questions about using SpecKit based on the official GitHub documentation and best practices.**
+
+### Why does my spec start with `001-` when I already have other specs?
+
+**Short answer:** The `001-` prefix is per-branch, not a global sequence.
+
+When you run `/speckit.specify`, SpecKit creates a **new Git branch** for your feature. The numbering (`001-`, `002-`, etc.) is assigned when the branch and spec are created, typically based on:
+- The order of specs within that branch's lifecycle
+- A counter maintained by SpecKit scripts
+
+**What happened in your case:**
+- `001-daily-journal-chat` was your first spec/branch
+- `002-settings` was your second spec/branch
+- `001-ai-model-selection` likely started from a different point or was created in a fresh context
+
+**Recommendation:** Rename spec folders if numbering matters to you, OR accept that numbering is simply a unique identifier. What matters is the descriptive name (`ai-model-selection`), not the number.
+
+---
+
+### Should I create specific or broad specifications?
+
+| Approach | When to Use | Example |
+|----------|-------------|---------|
+| **Broad specs** | Core features, major systems, initial setup | `001-daily-journal-chat`, `002-settings` |
+| **Specific specs** | Enhancements, new capabilities, isolated features | `003-ai-model-selection` |
+
+**The official guidance:**
+- **Avoid mega-specs** that try to build everything at once ("Build the entire MVP" ❌)
+- **Prefer focused features** ("Add password reset functionality" ✅)
+- Each spec should be **independently testable and deliverable**
+
+**Your situation is fine:**
+- `001-daily-journal-chat` and `002-settings` are foundational systems (broad)
+- `001-ai-model-selection` is a specific enhancement (specific)
+
+This is a valid pattern. You don't need to force everything to be the same size.
+
+---
+
+### Should I add new features to existing specs or create new ones?
+
+**Create a NEW spec when:**
+- The feature can be independently developed and tested
+- It adds new user-facing functionality
+- You want to track it as a separate deliverable
+- The change touches many files or introduces new concepts
+
+**Modify an EXISTING spec when:**
+- You're fixing bugs in the original implementation
+- You're clarifying requirements that were ambiguous
+- The change is a direct refinement of the original feature
+- It wouldn't make sense as a standalone deliverable
+
+**Example decision for `ai-model-selection`:**
+- ✅ **New spec was correct** → It's a distinct feature with its own user stories, acceptance criteria, and implementation
+- ❌ Would be wrong to add to `002-settings` → Settings is infrastructure, model selection is functionality
+
+---
+
+### Can I modify a specification after it's "finished"?
+
+**Yes! Specs are living documents.** From the official documentation:
+
+> "Specs become living documents that evolve alongside your code, not dusty artifacts that you write once and forget."
+
+**When to modify completed specs:**
+- Requirements changed
+- Edge cases were discovered in production
+- Better approaches were identified
+- Bugs traced back to specification gaps
+
+**Process for modifying:**
+1. Check out the spec's branch (or main if merged)
+2. Update `spec.md` with changes
+3. Use `/speckit.plan` to regenerate the plan
+4. Use `/speckit.tasks` to create new tasks
+5. Implement the changes
+
+---
+
+### Do new specifications take previous ones into account?
+
+**Not automatically.** Each `/speckit.specify` command works with:
+- The `constitution.md` (always included)
+- The context you provide in your prompt
+- The current codebase (if the AI reads it)
+
+**How to ensure consistency:**
+1. **Reference existing specs in your prompt:**
+   > "Building on the settings system from `002-settings`, add AI model selection..."
+
+2. **Update your constitution** with learnings from previous specs
+
+3. **Provide explicit context** about how features should integrate
+
+4. **Use `/speckit.clarify`** to ask about interactions with existing features
+
+---
+
+### How can I consolidate or reorganize specifications?
+
+**Option 1: Manual consolidation**
+```bash
+# Create a new consolidated spec folder
+mkdir specs/100-consolidated-features
+
+# Move relevant content
+cat specs/001-daily-journal-chat/spec.md > specs/100-consolidated/spec.md
+# Manually merge plans and tasks
+```
+
+**Option 2: Create a meta-spec**
+Create a high-level spec that references and orchestrates other specs:
+```markdown
+# Feature: Complete Journaling System
+
+This specification consolidates:
+- Daily Journal Chat (refs: 001-daily-journal-chat)
+- Settings Infrastructure (refs: 002-settings)
+- AI Model Selection (refs: 001-ai-model-selection)
+```
+
+**Option 3: Archive completed specs**
+```bash
+# Move completed specs to an archive
+mkdir specs/.archive
+mv specs/001-daily-journal-chat specs/.archive/
+```
+
+---
+
+### How can I reduce context size and token usage?
+
+As your specs grow, token usage can become a concern. Here are strategies:
+
+**1. Prune completed tasks from `tasks.md`**
+```markdown
+# Instead of keeping 50 completed tasks:
+## Completed Tasks Summary
+- ✅ All UI components implemented (tasks 1-15)
+- ✅ Database integration complete (tasks 16-25)
+
+## Active Tasks
+26. [ ] Current work item
+27. [ ] Next item
+```
+
+**2. Summarize research in `research.md`**
+Instead of keeping raw API documentation, keep only conclusions:
+```markdown
+## Research Summary
+- OpenRouter API provides 339+ models
+- Endpoint: `/api/v1/models`
+- Key fields: `id`, `name`, `pricing`
+```
+
+**3. Archive old spec artifacts**
+```bash
+# Keep only spec.md in active folder, archive the rest
+mv specs/001-feature/{plan.md,tasks.md,research.md} specs/.archive/001-feature/
+```
+
+**4. Use spec references instead of duplicating**
+```markdown
+See [Settings Data Model](../002-settings/data-model.md) for schema documentation.
+```
+
+**5. Collapse completed specs into constitution**
+Major learnings from completed specs can become constitution amendments:
+```markdown
+# constitution.md
+## Amendment 2026-01-18: AI Integration Patterns
+Based on 001-ai-model-selection learnings:
+- All AI model selections use provider/model-id format
+- Fallback models: openai/gpt-4o, anthropic/claude-sonnet-4.5
+```
+
+---
+
+### Can I modify old specifications and apply changes to the code?
+
+**Yes, this is the SDD workflow:**
+
+```mermaid
+flowchart TD
+    A[Discover issue/enhancement] --> B[Update spec.md]
+    B --> C[Run /speckit.plan to regenerate plan]
+    C --> D[Run /speckit.tasks to create new tasks]
+    D --> E[Run /speckit.implement to execute changes]
+    E --> F[Test against updated acceptance criteria]
+```
+
+**Example workflow:**
+1. User reports: "Model selection doesn't show pricing"
+2. **Update `spec.md`:**
+   ```markdown
+   - **FR-009**: System MUST display pricing information for each model
+   ```
+3. **Regenerate plan:** `/speckit.plan`
+4. **Create tasks:** `/speckit.tasks`
+5. **Implement:** `/speckit.implement`
+
+This is called **spec-first bugfixing** — the fix starts at the specification level.
+
+---
+
+### What is the recommended workflow for ongoing development?
+
+**For new features:**
+```
+/speckit.specify → /speckit.clarify → /speckit.plan → /speckit.tasks → /speckit.implement
+```
+
+**For modifications to existing features:**
+```
+1. Checkout existing spec branch
+2. Edit spec.md directly
+3. /speckit.plan → /speckit.tasks → /speckit.implement
+```
+
+**For bug fixes:**
+- **Spec-level bug:** Update spec.md first, then regenerate
+- **Code-only bug:** Fix directly, update tasks.md with `[x] Fixed: ...`
+
+**For refactoring:**
+- Minor: No spec changes needed
+- Major (architectural): Create new spec or update constitution
+
+---
+
+### Summary: Your Spec Organization is Fine
+
+Looking at your current structure:
+```
+specs/
+├── 001-daily-journal-chat/  → Core feature (broad)
+├── 002-settings/            → Infrastructure (broad)
+└── 001-ai-model-selection/  → Enhancement (specific)
+```
+
+**This is a valid organization.** The numbering inconsistency is cosmetic — what matters is that each spec is:
+- ✅ Independently testable
+- ✅ Has clear acceptance criteria
+- ✅ References the constitution
+- ✅ Has a complete spec → plan → tasks lifecycle
+
+**Recommendations going forward:**
+1. **Number specs sequentially** by manually prefixing: `003-`, `004-`, etc.
+2. **Keep specific features separate** (like `ai-model-selection`)
+3. **Update constitution** with major learnings
+4. **Archive completed specs** to reduce clutter
+5. **Reference other specs** instead of duplicating content
+
+---
+
+## External Resources
+
+- **Official GitHub Spec Kit Repository:** [github.com/github/spec-kit](https://github.com/github/spec-kit)
+- **Spec-Driven Development Philosophy:** [spec-driven.md](https://github.com/github/spec-kit/blob/main/spec-driven.md)
+- **Microsoft DevBlog on Spec Kit:** [Diving Into Spec-Driven Development](https://developer.microsoft.com/blog/spec-driven-development-spec-kit)
+- **Video Overview:** [YouTube Guide](https://www.youtube.com/watch?v=a9eR1xsfvHg)
+
+---
+
 *Last updated: January 2026*

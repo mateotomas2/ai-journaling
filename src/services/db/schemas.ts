@@ -17,6 +17,10 @@ export const settingsSchema: RxJsonSchema<Settings> = {
       type: 'string',
       maxLength: 5000,
     },
+    summarizerModel: {
+      type: 'string',
+      maxLength: 100,
+    },
     timezone: {
       type: 'string',
       maxLength: 50,

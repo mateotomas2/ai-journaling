@@ -1,18 +1,15 @@
 <!--
 Sync Impact Report
 ==================
-Version change: N/A → 1.0.0 (Initial ratification)
-Modified principles: N/A (new constitution)
+Version change: 1.0.0 → 1.1.0 (New principle added)
+Modified principles: None
 Added sections:
-  - Core Principles (3): Privacy-First, Test-Driven Development, Simplicity
-  - Development Workflow
-  - Quality Standards
-  - Governance
-Removed sections: N/A
+  - Core Principles: IV. UI Framework (Tailwind CSS + shadcn/ui)
+Removed sections: None
 Templates requiring updates:
-  - .specify/templates/plan-template.md ✅ compatible (Constitution Check section present)
-  - .specify/templates/spec-template.md ✅ compatible (no constitution-specific references)
-  - .specify/templates/tasks-template.md ✅ compatible (test-optional aligns with TDD principle)
+  - .specify/templates/plan-template.md ✅ compatible (no UI-specific constraints)
+  - .specify/templates/spec-template.md ✅ compatible (no UI framework references)
+  - .specify/templates/tasks-template.md ✅ compatible (generic task structure)
 Follow-up TODOs: None
 -->
 
@@ -67,6 +64,26 @@ Start simple. Build only what is needed now. Avoid premature abstraction and opt
 dependency, and configuration option is a potential source of bugs and attack surface.
 Simplicity enables faster iteration and easier security audits.
 
+### IV. UI Framework (Tailwind CSS + shadcn/ui)
+
+All user interface development MUST use Tailwind CSS for styling and shadcn/ui for components.
+
+- All styling MUST use Tailwind CSS utility classes; custom CSS is prohibited except for:
+  - CSS variables (design tokens for theming)
+  - Animations that cannot be expressed via Tailwind
+  - Third-party library overrides (documented in component file)
+- All interactive components MUST use [shadcn/ui](https://ui.shadcn.com/) primitives
+- Custom components MUST extend shadcn/ui patterns and follow their composition model
+- New component additions from shadcn/ui MUST be installed via the CLI (`npx shadcn@latest add`)
+- Component styling MUST NOT use inline `style` attributes
+- Design tokens (colors, spacing, typography) MUST be defined in `tailwind.config.js`
+- Dark mode MUST be supported using Tailwind's `dark:` variant
+
+**Rationale**: A unified UI framework ensures visual consistency, accelerates development,
+and reduces decision fatigue. Tailwind's utility-first approach aligns with Simplicity (III)
+by avoiding premature abstractions. shadcn/ui provides accessible, well-tested components
+that can be customized without lock-in.
+
 ## Development Workflow
 
 All contributors MUST follow this workflow:
@@ -100,4 +117,4 @@ This constitution supersedes all other development practices and guidelines. Ame
 All pull requests and code reviews MUST verify compliance with this constitution.
 Complexity beyond the simplest solution MUST be explicitly justified.
 
-**Version**: 1.0.0 | **Ratified**: 2026-01-16 | **Last Amended**: 2026-01-16
+**Version**: 1.1.0 | **Ratified**: 2026-01-16 | **Last Amended**: 2026-01-18

@@ -59,3 +59,22 @@ export async function resetSystemPrompt(db: JournalDatabase): Promise<void> {
   }
   await settings.patch({ systemPrompt: JOURNAL_SYSTEM_PROMPT });
 }
+
+/**
+ * Get the current summarizer model (returns default if not set)
+ */
+export async function getSummarizerModel(db: JournalDatabase): Promise<string> {
+  const settings = await db.settings.findOne('settings').exec();
+  return settings?.summarizerModel || 'openai/gpt-4o';
+}
+
+/**
+ * Update the summarizer model
+ */
+export async function updateSummarizerModel(db: JournalDatabase, modelId: string): Promise<void> {
+  const settings = await db.settings.findOne('settings').exec();
+  if (!settings) {
+    throw new Error('Settings not initialized');
+  }
+  await settings.patch({ summarizerModel: modelId });
+}

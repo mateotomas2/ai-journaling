@@ -4,6 +4,7 @@
  */
 
 import { ApiKeySection } from '@/components/settings/ApiKeySection';
+import { ModelSelectionSection } from '@/components/settings/ModelSelectionSection';
 import { PromptCustomization } from '@/components/settings/PromptCustomization';
 import { DataManagement } from '@/components/settings/DataManagement';
 import { exportAllData, importData, clearAllData } from '@/services/settings/data-management.service';
@@ -16,6 +17,7 @@ export function SettingsPage() {
       <p>Configure your journal preferences</p>
 
       <ApiKeySection />
+      <ModelSelectionSection />
       <PromptCustomization />
       <DataManagement
         onExport={exportAllData}

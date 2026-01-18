@@ -32,3 +32,14 @@ export interface Summary {
   sections: SummarySections;
   rawContent: string;
 }
+
+export interface AIModel {
+  id: string;
+  name: string;
+  provider: string;
+  pricing: {
+    prompt: string;
+    completion: string;
+  };
+  contextLength?: number;
+}

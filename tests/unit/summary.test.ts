@@ -43,6 +43,72 @@ describe('Summary Service', () => {
       }));
     });
 
+    it('should accept optional summarizerModel parameter', async () => {
+      const mockResponse = {
+        summary: {
+          journal: 'Daily journal entry.',
+          insights: 'Key insights from the day.',
+          health: 'Health tracking.',
+          dreams: 'Dream log.',
+        },
+        rawContent: 'Summary content...',
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const { generateSummary } = await import('@/services/summary/generate');
+
+      const messages = [
+        { role: 'user' as const, content: 'Test message', timestamp: Date.now() },
+      ];
+
+      await generateSummary(messages, '2026-01-17', 'test-api-key', 'anthropic/claude-sonnet-4.5');
+
+      expect(mockFetch).toHaveBeenCalledWith('/api/summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: expect.stringContaining('anthropic/claude-sonnet-4.5'),
+      });
+
+      const callArgs = mockFetch.mock.calls[0];
+      if (!callArgs) throw new Error('Expected mock to be called');
+      const bodyData = JSON.parse(callArgs[1].body);
+      expect(bodyData.model).toBe('anthropic/claude-sonnet-4.5');
+    });
+
+    it('should not include model field when not provided', async () => {
+      const mockResponse = {
+        summary: {
+          journal: 'Daily journal entry.',
+          insights: 'Key insights from the day.',
+          health: 'Health tracking.',
+          dreams: 'Dream log.',
+        },
+        rawContent: 'Summary content...',
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const { generateSummary } = await import('@/services/summary/generate');
+
+      const messages = [
+        { role: 'user' as const, content: 'Test message', timestamp: Date.now() },
+      ];
+
+      await generateSummary(messages, '2026-01-17', 'test-api-key');
+
+      const callArgs = mockFetch.mock.calls[0];
+      if (!callArgs) throw new Error('Expected mock to be called');
+      const bodyData = JSON.parse(callArgs[1].body);
+      expect(bodyData.model).toBeUndefined();
+    });
+
     it('should throw error when API fails', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,

@@ -17,20 +17,33 @@ interface MessageForSummary {
 export async function generateSummary(
   messages: MessageForSummary[],
   date: string,
-  apiKey: string
+  apiKey: string,
+  summarizerModel?: string
 ): Promise<SummaryResponse> {
   if (!messages.length) {
     throw new Error('No messages to summarize');
   }
 
+  const requestBody: {
+    messages: MessageForSummary[];
+    date: string;
+    apiKey: string;
+    model?: string;
+  } = {
+    messages,
+    date,
+    apiKey,
+  };
+
+  // Only include model if provided
+  if (summarizerModel) {
+    requestBody.model = summarizerModel;
+  }
+
   const response = await fetch('/api/summary', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      messages,
-      date,
-      apiKey,
-    }),
+    body: JSON.stringify(requestBody),
   });
 
   if (!response.ok) {

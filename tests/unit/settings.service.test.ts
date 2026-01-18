@@ -1,5 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { getApiKey, updateApiKey, getSystemPrompt, updateSystemPrompt, resetSystemPrompt } from '@/services/settings/settings.service';
+import {
+  getApiKey,
+  updateApiKey,
+  getSystemPrompt,
+  updateSystemPrompt,
+  resetSystemPrompt,
+  getSummarizerModel,
+  updateSummarizerModel,
+} from '@/services/settings/settings.service';
 import { JOURNAL_SYSTEM_PROMPT } from '@/services/ai/prompts';
 import type { JournalDatabase } from '@/db';
 
@@ -120,6 +128,55 @@ describe('Settings Service', () => {
       (mockDbNoSettings.settings.findOne('settings').exec as any).mockResolvedValue(null);
 
       await expect(resetSystemPrompt(mockDbNoSettings)).rejects.toThrow('Settings not initialized');
+    });
+  });
+
+  describe('getSummarizerModel', () => {
+    it('should return default model when not set', async () => {
+      const mockDbNoModel = createMockDb();
+      (mockDbNoModel.settings.findOne('settings').exec as any).mockResolvedValue({
+        summarizerModel: undefined,
+      });
+
+      const model = await getSummarizerModel(mockDbNoModel);
+      expect(model).toBe('openai/gpt-4o');
+    });
+
+    it('should return custom model when set', async () => {
+      const mockDbWithModel = createMockDb();
+      (mockDbWithModel.settings.findOne('settings').exec as any).mockResolvedValue({
+        summarizerModel: 'anthropic/claude-sonnet-4.5',
+      });
+
+      const model = await getSummarizerModel(mockDbWithModel);
+      expect(model).toBe('anthropic/claude-sonnet-4.5');
+    });
+
+    it('should return default when settings is null', async () => {
+      const mockDbNull = createMockDb();
+      (mockDbNull.settings.findOne('settings').exec as any).mockResolvedValue(null);
+
+      const model = await getSummarizerModel(mockDbNull);
+      expect(model).toBe('openai/gpt-4o');
+    });
+  });
+
+  describe('updateSummarizerModel', () => {
+    it('should persist model selection', async () => {
+      const newModel = 'google/gemini-2.5-flash';
+      await updateSummarizerModel(mockDb, newModel);
+
+      const settings = await mockDb.settings.findOne('settings').exec();
+      expect(settings?.patch).toHaveBeenCalledWith({ summarizerModel: newModel });
+    });
+
+    it('should throw error when settings not initialized', async () => {
+      const mockDbNoSettings = createMockDb();
+      (mockDbNoSettings.settings.findOne('settings').exec as any).mockResolvedValue(null);
+
+      await expect(updateSummarizerModel(mockDbNoSettings, 'openai/gpt-4o')).rejects.toThrow(
+        'Settings not initialized'
+      );
     });
   });
 });

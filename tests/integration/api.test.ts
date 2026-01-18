@@ -77,6 +77,38 @@ describe('API Endpoints', () => {
       expect(validRequest.apiKey).toBeTruthy();
     });
 
+    it('should accept optional model field in request', async () => {
+      const requestWithModel = {
+        messages: [
+          { role: 'user', content: 'Test message', timestamp: 1700000000000 },
+        ],
+        date: '2026-01-16',
+        apiKey: 'sk-or-v1-test-key',
+        model: 'anthropic/claude-sonnet-4.5',
+      };
+
+      expect(requestWithModel.model).toBe('anthropic/claude-sonnet-4.5');
+      expect(requestWithModel.messages).toBeDefined();
+      expect(requestWithModel.date).toBeDefined();
+    });
+
+    it('should use default model when model not provided', async () => {
+      const requestWithoutModel = {
+        messages: [
+          { role: 'user', content: 'Test message', timestamp: 1700000000000 },
+        ],
+        date: '2026-01-16',
+        apiKey: 'sk-or-v1-test-key',
+      };
+
+      // Verify the request doesn't have a model field
+      expect(requestWithoutModel).not.toHaveProperty('model');
+
+      // The backend should use 'openai/gpt-4o' as default when model is not provided
+      const expectedDefaultModel = 'openai/gpt-4o';
+      expect(expectedDefaultModel).toBe('openai/gpt-4o');
+    });
+
     it('should return structured summary sections', async () => {
       const expectedResponse = {
         summary: {

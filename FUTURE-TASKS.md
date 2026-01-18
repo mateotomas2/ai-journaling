@@ -35,30 +35,12 @@
 /speckit.specify Add AI model selection dropdown in settings for the summarizer. Persist selection and use when generating summaries.
 ```
 
-**Modify OpenRouter API key:**
-```
-/speckit.specify Allow users to update their OpenRouter API key in settings with validation.
-```
-
-**Modify initial chat prompt:**
-```
-/speckit.specify Add settings option to customize the system prompt used in chat conversations.
-```
-
-**Import/Export data:**
-```
-/speckit.specify Add import/export functionality to backup and restore all journal data as encrypted JSON.
-```
 
 **Summarizer prompt settings:**
 ```
 /speckit.specify Allow users to customize the prompt used for generating daily summaries.
 ```
 
-**Nuke session:**
-```
-/speckit.specify Add option in settings to completely wipe all local data and reset the app.
-```
 
 ---
 

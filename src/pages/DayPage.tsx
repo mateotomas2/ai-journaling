@@ -5,8 +5,10 @@ import { DailySummary } from '../components/summary/DailySummary';
 import { useMessages } from '../hooks/useMessages';
 import { useSummary } from '../hooks/useSummary';
 import { useSettings } from '../hooks/useSettings';
+import { useDatabase } from '../hooks/useDatabase';
 import { useVisibilityChange } from '../hooks/useVisibilityChange';
 import { generateSummary, shouldGenerateSummary } from '@/services/summary';
+import { getSummarizerModel } from '@/services/settings/settings.service';
 import { formatDayId, isValidDayId, isDayToday } from '../utils/date.utils';
 import './DayPage.css';
 
@@ -47,11 +49,16 @@ function DayPageContent({ dayId, viewMode, setViewMode }: DayPageContentProps) {
   const { messages, isLoading: messagesLoading } = useMessages(dayId);
   const { summary, isLoading: summaryLoading, saveSummary } = useSummary(dayId);
   const { apiKey } = useSettings();
+  const { db } = useDatabase();
   const [autoGenerating, setAutoGenerating] = useState(false);
 
   const handleGenerateSummary = useCallback(async () => {
     if (!apiKey) {
       throw new Error('API key not configured');
+    }
+
+    if (!db) {
+      throw new Error('Database not initialized');
     }
 
     const messagesForSummary = messages.map((m) => ({
@@ -60,9 +67,12 @@ function DayPageContent({ dayId, viewMode, setViewMode }: DayPageContentProps) {
       timestamp: m.timestamp,
     }));
 
-    const result = await generateSummary(messagesForSummary, dayId, apiKey);
+    // Get the user's selected summarizer model
+    const summarizerModel = await getSummarizerModel(db);
+
+    const result = await generateSummary(messagesForSummary, dayId, apiKey, summarizerModel);
     await saveSummary(result.summary, result.rawContent);
-  }, [apiKey, messages, dayId, saveSummary]);
+  }, [apiKey, messages, dayId, saveSummary, db]);
 
   // Check if we should auto-generate summary
   const checkAndGenerateSummary = useCallback(async () => {

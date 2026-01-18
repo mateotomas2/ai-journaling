@@ -6,6 +6,7 @@ export interface Settings {
   id: 'settings';
   openRouterApiKey?: string;
   systemPrompt?: string;
+  summarizerModel?: string;
   timezone: string;
   setupComplete: boolean;
   createdAt: number;
