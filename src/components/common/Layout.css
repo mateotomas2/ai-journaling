@@ -1,0 +1,49 @@
+.layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.layout-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid var(--border);
+  background-color: var(--bg);
+}
+
+.layout-header h1 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.layout-nav {
+  display: flex;
+  gap: 1rem;
+}
+
+.layout-nav a {
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.layout-nav a:hover {
+  background-color: var(--bg-secondary);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.layout-nav a.active {
+  background-color: var(--primary);
+  color: white;
+}
+
+.layout-main {
+  flex: 1;
+  overflow: hidden;
+}

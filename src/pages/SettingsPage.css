@@ -1,0 +1,14 @@
+.settings-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.settings-page h1 {
+  margin-bottom: 0.5rem;
+}
+
+.settings-page > p {
+  color: var(--text-secondary);
+  margin-bottom: 2rem;
+}
