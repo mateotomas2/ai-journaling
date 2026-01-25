@@ -1,0 +1,415 @@
+/**
+ * Memory Search Service
+ * Implements semantic similarity search across journal entries using vector embeddings
+ */
+
+import type {
+  IMemoryService,
+  MemorySearchQuery,
+  MemorySearchResult,
+  MemoryIndexStats,
+} from '../../../specs/006-vector-memory/contracts/memory-service';
+import type { Message } from '../../types/entities';
+import { embeddingService } from '../embedding/generator';
+import { getDatabase } from '../../db';
+import { memoryIndexer } from './indexer';
+import { identifyRecurringThemes } from './analysis';
+import { generateThemeInsights, getThemeSummary } from './patterns';
+import type { RecurringTheme } from './analysis';
+import type { PatternInsight } from './patterns';
+
+/**
+ * Compute cosine similarity between two vectors
+ * Returns a value between 0 and 1, where 1 means identical
+ */
+export function cosineSimilarity(a: Float32Array, b: Float32Array): number {
+  if (a.length !== b.length) {
+    throw new Error(`Vector dimension mismatch: ${a.length} vs ${b.length}`);
+  }
+
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i]! * b[i]!;
+    normA += a[i]! * a[i]!;
+    normB += b[i]! * b[i]!;
+  }
+
+  const denominator = Math.sqrt(normA) * Math.sqrt(normB);
+
+  // Avoid division by zero
+  if (denominator === 0) {
+    return 0;
+  }
+
+  return dot / denominator;
+}
+
+/**
+ * Find most similar vectors to query vector
+ * Returns array of indices and scores, sorted by descending similarity
+ */
+export function findSimilar(
+  queryVector: Float32Array,
+  vectors: Array<{ id: string; vector: Float32Array; metadata?: any }>,
+  topK: number = 10
+): Array<{ id: string; score: number; metadata?: any }> {
+  // Compute similarity scores for all vectors
+  const scores = vectors.map((item) => ({
+    id: item.id,
+    score: cosineSimilarity(queryVector, item.vector),
+    metadata: item.metadata,
+  }));
+
+  // Sort by descending score and take top K
+  return scores
+    .sort((a, b) => b.score - a.score)
+    .slice(0, topK);
+}
+
+/**
+ * Extract a relevant excerpt from message content
+ * Takes first ~150 characters or first sentence, whichever is shorter
+ */
+function extractExcerpt(content: string, maxLength: number = 150): string {
+  if (content.length <= maxLength) {
+    return content;
+  }
+
+  // Try to find first sentence
+  const sentenceEnd = content.search(/[.!?]\s/);
+  if (sentenceEnd !== -1 && sentenceEnd < maxLength) {
+    return content.substring(0, sentenceEnd + 1);
+  }
+
+  // Otherwise, truncate at word boundary
+  const truncated = content.substring(0, maxLength);
+  const lastSpace = truncated.lastIndexOf(' ');
+
+  if (lastSpace > maxLength * 0.8) {
+    return truncated.substring(0, lastSpace) + '...';
+  }
+
+  return truncated + '...';
+}
+
+/**
+ * Memory Service implementation
+ */
+class MemoryService implements IMemoryService {
+  /**
+   * Search journal messages using semantic similarity
+   */
+  async search(query: MemorySearchQuery): Promise<MemorySearchResult[]> {
+    const db = await getDatabase();
+    if (!db) {
+      throw new Error('Database not initialized');
+    }
+
+    // Ensure embedding service is initialized
+    const status = embeddingService.getStatus();
+    if (!status.isReady) {
+      console.log('[MemoryService] Initializing embedding service...');
+      await embeddingService.initialize();
+    }
+
+    // Generate embedding for search query
+    const queryEmbedding = await embeddingService.generateEmbedding(query.query);
+
+    // Fetch all embeddings from database
+    const allEmbeddings = await db.embeddings.find().exec();
+
+    // Convert to searchable format
+    const vectors = allEmbeddings.map((doc) => ({
+      id: doc.messageId,
+      vector: new Float32Array(doc.vector),
+      metadata: {
+        embeddingId: doc.id,
+        createdAt: doc.createdAt,
+        modelVersion: doc.modelVersion,
+      },
+    }));
+
+    // Find similar vectors
+    const limit = query.limit || 10;
+    const minScore = query.minScore || 0.0;
+
+    const similarVectors = findSimilar(queryEmbedding.vector, vectors, limit * 2); // Get more to filter
+
+    // Filter by minimum score
+    const filtered = similarVectors.filter((result) => result.score >= minScore);
+
+    // Fetch corresponding messages
+    const messageIds = filtered.map((result) => result.id);
+    const messages = await db.messages
+      .find({
+        selector: {
+          id: { $in: messageIds },
+        },
+      })
+      .exec();
+
+    // Create a map for quick lookup
+    const messageMap = new Map(messages.map((msg) => [msg.id, msg]));
+
+    // Build search results with proper ranking
+    const results: MemorySearchResult[] = [];
+    let rank = 1;
+
+    for (const similar of filtered.slice(0, limit)) {
+      const message = messageMap.get(similar.id);
+      if (!message) {
+        continue; // Message might have been deleted
+      }
+
+      // Apply additional filters if specified
+      if (query.dateRange) {
+        if (query.dateRange.start && message.timestamp < query.dateRange.start) {
+          continue;
+        }
+        if (query.dateRange.end && message.timestamp > query.dateRange.end) {
+          continue;
+        }
+      }
+
+      if (query.dayId && message.dayId !== query.dayId) {
+        continue;
+      }
+
+      results.push({
+        message: message.toJSON() as Message,
+        score: similar.score,
+        excerpt: extractExcerpt(message.content),
+        rank: rank++,
+      });
+    }
+
+    return results;
+  }
+
+  /**
+   * Index a new message for search
+   * Queues the message for embedding generation
+   */
+  async indexMessage(message: Message): Promise<void> {
+    // Queue the message for embedding generation
+    memoryIndexer.queueForEmbedding(message.id);
+
+    // Process the queue to generate embeddings
+    // Note: This happens asynchronously, but we don't await it
+    // to avoid blocking the message creation flow
+    memoryIndexer.processQueue().catch((error) => {
+      console.error('[MemoryService] Failed to process embedding queue:', error);
+    });
+  }
+
+  /**
+   * Re-index an existing message
+   * Removes old embedding and creates a new one
+   */
+  async reindexMessage(messageId: string): Promise<void> {
+    await memoryIndexer.reindexMessage(messageId);
+  }
+
+  /**
+   * Remove a message from the index
+   */
+  async removeFromIndex(messageId: string): Promise<void> {
+    const db = await getDatabase();
+    if (!db) {
+      throw new Error('Database not initialized');
+    }
+
+    // Find and remove the embedding
+    const embedding = await db.embeddings
+      .find({
+        selector: { messageId },
+      })
+      .exec();
+
+    if (embedding.length > 0) {
+      await embedding[0]!.remove();
+    }
+  }
+
+  /**
+   * Get index statistics
+   */
+  async getIndexStats(): Promise<MemoryIndexStats> {
+    const db = await getDatabase();
+    if (!db) {
+      throw new Error('Database not initialized');
+    }
+
+    const allMessages = await db.messages.find().exec();
+    const allEmbeddings = await db.embeddings.find().exec();
+
+    // Find messages without embeddings
+    const embeddedMessageIds = new Set(allEmbeddings.map((e) => e.messageId));
+    const pendingMessages = allMessages.filter((m) => !embeddedMessageIds.has(m.id));
+
+    // Get latest embedding timestamp
+    let lastUpdated = 0;
+    if (allEmbeddings.length > 0) {
+      lastUpdated = Math.max(...allEmbeddings.map((e) => e.createdAt));
+    }
+
+    // Get model version from most recent embedding
+    let modelVersion = 'unknown';
+    if (allEmbeddings.length > 0) {
+      const latest = allEmbeddings.sort((a, b) => b.createdAt - a.createdAt)[0];
+      modelVersion = latest?.modelVersion || 'unknown';
+    }
+
+    return {
+      totalMessages: allMessages.length,
+      indexedMessages: allEmbeddings.length,
+      pendingMessages: pendingMessages.length,
+      lastUpdated,
+      modelVersion,
+    };
+  }
+
+  /**
+   * Rebuild entire index
+   * Re-generates embeddings for all messages using batch processing
+   */
+  async rebuildIndex(onProgress?: (current: number, total: number) => void): Promise<void> {
+    const db = await getDatabase();
+    if (!db) {
+      throw new Error('Database not initialized');
+    }
+
+    // Ensure embedding service is initialized
+    const status = embeddingService.getStatus();
+    if (!status.isReady) {
+      console.log('[MemoryService] Initializing embedding service...');
+      await embeddingService.initialize();
+    }
+
+    // Get all messages
+    const allMessages = await db.messages.find().exec();
+    const total = allMessages.length;
+
+    console.log(`[MemoryService] Rebuilding index for ${total} messages using batch processing...`);
+
+    // Clear existing embeddings
+    const allEmbeddings = await db.embeddings.find().exec();
+    for (const embedding of allEmbeddings) {
+      await embedding.remove();
+    }
+
+    if (total === 0) {
+      console.log('[MemoryService] No messages to index');
+      return;
+    }
+
+    // Extract message IDs
+    const messageIds = allMessages.map((m) => m.id);
+
+    // Use batch processing for better performance
+    const batchSize = 10;
+    await memoryIndexer.processBatch(messageIds, batchSize);
+
+    // Report progress
+    if (onProgress) {
+      onProgress(total, total);
+    }
+
+    console.log(`[MemoryService] Index rebuild complete: ${total} messages indexed`);
+  }
+
+  /**
+   * Analyze recurring themes across all journal entries
+   * Identifies patterns and topics that appear frequently
+   */
+  async analyzeRecurringThemes(options?: {
+    minFrequency?: number;
+    maxThemes?: number;
+  }): Promise<{
+    themes: RecurringTheme[];
+    insights: PatternInsight[];
+    summary: string[];
+  }> {
+    const db = await getDatabase();
+    if (!db) {
+      throw new Error('Database not initialized');
+    }
+
+    // Get all embeddings
+    const allEmbeddings = await db.embeddings.find().exec();
+
+    if (allEmbeddings.length === 0) {
+      return {
+        themes: [],
+        insights: [],
+        summary: [],
+      };
+    }
+
+    // Create embedding ID to message ID map
+    const embeddingIdToMessageId = new Map<string, string>();
+    allEmbeddings.forEach((emb) => {
+      embeddingIdToMessageId.set(emb.id, emb.messageId);
+    });
+
+    // Convert to plain objects for analysis
+    const embeddings = allEmbeddings.map((doc) => ({
+      id: doc.id,
+      messageId: doc.messageId,
+      vector: doc.vector,
+      modelVersion: doc.modelVersion,
+      createdAt: doc.createdAt,
+    }));
+
+    // Identify recurring themes
+    const themes = identifyRecurringThemes(
+      embeddings,
+      embeddingIdToMessageId,
+      options?.minFrequency || 3,
+      options?.maxThemes || 10
+    );
+
+    if (themes.length === 0) {
+      return {
+        themes: [],
+        insights: [],
+        summary: [],
+      };
+    }
+
+    // Get all messages for insight generation
+    const messageIds = Array.from(
+      new Set(themes.flatMap((t) => t.messageIds))
+    );
+
+    const messages = await db.messages
+      .find({
+        selector: {
+          id: { $in: messageIds },
+        },
+      })
+      .exec();
+
+    const messageDocs = messages.map((doc) => doc.toJSON() as Message);
+
+    // Generate insights
+    const insights = generateThemeInsights(themes, messageDocs);
+
+    // Get summary
+    const summary = getThemeSummary(themes, messageDocs, 5);
+
+    console.log(`[MemoryService] Found ${themes.length} recurring themes`);
+
+    return {
+      themes,
+      insights,
+      summary,
+    };
+  }
+}
+
+// Export singleton instance
+export const memoryService = new MemoryService();

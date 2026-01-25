@@ -61,6 +61,7 @@ export function ChatInterface({ dayId }: ChatInterfaceProps) {
         onModelChange={handleModelChange}
       />
       <MessageList messages={messages} isLoading={isLoading} />
+
       {error && (
         <div className="px-4 py-2 bg-destructive/10 text-destructive text-center text-sm">
           {error}

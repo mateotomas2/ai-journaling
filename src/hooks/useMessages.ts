@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useDatabase } from './useDatabase';
 import type { Message, MessageRole, Category } from '../types/entities';
+import { memoryService } from '../services/memory/search';
 
 export function useMessages(dayId: string) {
   const { db } = useDatabase();
@@ -59,6 +60,12 @@ export function useMessages(dayId: string) {
         await dayDoc.patch({ updatedAt: message.timestamp });
       }
 
+      // Automatically index message for semantic search
+      // This happens asynchronously to avoid blocking message creation
+      memoryService.indexMessage(message).catch((error) => {
+        console.error('[useMessages] Failed to index message for search:', error);
+      });
+
       return message;
     },
     [db, dayId]
@@ -76,6 +83,12 @@ export function useMessages(dayId: string) {
 
       if (messageDoc) {
         await messageDoc.patch({ content });
+
+        // Re-index the message with updated content
+        // This happens asynchronously to avoid blocking the update
+        memoryService.reindexMessage(messageId).catch((error) => {
+          console.error('[useMessages] Failed to re-index updated message:', error);
+        });
       }
     },
     [db]

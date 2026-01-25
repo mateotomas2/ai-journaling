@@ -9,9 +9,20 @@ export default defineConfig({
       '@': resolve(__dirname, './src'),
     },
   },
-  server: {
-    proxy: {
-      '/api': 'http://localhost:3001',
+  optimizeDeps: {
+    exclude: ['@huggingface/transformers'],
+  },
+  worker: {
+    format: 'es',
+    plugins: () => [],
+  },
+  assetsInclude: ['**/*.wasm', '**/*.onnx'],
+  build: {
+    target: 'esnext',
+    rollupOptions: {
+      output: {
+        format: 'es',
+      },
     },
   },
   test: {

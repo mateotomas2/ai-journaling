@@ -43,3 +43,11 @@ export interface AIModel {
   };
   contextLength?: number;
 }
+
+export interface Embedding {
+  id: string;
+  messageId: string;
+  vector: number[]; // 384-dimension array, stored as JSON, converted to Float32Array for computation
+  modelVersion: string; // Format: "model-name@version" e.g., "all-MiniLM-L6-v2@v0"
+  createdAt: number;
+}

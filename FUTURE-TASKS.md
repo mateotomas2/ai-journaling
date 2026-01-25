@@ -107,7 +107,7 @@ This requires:
 
 --- manually added
 
-/speckit.specify add vector memory for the AI. It should be able to query over the user's journal data and return relevant context for the conversation from any chat.
+/speckit.specify When chatting with the AI it should be able to query over the user's journal data and return relevant context for the conversation from any chat.
 
 
 

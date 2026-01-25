@@ -1,10 +1,13 @@
 import type { ReactNode } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { OfflineIndicator } from './OfflineIndicator';
 import { useKeyboardNavigation } from '../../hooks/useKeyboardNavigation';
+import { MemorySearch } from '../search/MemorySearch';
 import { cn } from '@/lib/utils';
-import { buttonVariants } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { ModeToggle } from '@/components/mode-toggle';
+import { Search } from 'lucide-react';
 
 interface LayoutProps {
   children: ReactNode;
@@ -13,6 +16,20 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Cmd+K / Ctrl+K to open search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Global keyboard shortcuts
   useKeyboardNavigation({
@@ -64,6 +81,20 @@ export function Layout({ children }: LayoutProps) {
                 })}
               </nav>
               <div className="w-px h-6 bg-border mx-2" />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsSearchOpen(true)}
+                className="flex items-center gap-2"
+                title="Search journal (⌘K)"
+              >
+                <Search className="w-4 h-4" />
+                <span className="hidden sm:inline">Search</span>
+                <kbd className="hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100">
+                  <span className="text-xs">⌘</span>K
+                </kbd>
+              </Button>
+              <div className="w-px h-6 bg-border mx-2" />
               <ModeToggle />
             </div>
           </div>
@@ -75,6 +106,15 @@ export function Layout({ children }: LayoutProps) {
         </div>
       </main>
       <OfflineIndicator />
+
+      {/* Memory Search Dialog */}
+      <MemorySearch
+        open={isSearchOpen}
+        onOpenChange={setIsSearchOpen}
+        onResultSelect={(_messageId, dayId) => {
+          navigate(`/day/${dayId}`);
+        }}
+      />
     </div>
   );
 }

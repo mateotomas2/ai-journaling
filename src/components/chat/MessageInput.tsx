@@ -8,16 +8,31 @@ interface MessageInputProps {
   isDisabled?: boolean;
   isStreaming?: boolean;
   onStop?: () => void;
+  /** Current message value (controlled) */
+  value?: string;
+  /** Callback when message changes */
+  onChange?: (message: string) => void;
 }
 
-export function MessageInput({ onSend, isDisabled, isStreaming, onStop }: MessageInputProps) {
-  const [message, setMessage] = useState('');
+export function MessageInput({ onSend, isDisabled, isStreaming, onStop, value: controlledValue, onChange }: MessageInputProps) {
+  // Support both controlled and uncontrolled modes
+  const [internalMessage, setInternalMessage] = useState('');
+  const isControlled = controlledValue !== undefined;
+  const message = isControlled ? controlledValue : internalMessage;
+
+  const handleMessageChange = (newMessage: string) => {
+    if (isControlled) {
+      onChange?.(newMessage);
+    } else {
+      setInternalMessage(newMessage);
+    }
+  };
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (message.trim() && !isDisabled && !isStreaming) {
       onSend(message.trim());
-      setMessage('');
+      handleMessageChange('');
     }
   };
 
@@ -28,7 +43,7 @@ export function MessageInput({ onSend, isDisabled, isStreaming, onStop }: Messag
       // FormEvent type might mismatch if we pass keyboard event directly, so let's call logic
       if (message.trim() && !isDisabled && !isStreaming) {
         onSend(message.trim());
-        setMessage('');
+        handleMessageChange('');
       }
     }
   };
@@ -37,7 +52,7 @@ export function MessageInput({ onSend, isDisabled, isStreaming, onStop }: Messag
     <form className="flex gap-3 items-end p-4 border-t border-border bg-card/50 backdrop-blur-sm" onSubmit={handleSubmit}>
       <Textarea
         value={message}
-        onChange={(e) => setMessage(e.target.value)}
+        onChange={(e) => handleMessageChange(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="What's on your mind?"
         disabled={isDisabled}

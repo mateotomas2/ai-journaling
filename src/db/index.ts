@@ -9,8 +9,9 @@ import { settingsSchema } from '../services/db/schemas';
 import { daySchema } from './schemas/day.schema';
 import { messageSchema } from './schemas/message.schema';
 import { summarySchema } from './schemas/summary.schema';
+import { embeddingSchema } from './schemas/embedding.schema';
 import type { Settings } from '../types';
-import type { Day, Message, Summary } from '../types/entities';
+import type { Day, Message, Summary, Embedding } from '../types/entities';
 
 // Custom AJV validator with strict mode disabled (RxDB's default has strict: true hardcoded)
 const ajv = new Ajv({ strict: false });
@@ -48,6 +49,7 @@ export type JournalCollections = {
   days: RxCollection<Day>;
   messages: RxCollection<Message>;
   summaries: RxCollection<Summary>;
+  embeddings: RxCollection<Embedding>;
 };
 
 export type JournalDatabase = RxDatabase<JournalCollections>;
@@ -87,6 +89,9 @@ export async function createDatabase(passphrase: string): Promise<JournalDatabas
     },
     summaries: {
       schema: summarySchema,
+    },
+    embeddings: {
+      schema: embeddingSchema,
     },
   });
 
