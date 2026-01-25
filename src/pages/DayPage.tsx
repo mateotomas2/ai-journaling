@@ -63,16 +63,10 @@ function DayPageContent({ dayId, viewMode, setViewMode }: DayPageContentProps) {
       throw new Error('Database not initialized');
     }
 
-    const messagesForSummary = messages.map((m) => ({
-      role: m.role,
-      content: m.content,
-      timestamp: m.timestamp,
-    }));
-
     // Get the user's selected summarizer model
     const summarizerModel = await getSummarizerModel(db);
 
-    const result = await generateSummary(messagesForSummary, dayId, apiKey, summarizerModel);
+    const result = await generateSummary(messages, dayId, apiKey, summarizerModel);
     await saveSummary(result.summary, result.rawContent);
   }, [apiKey, messages, dayId, saveSummary, db]);
 

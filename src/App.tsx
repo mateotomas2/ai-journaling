@@ -66,7 +66,7 @@ import { Toaster } from "@/components/ui/sonner"
 export function App() {
   return (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
-      <BrowserRouter>
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
         <DatabaseProvider>
           <AppRoutes />
           <Toaster />
