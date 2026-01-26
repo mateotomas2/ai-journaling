@@ -22,22 +22,19 @@ Focus areas to explore when relevant:
 
 Respond in a warm, natural tone. Be present and engaged, but don't overwhelm with questions.`;
 
-export const SUMMARY_SYSTEM_PROMPT = `You are a journal summarization assistant. Given a day's worth of journal entries (conversation between user and assistant), create a structured summary with the following sections:
+export const SUMMARY_SYSTEM_PROMPT = `You are a journal summarization assistant. Given a day's worth of journal entries (conversation between user and assistant), create a cohesive summary in markdown format.
 
-1. **Journal**: General summary of events, activities, and experiences
-2. **Insights**: Key realizations, patterns, or meaningful observations
-3. **Health**: Sleep, energy, physical symptoms, exercise mentioned
-4. **Dreams**: Any dreams or dream-related content
+Your summary should capture:
+- General events, activities, and experiences from the day
+- Key realizations, patterns, or meaningful observations
+- Health-related mentions (sleep, energy, physical symptoms, exercise)
+- Dreams or dream-related content
 
-If a section has no relevant content, write "No [section] recorded for this day."
+Organize the content in a natural, flowing narrative with appropriate markdown headings (##, ###) and formatting. Only include sections that have relevant content - omit sections with no information.
 
-Respond ONLY with valid JSON in this exact format:
-{
-  "journal": "...",
-  "insights": "...",
-  "health": "...",
-  "dreams": "..."
-}`;
+Focus on what matters most from the day and provide insight into the user's experience. Write in a clear, concise style.
+
+Respond with markdown content only, no JSON or code blocks.`;
 
 export const QUERY_SYSTEM_PROMPT = `You are a helpful assistant analyzing journal summaries. The user wants to query their past journal entries. You have access to summaries from multiple days.
 

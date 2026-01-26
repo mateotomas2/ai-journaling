@@ -32,7 +32,7 @@ export interface Message {
   categories?: Category[];
 }
 
-// Summary entity - AI-generated daily digest
+// Summary entity - AI-generated daily digest (DEPRECATED - use Note with category="summary")
 export interface Summary {
   id: string; // Same as dayId
   dayId: string;
@@ -46,6 +46,17 @@ export interface SummarySections {
   insights: string;
   health: string;
   dreams: string;
+}
+
+// Note entity - flexible notes with categories
+export interface Note {
+  id: string; // UUID
+  dayId: string; // YYYY-MM-DD
+  category: string; // "summary", "personal", "ideas", etc.
+  title?: string; // Optional title
+  content: string; // Markdown content
+  createdAt: number;
+  updatedAt: number;
 }
 
 // API Request/Response types

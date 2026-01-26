@@ -1,10 +1,10 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { DatabaseProvider } from './db/DatabaseContext';
 import { Layout } from './components/common/Layout';
-import { TodayPage } from './pages/TodayPage';
+import { JournalPage } from './pages/JournalPage';
+import { EntriesPage } from './pages/EntriesPage';
 import { DayPage } from './pages/DayPage';
 import { HistoryPage } from './pages/HistoryPage';
-import { CalendarPage } from './pages/CalendarPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { UnlockPage } from './pages/UnlockPage';
 import { Setup } from './pages/Setup';
@@ -49,11 +49,11 @@ function AppRoutes() {
   return (
     <Layout>
       <Routes>
-        <Route path="/" element={<Navigate to="/today" replace />} />
-        <Route path="/today" element={<TodayPage />} />
+        <Route path="/" element={<Navigate to="/journal" replace />} />
+        <Route path="/journal" element={<JournalPage />} />
+        <Route path="/entries" element={<EntriesPage />} />
         <Route path="/day/:date" element={<DayPage />} />
         <Route path="/history" element={<HistoryPage />} />
-        <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Routes>
     </Layout>

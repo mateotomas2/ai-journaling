@@ -5,6 +5,17 @@ import { SUMMARY_SYSTEM_PROMPT } from '@/services/ai/prompts';
 const mockFetch = vi.fn();
 globalThis.fetch = mockFetch;
 
+// Mock database
+const mockDb = {
+  notes: {
+    find: vi.fn().mockReturnValue({
+      selector: vi.fn().mockReturnThis(),
+      sort: vi.fn().mockReturnThis(),
+      exec: vi.fn().mockResolvedValue([]),
+    }),
+  },
+} as any;
+
 describe('Summary Service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -12,19 +23,17 @@ describe('Summary Service', () => {
 
   describe('generateSummary', () => {
     it('should generate summary from messages', async () => {
-      const mockResponse = {
-        summary: {
-          journal: 'Had a productive day at work.',
-          insights: 'Realized I work better in the morning.',
-          health: 'Slept 7 hours, felt energetic.',
-          dreams: 'No dreams recorded for this day.',
-        },
-        rawContent: 'Summary content...',
+      const mockAIResponse = {
+        choices: [{
+          message: {
+            content: '## Events\n\nHad a productive day at work.\n\n## Insights\n\nRealized I work better in the morning.'
+          }
+        }]
       };
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve(mockResponse),
+        json: () => Promise.resolve(mockAIResponse),
       });
 
       const { generateSummary } = await import('@/services/summary/generate');
@@ -34,29 +43,27 @@ describe('Summary Service', () => {
         { id: '2', dayId: '2026-01-17', role: 'assistant' as const, content: 'That sounds great!', timestamp: Date.now() },
       ];
 
-      const result = await generateSummary(messages, '2026-01-17', 'test-api-key');
+      const result = await generateSummary(messages, '2026-01-17', 'test-api-key', mockDb);
 
-      expect(result).toEqual(mockResponse);
-      expect(mockFetch).toHaveBeenCalledWith('/api/summary', expect.objectContaining({
+      expect(result).toHaveProperty('content');
+      expect(typeof result.content).toBe('string');
+      expect(mockFetch).toHaveBeenCalledWith('https://openrouter.ai/api/v1/chat/completions', expect.objectContaining({
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
       }));
     });
 
     it('should accept optional summarizerModel parameter', async () => {
-      const mockResponse = {
-        summary: {
-          journal: 'Daily journal entry.',
-          insights: 'Key insights from the day.',
-          health: 'Health tracking.',
-          dreams: 'Dream log.',
-        },
-        rawContent: 'Summary content...',
+      const mockAIResponse = {
+        choices: [{
+          message: {
+            content: '## Daily Summary\n\nDaily journal entry.'
+          }
+        }]
       };
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve(mockResponse),
+        json: () => Promise.resolve(mockAIResponse),
       });
 
       const { generateSummary } = await import('@/services/summary/generate');
@@ -65,11 +72,13 @@ describe('Summary Service', () => {
         { id: '1', dayId: '2026-01-17', role: 'user' as const, content: 'Test message', timestamp: Date.now() },
       ];
 
-      await generateSummary(messages, '2026-01-17', 'test-api-key', 'anthropic/claude-sonnet-4.5');
+      await generateSummary(messages, '2026-01-17', 'test-api-key', mockDb, 'anthropic/claude-sonnet-4.5');
 
-      expect(mockFetch).toHaveBeenCalledWith('/api/summary', {
+      expect(mockFetch).toHaveBeenCalledWith('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: expect.objectContaining({
+          'Authorization': 'Bearer test-api-key',
+        }),
         body: expect.stringContaining('anthropic/claude-sonnet-4.5'),
       });
 
@@ -79,20 +88,18 @@ describe('Summary Service', () => {
       expect(bodyData.model).toBe('anthropic/claude-sonnet-4.5');
     });
 
-    it('should not include model field when not provided', async () => {
-      const mockResponse = {
-        summary: {
-          journal: 'Daily journal entry.',
-          insights: 'Key insights from the day.',
-          health: 'Health tracking.',
-          dreams: 'Dream log.',
-        },
-        rawContent: 'Summary content...',
+    it('should use default model when not provided', async () => {
+      const mockAIResponse = {
+        choices: [{
+          message: {
+            content: '## Daily Summary\n\nDaily journal entry.'
+          }
+        }]
       };
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve(mockResponse),
+        json: () => Promise.resolve(mockAIResponse),
       });
 
       const { generateSummary } = await import('@/services/summary/generate');
@@ -101,18 +108,18 @@ describe('Summary Service', () => {
         { id: '1', dayId: '2026-01-17', role: 'user' as const, content: 'Test message', timestamp: Date.now() },
       ];
 
-      await generateSummary(messages, '2026-01-17', 'test-api-key');
+      await generateSummary(messages, '2026-01-17', 'test-api-key', mockDb);
 
       const callArgs = mockFetch.mock.calls[0];
       if (!callArgs) throw new Error('Expected mock to be called');
       const bodyData = JSON.parse(callArgs[1].body);
-      expect(bodyData.model).toBeUndefined();
+      expect(bodyData.model).toBe('openai/gpt-4o'); // Default model
     });
 
     it('should throw error when API fails', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
-        json: () => Promise.resolve({ error: 'Summary generation failed' }),
+        json: () => Promise.resolve({ error: { message: 'Summary generation failed' } }),
       });
 
       const { generateSummary } = await import('@/services/summary/generate');
@@ -122,16 +129,28 @@ describe('Summary Service', () => {
       ];
 
       await expect(
-        generateSummary(messages, '2026-01-17', 'test-key')
+        generateSummary(messages, '2026-01-17', 'test-key', mockDb)
       ).rejects.toThrow('Summary generation failed');
     });
 
-    it('should return empty summary for no messages', async () => {
+    it('should handle empty messages array', async () => {
+      const mockAIResponse = {
+        choices: [{
+          message: {
+            content: '## Daily Summary\n\nNo entries for today.'
+          }
+        }]
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockAIResponse),
+      });
+
       const { generateSummary } = await import('@/services/summary/generate');
 
-      await expect(generateSummary([], '2026-01-17', 'test-key')).rejects.toThrow(
-        'No messages to summarize'
-      );
+      const result = await generateSummary([], '2026-01-17', 'test-key', mockDb);
+      expect(result).toHaveProperty('content');
     });
   });
 
@@ -182,14 +201,15 @@ describe('Summary Prompts', () => {
     expect(typeof SUMMARY_SYSTEM_PROMPT).toBe('string');
   });
 
-  it('should include key summary sections', () => {
-    expect(SUMMARY_SYSTEM_PROMPT).toContain('Journal');
-    expect(SUMMARY_SYSTEM_PROMPT).toContain('Insights');
+  it('should include key summary areas', () => {
+    expect(SUMMARY_SYSTEM_PROMPT).toContain('events, activities, and experiences');
+    expect(SUMMARY_SYSTEM_PROMPT).toContain('realizations, patterns');
     expect(SUMMARY_SYSTEM_PROMPT).toContain('Health');
     expect(SUMMARY_SYSTEM_PROMPT).toContain('Dreams');
   });
 
-  it('should request JSON response', () => {
-    expect(SUMMARY_SYSTEM_PROMPT).toContain('JSON');
+  it('should request markdown response', () => {
+    expect(SUMMARY_SYSTEM_PROMPT).toContain('markdown');
+    expect(SUMMARY_SYSTEM_PROMPT).toContain('no JSON'); // Explicitly says no JSON
   });
 });

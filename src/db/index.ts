@@ -9,9 +9,11 @@ import { settingsSchema } from '../services/db/schemas';
 import { daySchema } from './schemas/day.schema';
 import { messageSchema } from './schemas/message.schema';
 import { summarySchema } from './schemas/summary.schema';
+import { noteSchema } from './schemas/note.schema';
 import { embeddingSchema } from './schemas/embedding.schema';
 import type { Settings } from '../types';
-import type { Day, Message, Summary, Embedding } from '../types/entities';
+import type { Day, Message, Summary, Note, Embedding } from '../types/entities';
+import { migrateSummariesToNotes } from './migrations/summary-to-notes';
 
 // Custom AJV validator with strict mode disabled (RxDB's default has strict: true hardcoded)
 const ajv = new Ajv({ strict: false });
@@ -49,6 +51,7 @@ export type JournalCollections = {
   days: RxCollection<Day>;
   messages: RxCollection<Message>;
   summaries: RxCollection<Summary>;
+  notes: RxCollection<Note>;
   embeddings: RxCollection<Embedding>;
 };
 
@@ -90,6 +93,9 @@ export async function createDatabase(passphrase: string): Promise<JournalDatabas
     summaries: {
       schema: summarySchema,
     },
+    notes: {
+      schema: noteSchema,
+    },
     embeddings: {
       schema: embeddingSchema,
     },
@@ -117,6 +123,14 @@ export async function createDatabase(passphrase: string): Promise<JournalDatabas
       localStorage.removeItem('openrouter_api_key');
       console.log('Migrated API key from localStorage to database');
     }
+  }
+
+  // MIGRATION: Convert old summaries to notes
+  try {
+    await migrateSummariesToNotes(db);
+  } catch (error) {
+    console.error('Error running summary to notes migration:', error);
+    // Don't fail database initialization if migration fails
   }
 
   dbInstance = db;

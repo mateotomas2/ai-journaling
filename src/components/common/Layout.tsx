@@ -34,16 +34,16 @@ export function Layout({ children }: LayoutProps) {
   // Global keyboard shortcuts
   useKeyboardNavigation({
     shortcuts: [
-      { key: 't', action: () => navigate('/today'), description: 'Go to today' },
-      { key: 'c', action: () => navigate('/calendar'), description: 'Go to calendar' },
+      { key: 'j', action: () => navigate('/journal'), description: 'Go to journal' },
+      { key: 'e', action: () => navigate('/entries'), description: 'Go to entries' },
       { key: 'h', action: () => navigate('/history'), description: 'Go to history' },
       { key: 's', action: () => navigate('/settings'), description: 'Go to settings' },
     ],
   });
 
   const navItems = [
-    { path: '/today', label: 'Today', shortcut: 'T' },
-    { path: '/calendar', label: 'Calendar', shortcut: 'C' },
+    { path: '/journal', label: 'Journal', shortcut: 'J' },
+    { path: '/entries', label: 'Entries', shortcut: 'E' },
     { path: '/history', label: 'History', shortcut: 'H' },
     { path: '/settings', label: 'Settings', shortcut: 'S' },
   ];
@@ -53,7 +53,7 @@ export function Layout({ children }: LayoutProps) {
       <header className="sticky top-0 z-50 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <Link to="/today" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+            <Link to="/journal" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
               <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
                 <span className="text-primary-foreground font-bold text-sm">DJ</span>
               </div>

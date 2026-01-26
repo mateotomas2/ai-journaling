@@ -33,6 +33,16 @@ export interface Summary {
   rawContent: string;
 }
 
+export interface Note {
+  id: string; // UUID
+  dayId: string; // YYYY-MM-DD
+  category: string; // "summary", "personal", "ideas", etc.
+  title?: string; // Optional title
+  content: string; // Markdown content
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface AIModel {
   id: string;
   name: string;

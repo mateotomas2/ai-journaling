@@ -18,7 +18,7 @@ export function DayList({ days, isLoading }: DayListProps) {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-muted-foreground gap-4">
         <p>No journal entries yet.</p>
-        <Link to="/today" className="text-primary hover:underline font-medium">Start journaling today</Link>
+        <Link to="/journal" className="text-primary hover:underline font-medium">Start journaling today</Link>
       </div>
     );
   }
@@ -26,7 +26,7 @@ export function DayList({ days, isLoading }: DayListProps) {
   return (
     <div className="flex flex-col">
       {days.map((day) => {
-        const linkTo = isDayToday(day.id) ? '/today' : `/day/${day.id}`;
+        const linkTo = `/day/${day.id}`;
         const isToday = isDayToday(day.id);
 
         return (

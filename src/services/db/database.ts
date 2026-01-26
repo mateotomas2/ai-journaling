@@ -2,13 +2,15 @@ import { createRxDatabase, type RxDatabase, type RxCollection } from 'rxdb';
 import { getRxStorageDexie } from 'rxdb/plugins/storage-dexie';
 import { wrappedKeyEncryptionCryptoJsStorage } from 'rxdb/plugins/encryption-crypto-js';
 import { settingsSchema, daySchema, messageSchema, summarySchema } from './schemas';
-import type { Settings, Day, Message, Summary } from '@/types';
+import { noteSchema } from '../../db/schemas/note.schema';
+import type { Settings, Day, Message, Summary, Note } from '@/types';
 
 // Collection types
 export type SettingsCollection = RxCollection<Settings>;
 export type DaysCollection = RxCollection<Day>;
 export type MessagesCollection = RxCollection<Message>;
 export type SummariesCollection = RxCollection<Summary>;
+export type NotesCollection = RxCollection<Note>;
 
 // Database type with collections
 export type ReflektDatabaseCollections = {
@@ -16,6 +18,7 @@ export type ReflektDatabaseCollections = {
   days: DaysCollection;
   messages: MessagesCollection;
   summaries: SummariesCollection;
+  notes: NotesCollection;
 };
 
 export type ReflektDatabase = RxDatabase<ReflektDatabaseCollections>;
@@ -56,6 +59,9 @@ export async function initDatabase(encryptionKey: string): Promise<ReflektDataba
     },
     summaries: {
       schema: summarySchema,
+    },
+    notes: {
+      schema: noteSchema,
     },
   });
 
