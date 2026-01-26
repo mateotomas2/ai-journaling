@@ -13,6 +13,8 @@ import { Lock, BookOpen } from 'lucide-react';
 import { AuthMethodSelector } from '@/components/auth/AuthMethodSelector';
 import { BiometricUnlock } from '@/components/auth/BiometricUnlock';
 
+const BIOMETRIC_SESSION_KEY = 'reflekt_biometric_attempted';
+
 export function UnlockPage() {
   const {
     unlock,
@@ -27,6 +29,9 @@ export function UnlockPage() {
   const [authMethod, setAuthMethod] = useState<'password' | 'biometric'>(
     biometricEnabled ? 'biometric' : 'password'
   );
+  const [hasAttemptedBiometric, setHasAttemptedBiometric] = useState(() => {
+    return sessionStorage.getItem(BIOMETRIC_SESSION_KEY) === 'true';
+  });
 
   const handlePasswordSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -35,9 +40,15 @@ export function UnlockPage() {
     }
   };
 
+  const handleBiometricAttempted = useCallback(() => {
+    setHasAttemptedBiometric(true);
+    sessionStorage.setItem(BIOMETRIC_SESSION_KEY, 'true');
+  }, []);
+
   const handleBiometricUnlock = useCallback(async () => {
     await unlockWithBiometric();
-    // If successful, database is now unlocked and DatabaseContext will handle routing
+    // Clear session flag on success for next lock/unlock cycle
+    sessionStorage.removeItem(BIOMETRIC_SESSION_KEY);
   }, [unlockWithBiometric]);
 
   const handleMethodChange = useCallback((method: 'password' | 'biometric') => {
@@ -76,6 +87,8 @@ export function UnlockPage() {
                 platformName={biometricSupport.platformName}
                 onUnlock={handleBiometricUnlock}
                 onSwitchToPassword={() => setAuthMethod('password')}
+                autoTrigger={!hasAttemptedBiometric}
+                onAttempted={handleBiometricAttempted}
               />
             ) : (
               <Card className="shadow-xl border-border/50">

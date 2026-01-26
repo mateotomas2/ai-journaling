@@ -20,6 +20,7 @@ interface BiometricUnlockProps {
   onSwitchToPassword: () => void;
   autoTrigger?: boolean;
   maxRetries?: number;
+  onAttempted?: () => void;
 }
 
 export function BiometricUnlock({
@@ -29,6 +30,7 @@ export function BiometricUnlock({
   onSwitchToPassword,
   autoTrigger = true,
   maxRetries = 3,
+  onAttempted,
 }: BiometricUnlockProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +58,8 @@ export function BiometricUnlock({
       );
       return;
     }
+
+    onAttempted?.();
 
     setIsLoading(true);
     setError(null);
@@ -143,7 +147,7 @@ export function BiometricUnlock({
         <Button
           variant="ghost"
           onClick={onSwitchToPassword}
-          disabled={isLoading}
+          disabled={false}
           className="w-full"
         >
           Use Password Instead
