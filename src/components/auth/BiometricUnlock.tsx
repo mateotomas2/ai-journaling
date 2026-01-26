@@ -33,6 +33,7 @@ export function BiometricUnlock({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [unlocked, setUnlocked] = useState(false);
   const hasTriggered = useRef(false);
 
   const biometricName = getBiometricName(biometricType);
@@ -44,6 +45,11 @@ export function BiometricUnlock({
     );
 
   const attemptUnlock = async () => {
+    // Prevent re-triggering after successful unlock
+    if (unlocked) {
+      return;
+    }
+
     if (retryCount >= maxRetries) {
       setError(
         `Maximum attempts reached. Please use your password instead.`
@@ -56,6 +62,8 @@ export function BiometricUnlock({
 
     try {
       await onUnlock();
+      // Mark as unlocked on success
+      setUnlocked(true);
     } catch (err) {
       const newRetryCount = retryCount + 1;
       setRetryCount(newRetryCount);
@@ -84,14 +92,14 @@ export function BiometricUnlock({
 
   // Auto-trigger on mount
   useEffect(() => {
-    if (autoTrigger && !hasTriggered.current) {
+    if (autoTrigger && !hasTriggered.current && !unlocked) {
       hasTriggered.current = true;
       attemptUnlock();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoTrigger]);
+  }, [autoTrigger, unlocked]);
 
-  const canRetry = retryCount < maxRetries;
+  const canRetry = retryCount < maxRetries && !unlocked;
 
   return (
     <Card className="shadow-xl border-border/50">

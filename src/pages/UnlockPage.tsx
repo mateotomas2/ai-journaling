@@ -21,6 +21,7 @@ export function UnlockPage() {
     error,
     biometricEnabled,
     biometricSupport,
+    isUnlocked,
   } = useDatabase();
   const [password, setPassword] = useState('');
   const [authMethod, setAuthMethod] = useState<'password' | 'biometric'>(
@@ -36,11 +37,18 @@ export function UnlockPage() {
 
   const handleBiometricUnlock = useCallback(async () => {
     await unlockWithBiometric();
+    // If successful, database is now unlocked and DatabaseContext will handle routing
   }, [unlockWithBiometric]);
 
   const handleMethodChange = useCallback((method: 'password' | 'biometric') => {
     setAuthMethod(method);
   }, []);
+
+  // Defensive check: if already unlocked, don't render unlock UI
+  // DatabaseContext should handle routing, but this prevents any edge cases
+  if (isUnlocked) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted/50 to-background p-4">
