@@ -16,7 +16,7 @@ import type { BiometricType } from '@/services/biometric';
 interface BiometricUnlockProps {
   biometricType: BiometricType;
   platformName?: string | undefined;
-  onUnlock: () => Promise<void>;
+  onUnlock: () => Promise<boolean>;
   onSwitchToPassword: () => void;
   autoTrigger?: boolean;
   maxRetries?: number;
@@ -65,10 +65,24 @@ export function BiometricUnlock({
     setError(null);
 
     try {
-      await onUnlock();
-      // Mark as unlocked on success
-      setUnlocked(true);
+      const success = await onUnlock();
+
+      if (success) {
+        // Only mark as unlocked on actual success
+        setUnlocked(true);
+      } else {
+        // Authentication failed (returned false)
+        const newRetryCount = retryCount + 1;
+        setRetryCount(newRetryCount);
+
+        if (newRetryCount >= maxRetries) {
+          setError(
+            `Maximum attempts reached. Please use your password instead.`
+          );
+        }
+      }
     } catch (err) {
+      // Unexpected error (not from unlockWithBiometric which returns false instead of throwing)
       const newRetryCount = retryCount + 1;
       setRetryCount(newRetryCount);
 

@@ -45,10 +45,15 @@ export function UnlockPage() {
     sessionStorage.setItem(BIOMETRIC_SESSION_KEY, 'true');
   }, []);
 
-  const handleBiometricUnlock = useCallback(async () => {
-    await unlockWithBiometric();
-    // Clear session flag on success for next lock/unlock cycle
-    sessionStorage.removeItem(BIOMETRIC_SESSION_KEY);
+  const handleBiometricUnlock = useCallback(async (): Promise<boolean> => {
+    const success = await unlockWithBiometric();
+
+    if (success) {
+      // Only clear session flag on actual success for next lock/unlock cycle
+      sessionStorage.removeItem(BIOMETRIC_SESSION_KEY);
+    }
+
+    return success;
   }, [unlockWithBiometric]);
 
   const handleMethodChange = useCallback((method: 'password' | 'biometric') => {
