@@ -1,20 +1,46 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, useCallback } from 'react';
 import { useDatabase } from '@/hooks/useDatabase';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Lock, BookOpen } from 'lucide-react';
+import { AuthMethodSelector } from '@/components/auth/AuthMethodSelector';
+import { BiometricUnlock } from '@/components/auth/BiometricUnlock';
 
 export function UnlockPage() {
-  const { unlock, isLoading, error } = useDatabase();
+  const {
+    unlock,
+    unlockWithBiometric,
+    isLoading,
+    error,
+    biometricEnabled,
+    biometricSupport,
+  } = useDatabase();
   const [password, setPassword] = useState('');
+  const [authMethod, setAuthMethod] = useState<'password' | 'biometric'>(
+    biometricEnabled ? 'biometric' : 'password'
+  );
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handlePasswordSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (password.trim()) {
       await unlock(password);
     }
   };
+
+  const handleBiometricUnlock = useCallback(async () => {
+    await unlockWithBiometric();
+  }, [unlockWithBiometric]);
+
+  const handleMethodChange = useCallback((method: 'password' | 'biometric') => {
+    setAuthMethod(method);
+  }, []);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted/50 to-background p-4">
@@ -29,37 +55,99 @@ export function UnlockPage() {
         </div>
 
         {/* Unlock Card */}
-        <Card className="shadow-xl border-border/50">
-          <CardHeader className="text-center pb-2">
-            <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-2">
-              <Lock className="w-5 h-5 text-muted-foreground" />
-            </div>
-            <CardTitle className="text-lg">Welcome Back</CardTitle>
-            <CardDescription>Enter your password to unlock your journal</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter password"
-                autoFocus
-                disabled={isLoading}
-                className="h-11"
-              />
-              <Button type="submit" className="w-full h-11" disabled={isLoading || !password.trim()}>
-                {isLoading ? 'Unlocking...' : 'Unlock Journal'}
-              </Button>
-            </form>
+        {biometricEnabled && biometricSupport?.isAvailable ? (
+          <div className="space-y-4">
+            <AuthMethodSelector
+              biometricType={biometricSupport.type}
+              onMethodChange={handleMethodChange}
+            />
 
-            {error && (
-              <div className="mt-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm text-center">
-                {error}
-              </div>
+            {authMethod === 'biometric' ? (
+              <BiometricUnlock
+                biometricType={biometricSupport.type}
+                platformName={biometricSupport.platformName}
+                onUnlock={handleBiometricUnlock}
+                onSwitchToPassword={() => setAuthMethod('password')}
+              />
+            ) : (
+              <Card className="shadow-xl border-border/50">
+                <CardHeader className="text-center pb-2">
+                  <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-2">
+                    <Lock className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                  <CardTitle className="text-lg">Welcome Back</CardTitle>
+                  <CardDescription>
+                    Enter your password to unlock your journal
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                    <Input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Enter password"
+                      autoFocus
+                      disabled={isLoading}
+                      className="h-11"
+                    />
+                    <Button
+                      type="submit"
+                      className="w-full h-11"
+                      disabled={isLoading || !password.trim()}
+                    >
+                      {isLoading ? 'Unlocking...' : 'Unlock Journal'}
+                    </Button>
+                  </form>
+
+                  {error && (
+                    <div className="mt-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm text-center">
+                      {error}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        ) : (
+          <Card className="shadow-xl border-border/50">
+            <CardHeader className="text-center pb-2">
+              <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-2">
+                <Lock className="w-5 h-5 text-muted-foreground" />
+              </div>
+              <CardTitle className="text-lg">Welcome Back</CardTitle>
+              <CardDescription>
+                Enter your password to unlock your journal
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                <Input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter password"
+                  autoFocus
+                  disabled={isLoading}
+                  className="h-11"
+                />
+                <Button
+                  type="submit"
+                  className="w-full h-11"
+                  disabled={isLoading || !password.trim()}
+                >
+                  {isLoading ? 'Unlocking...' : 'Unlock Journal'}
+                </Button>
+              </form>
+
+              {error && (
+                <div className="mt-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm text-center">
+                  {error}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Footer */}
         <p className="text-center text-xs text-muted-foreground mt-6">
