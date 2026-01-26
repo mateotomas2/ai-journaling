@@ -62,6 +62,7 @@ function AppRoutes() {
 
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
+import { UpdatePrompt } from "@/components/pwa/UpdatePrompt"
 
 export function App() {
   return (
@@ -70,6 +71,7 @@ export function App() {
         <DatabaseProvider>
           <AppRoutes />
           <Toaster />
+          <UpdatePrompt />
         </DatabaseProvider>
       </BrowserRouter>
     </ThemeProvider>

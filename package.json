@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "npm run generate-icons && tsc && vite build",
+    "generate-icons": "node scripts/generate-icons.js",
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",
@@ -52,9 +53,12 @@
     "autoprefixer": "^10.4.23",
     "jsdom": "^27.4.0",
     "postcss": "^8.5.6",
+    "sharp": "^0.34.5",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
-    "vitest": "^4.0.17"
+    "vite-plugin-pwa": "^1.2.0",
+    "vitest": "^4.0.17",
+    "workbox-window": "^7.4.0"
   }
 }

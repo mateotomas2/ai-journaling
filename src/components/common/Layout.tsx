@@ -7,6 +7,7 @@ import { MemorySearch } from '../search/MemorySearch';
 import { cn } from '@/lib/utils';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { ModeToggle } from '@/components/mode-toggle';
+import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import { Search } from 'lucide-react';
 
 interface LayoutProps {
@@ -96,6 +97,7 @@ export function Layout({ children }: LayoutProps) {
               </Button>
               <div className="w-px h-6 bg-border mx-2" />
               <ModeToggle />
+              <InstallPrompt />
             </div>
           </div>
         </div>

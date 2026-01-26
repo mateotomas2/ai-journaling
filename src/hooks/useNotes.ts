@@ -81,7 +81,7 @@ export function useNotes(dayId: string, category?: string) {
         }
         await doc.patch({
           content,
-          title,
+          ...(title !== undefined && { title }),
           updatedAt: Date.now(),
         });
       } catch (err) {

@@ -2,6 +2,7 @@ import { ApiKeySection } from '@/components/settings/ApiKeySection';
 import { ModelSelectionSection } from '@/components/settings/ModelSelectionSection';
 import { PromptCustomization } from '@/components/settings/PromptCustomization';
 import { DataManagement } from '@/components/settings/DataManagement';
+import { PWASection } from '@/components/settings/PWASection';
 import { exportAllData, importData, clearAllData } from '@/services/settings/data-management.service';
 import { Settings } from 'lucide-react';
 
@@ -24,6 +25,7 @@ export function SettingsPage() {
         <ApiKeySection />
         <ModelSelectionSection />
         <PromptCustomization />
+        <PWASection />
         <DataManagement
           onExport={exportAllData}
           onImport={importData}
