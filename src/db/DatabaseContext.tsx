@@ -194,7 +194,7 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
 
         if (!prfOutput) {
           setError(
-            'PRF extension not supported by this browser. Biometric unlock requires a compatible browser.'
+            'Your device does not support the required security feature (PRF). Biometric unlock requires a compatible authenticator.'
           );
           return false;
         }
