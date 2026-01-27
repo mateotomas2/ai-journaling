@@ -30,7 +30,6 @@ export function SecuritySection() {
     setupBiometric,
     disableBiometric,
     isLoading,
-    error: contextError,
   } = useDatabase();
   const { showToast } = useToast();
 
@@ -54,14 +53,14 @@ export function SecuritySection() {
 
     setLocalLoading(true);
     try {
-      const success = await setupBiometric(password);
-      if (success) {
+      const result = await setupBiometric(password);
+      if (result === true) {
         showToast(`${biometricName} enabled successfully`, 'success');
         setShowEnableForm(false);
         setPassword('');
       } else {
-        // Use context error if available, otherwise generic message
-        showToast(contextError || 'Failed to enable biometric', 'error');
+        // result is the error message
+        showToast(result, 'error');
       }
     } catch (error) {
       const message =

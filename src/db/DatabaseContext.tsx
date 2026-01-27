@@ -48,7 +48,7 @@ interface DatabaseContextValue {
   biometricAvailable: boolean;
   biometricEnabled: boolean;
   biometricSupport: BiometricSupport | null;
-  setupBiometric: (password: string) => Promise<boolean>;
+  setupBiometric: (password: string) => Promise<true | string>;
   unlockWithBiometric: () => Promise<boolean>;
   disableBiometric: (password: string) => Promise<boolean>;
 }
@@ -167,8 +167,9 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
   }, []);
 
   // Setup biometric authentication after password is set
+  // Returns true on success, or error message string on failure
   const setupBiometric = useCallback(
-    async (password: string): Promise<boolean> => {
+    async (password: string): Promise<true | string> => {
       setIsLoading(true);
       setError(null);
 
@@ -176,8 +177,9 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
         // Verify password works and get encryption key
         const saltBase64 = localStorage.getItem(SALT_STORAGE_KEY);
         if (!saltBase64) {
-          setError('Password must be set up first');
-          return false;
+          const msg = 'Password must be set up first';
+          setError(msg);
+          return msg;
         }
 
         const salt = base64ToSalt(saltBase64);
@@ -193,10 +195,10 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
         const { prfOutput } = await authenticateBiometric(credentialId, prfSalt);
 
         if (!prfOutput) {
-          setError(
-            'Your device does not support the required security feature (PRF). Biometric unlock requires a compatible authenticator.'
-          );
-          return false;
+          const msg =
+            'Your device does not support the required security feature (PRF). Biometric unlock requires a compatible authenticator.';
+          setError(msg);
+          return msg;
         }
 
         // Derive wrapping key from PRF output (deterministic!)
@@ -244,7 +246,7 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
         }
 
         setError(message);
-        return false;
+        return message;
       } finally {
         setIsLoading(false);
       }
