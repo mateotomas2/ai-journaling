@@ -152,7 +152,7 @@ export function HistoryPage() {
                   {result.citations.map((citation, idx) => (
                     <div key={idx} className="bg-background p-3 rounded-md border border-border text-sm">
                       <Link
-                        to={"/day/" + citation.date}
+                        to={"/journal/" + citation.date}
                         className="text-primary hover:underline font-medium block mb-1"
                       >
                         {citation.date}

@@ -1,9 +1,8 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { DatabaseProvider } from './db/DatabaseContext';
 import { Layout } from './components/common/Layout';
 import { JournalPage } from './pages/JournalPage';
 import { EntriesPage } from './pages/EntriesPage';
-import { DayPage } from './pages/DayPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { UnlockPage } from './pages/UnlockPage';
@@ -11,6 +10,18 @@ import { Setup } from './pages/Setup';
 import { useDatabase } from './hooks/useDatabase';
 import { useEmbeddingService } from './hooks/useEmbeddingService';
 import { Loading } from './components/common/Loading';
+import { getSelectedDay } from './utils/session.utils';
+import { getTodayId } from './utils/date.utils';
+
+function JournalRedirect() {
+  const lastDay = getSelectedDay() || getTodayId();
+  return <Navigate to={`/journal/${lastDay}`} replace />;
+}
+
+function DayRedirect() {
+  const { date } = useParams<{ date: string }>();
+  return <Navigate to={`/journal/${date}`} replace />;
+}
 
 function AppRoutes() {
   const { isUnlocked, isLoading, isFirstTime } = useDatabase();
@@ -50,9 +61,10 @@ function AppRoutes() {
     <Layout>
       <Routes>
         <Route path="/" element={<Navigate to="/journal" replace />} />
-        <Route path="/journal" element={<JournalPage />} />
+        <Route path="/journal" element={<JournalRedirect />} />
+        <Route path="/journal/:date" element={<JournalPage />} />
+        <Route path="/day/:date" element={<DayRedirect />} />
         <Route path="/entries" element={<EntriesPage />} />
-        <Route path="/day/:date" element={<DayPage />} />
         <Route path="/history" element={<HistoryPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Routes>

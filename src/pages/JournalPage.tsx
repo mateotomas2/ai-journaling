@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { ChatInterface } from '../components/chat/ChatInterface';
 import { NotesList } from '../components/notes/NotesList';
-import { formatDayId, getTodayId } from '../utils/date.utils';
-import { getSelectedDay, setSelectedDay } from '../utils/session.utils';
+import { formatDayId, isValidDayId, getTodayId } from '../utils/date.utils';
+import { setSelectedDay } from '../utils/session.utils';
 import { addDays, format, parse } from 'date-fns';
 import { ChevronLeft, ChevronRight, CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -13,43 +14,52 @@ import { cn } from '@/lib/utils';
 type ViewMode = 'chat' | 'notes';
 
 export function JournalPage() {
-  // Initialize with session storage or today
-  const [dayId, setDayId] = useState<string>(() => {
-    const savedDay = getSelectedDay();
-    return savedDay || getTodayId();
-  });
+  const { date } = useParams<{ date: string }>();
+  const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<ViewMode>('chat');
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
+  // Validate date from URL
+  const dayId = date && isValidDayId(date) ? date : null;
+
   // Save to session storage whenever dayId changes
   useEffect(() => {
-    setSelectedDay(dayId);
+    if (dayId) {
+      setSelectedDay(dayId);
+    }
   }, [dayId]);
 
   // Navigate to previous day
   const handlePreviousDay = useCallback(() => {
+    if (!dayId) return;
     const currentDate = parse(dayId, 'yyyy-MM-dd', new Date());
     const previousDate = addDays(currentDate, -1);
     const previousDayId = format(previousDate, 'yyyy-MM-dd');
-    setDayId(previousDayId);
-  }, [dayId]);
+    navigate(`/journal/${previousDayId}`);
+  }, [dayId, navigate]);
 
   // Navigate to next day
   const handleNextDay = useCallback(() => {
+    if (!dayId) return;
     const currentDate = parse(dayId, 'yyyy-MM-dd', new Date());
     const nextDate = addDays(currentDate, 1);
     const nextDayId = format(nextDate, 'yyyy-MM-dd');
-    setDayId(nextDayId);
-  }, [dayId]);
+    navigate(`/journal/${nextDayId}`);
+  }, [dayId, navigate]);
 
   // Handle date selection from calendar
   const handleDateSelect = useCallback((date: Date | undefined) => {
     if (date) {
       const selectedDayId = format(date, 'yyyy-MM-dd');
-      setDayId(selectedDayId);
+      navigate(`/journal/${selectedDayId}`);
       setIsCalendarOpen(false);
     }
-  }, []);
+  }, [navigate]);
+
+  // Redirect to today if invalid date
+  if (!dayId) {
+    return <Navigate to={`/journal/${getTodayId()}`} replace />;
+  }
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">

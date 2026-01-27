@@ -1,4 +1,4 @@
-import { useState, type FormEvent, useCallback } from 'react';
+import { useState, useEffect, type FormEvent, useCallback } from 'react';
 import { useDatabase } from '@/hooks/useDatabase';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -32,6 +32,13 @@ export function UnlockPage() {
   const [hasAttemptedBiometric, setHasAttemptedBiometric] = useState(() => {
     return sessionStorage.getItem(BIOMETRIC_SESSION_KEY) === 'true';
   });
+
+  // Sync authMethod when biometricEnabled changes (fixes initialization race condition)
+  useEffect(() => {
+    if (biometricEnabled && biometricSupport?.isAvailable) {
+      setAuthMethod('biometric');
+    }
+  }, [biometricEnabled, biometricSupport?.isAvailable]);
 
   const handlePasswordSubmit = async (e: FormEvent) => {
     e.preventDefault();

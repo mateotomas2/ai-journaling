@@ -63,7 +63,7 @@ export function Layout({ children }: LayoutProps) {
             <div className="flex items-center gap-2">
               <nav className="flex items-center gap-1" role="navigation" aria-label="Main navigation">
                 {navItems.map((item) => {
-                  const isActive = location.pathname === item.path;
+                  const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
                   return (
                     <Link
                       key={item.path}
@@ -114,7 +114,7 @@ export function Layout({ children }: LayoutProps) {
         open={isSearchOpen}
         onOpenChange={setIsSearchOpen}
         onResultSelect={(_messageId, dayId) => {
-          navigate(`/day/${dayId}`);
+          navigate(`/journal/${dayId}`);
         }}
       />
     </div>

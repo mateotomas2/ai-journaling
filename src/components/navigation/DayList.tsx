@@ -26,7 +26,7 @@ export function DayList({ days, isLoading }: DayListProps) {
   return (
     <div className="flex flex-col">
       {days.map((day) => {
-        const linkTo = `/day/${day.id}`;
+        const linkTo = `/journal/${day.id}`;
         const isToday = isDayToday(day.id);
 
         return (
