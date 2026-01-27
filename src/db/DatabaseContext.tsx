@@ -68,9 +68,12 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
     useState<BiometricSupport | null>(null);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
 
-  // Check biometric support on mount (requires PRF extension for deterministic key derivation)
+  // Single initialization effect - ensures biometric support is checked before showing UI
+  // This prevents a race condition where isLoading=false was set before biometricSupport was populated
   useEffect(() => {
-    async function checkSupport() {
+    async function initialize() {
+      // Check biometric support (async) - MUST complete before showing UI
+      // Without this, biometricSupport is null when UnlockPage evaluates whether to show biometric UI
       const support = await checkBiometricSupport();
       const prfOk = await isPrfSupported();
       // Biometric is only available if PRF extension is supported
@@ -79,19 +82,18 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
         ...support,
         isAvailable: support.isAvailable && prfOk,
       });
+
+      // Check localStorage (sync)
+      const salt = localStorage.getItem(SALT_STORAGE_KEY);
+      setIsFirstTime(!salt);
+
+      const enabled = localStorage.getItem(BIOMETRIC_ENABLED_KEY) === 'true';
+      setBiometricEnabled(enabled);
+
+      // NOW it's safe to show the UI - biometricSupport is guaranteed to be set
+      setIsLoading(false);
     }
-    checkSupport();
-  }, []);
-
-  // Check if this is first time (no salt exists) and if biometric is enabled
-  useEffect(() => {
-    const salt = localStorage.getItem(SALT_STORAGE_KEY);
-    setIsFirstTime(!salt);
-
-    const enabled = localStorage.getItem(BIOMETRIC_ENABLED_KEY) === 'true';
-    setBiometricEnabled(enabled);
-
-    setIsLoading(false);
+    initialize();
   }, []);
 
   // Setup password for first-time users
