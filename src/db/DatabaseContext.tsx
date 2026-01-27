@@ -12,7 +12,6 @@ import {
   exportKeyAsHex,
   saltToBase64,
   base64ToSalt,
-  deriveWrappingKey,
   wrapKey,
   unwrapKey,
   generateIV,
@@ -24,8 +23,6 @@ import {
   registerBiometric,
   authenticateBiometric,
   checkBiometricSupport,
-  isPrfSupported,
-  markPrfNotSupported,
   storeEncryptedKey,
   retrieveEncryptedKey,
   deleteEncryptedKey,
@@ -76,13 +73,8 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
       // Check biometric support (async) - MUST complete before showing UI
       // Without this, biometricSupport is null when UnlockPage evaluates whether to show biometric UI
       const support = await checkBiometricSupport();
-      const prfOk = await isPrfSupported();
-      // Biometric is only available if PRF extension is supported
-      // Without PRF, WebAuthn signatures are non-deterministic and unlock won't work
-      setBiometricSupport({
-        ...support,
-        isAvailable: support.isAvailable && prfOk,
-      });
+      // PRF is no longer required - we use stored wrapping key approach instead
+      setBiometricSupport(support);
 
       // Check localStorage (sync)
       const salt = localStorage.getItem(SALT_STORAGE_KEY);
@@ -169,6 +161,7 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
 
   // Setup biometric authentication after password is set
   // Returns true on success, or error message string on failure
+  // Uses stored wrapping key approach (no PRF required)
   const setupBiometric = useCallback(
     async (password: string): Promise<true | string> => {
       setIsLoading(true);
@@ -186,42 +179,38 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
         const salt = base64ToSalt(saltBase64);
         const encryptionKey = await deriveKey(password, salt);
 
-        // Register WebAuthn credential
+        // Register WebAuthn credential (single fingerprint prompt)
         const { credentialId } = await registerBiometric();
 
-        // Generate PRF salt (stored and used for deterministic secret derivation)
-        const prfSalt = crypto.getRandomValues(new Uint8Array(32));
+        // Generate random wrapping key (32 bytes) - this will be stored, not derived from PRF
+        const wrappingKeyBytes = crypto.getRandomValues(new Uint8Array(32));
+        const wrappingKey = await crypto.subtle.importKey(
+          'raw',
+          wrappingKeyBytes.buffer as ArrayBuffer,
+          { name: 'AES-GCM', length: 256 },
+          true,
+          ['wrapKey', 'unwrapKey']
+        );
 
-        // Authenticate with PRF to get deterministic secret for key wrapping
-        const { prfOutput } = await authenticateBiometric(credentialId, prfSalt);
-
-        if (!prfOutput) {
-          // Mark PRF as not supported so we don't show biometric option again
-          markPrfNotSupported();
-          setBiometricSupport((prev) =>
-            prev ? { ...prev, isAvailable: false } : null
-          );
-          const msg =
-            'Your device does not support the required security feature (PRF). Biometric unlock requires a compatible authenticator.';
-          setError(msg);
-          return msg;
-        }
-
-        // Derive wrapping key from PRF output (deterministic!)
-        const wrappingSalt = generateWrappingSalt();
-        const wrappingKey = await deriveWrappingKey(prfOutput, wrappingSalt);
-
-        // Wrap (encrypt) the encryption key
+        // Wrap (encrypt) the encryption key with the wrapping key
         const iv = generateIV();
         const wrappedKey = await wrapKey(encryptionKey, wrappingKey, iv);
 
-        // Store wrapped key in keystore (including PRF salt for unlock)
+        // Export wrapping key to store it
+        const exportedWrappingKey = await crypto.subtle.exportKey(
+          'raw',
+          wrappingKey
+        );
+
+        // Store wrapped key and wrapping key in keystore
+        // The wrapping key is stored directly (biometric gates access, not derivation)
+        const wrappingSalt = generateWrappingSalt(); // Keep for potential future use
         await storeEncryptedKey(
           credentialId,
           bytesToBase64(wrappedKey),
+          bytesToBase64(new Uint8Array(exportedWrappingKey)),
           bytesToBase64(wrappingSalt),
-          bytesToBase64(iv),
-          bytesToBase64(prfSalt)
+          bytesToBase64(iv)
         );
 
         // Save flags
@@ -261,6 +250,7 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
   );
 
   // Unlock database using biometric
+  // Uses stored wrapping key approach (no PRF required)
   const unlockWithBiometric = useCallback(async (): Promise<boolean> => {
     setIsLoading(true);
     setError(null);
@@ -273,32 +263,28 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
         return false;
       }
 
-      // Retrieve wrapped key from keystore (need PRF salt first)
+      // Retrieve stored key data from keystore
       const storedKey = await retrieveEncryptedKey();
       if (!storedKey) {
         setError('Biometric key not found');
         return false;
       }
 
-      // Get the stored PRF salt
-      const prfSalt = base64ToBytes(storedKey.prfSalt);
+      // Authenticate with WebAuthn (single fingerprint prompt, no PRF)
+      // This verifies the user is authorized to access the stored key
+      await authenticateBiometric(credentialId);
 
-      // Authenticate with PRF using the same salt - produces the same deterministic output
-      const { prfOutput } = await authenticateBiometric(
-        credentialId,
-        prfSalt
+      // Import the stored wrapping key
+      const wrappingKeyBytes = base64ToBytes(storedKey.wrappingKey);
+      const wrappingKey = await crypto.subtle.importKey(
+        'raw',
+        wrappingKeyBytes.buffer as ArrayBuffer,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['unwrapKey']
       );
 
-      if (!prfOutput) {
-        setError('PRF extension not available. Please use password to unlock.');
-        return false;
-      }
-
-      // Derive wrapping key from PRF output (deterministic, same as during setup)
-      const wrappingSalt = base64ToBytes(storedKey.salt);
-      const wrappingKey = await deriveWrappingKey(prfOutput, wrappingSalt);
-
-      // Unwrap (decrypt) the encryption key
+      // Unwrap (decrypt) the encryption key using the stored wrapping key
       const wrappedKeyBytes = base64ToBytes(storedKey.wrappedKey);
       const iv = base64ToBytes(storedKey.iv);
       const encryptionKey = await unwrapKey(

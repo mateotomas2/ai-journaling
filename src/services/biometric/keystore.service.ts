@@ -48,9 +48,9 @@ async function openDatabase(): Promise<IDBDatabase> {
 export async function storeEncryptedKey(
   credentialId: string,
   wrappedKey: string,
+  wrappingKey: string,
   salt: string,
-  iv: string,
-  prfSalt: string
+  iv: string
 ): Promise<void> {
   try {
     const db = await openDatabase();
@@ -59,9 +59,9 @@ export async function storeEncryptedKey(
       id: KEY_ID,
       credentialId,
       wrappedKey,
+      wrappingKey,
       salt,
       iv,
-      prfSalt,
       enrolledAt: Date.now(),
     };
 

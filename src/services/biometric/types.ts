@@ -26,9 +26,9 @@ export interface BiometricAuthenticationResult {
 export interface StoredBiometricKey {
   credentialId: string;
   wrappedKey: string; // base64-encoded encrypted key
-  salt: string; // base64-encoded salt for wrapping key derivation
+  wrappingKey: string; // base64-encoded wrapping key (stored, not derived from PRF)
+  salt: string; // base64-encoded salt for HKDF if needed
   iv: string; // base64-encoded IV for AES-GCM
-  prfSalt: string; // base64-encoded salt for PRF extension
   enrolledAt: number; // timestamp
 }
 

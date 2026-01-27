@@ -121,7 +121,8 @@ describe('WebAuthn Service', () => {
   });
 
   describe('authenticateBiometric', () => {
-    const mockCredentialId = 'test-credential-id';
+    // Valid base64-encoded credential ID (32 bytes = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
+    const mockCredentialId = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
 
     it('should successfully authenticate with biometric', async () => {
       const mockCredential = {
@@ -131,6 +132,7 @@ describe('WebAuthn Service', () => {
           authenticatorData: new ArrayBuffer(37),
           clientDataJSON: new ArrayBuffer(128),
         },
+        getClientExtensionResults: () => ({}),
       };
 
       mockCredentials.get.mockResolvedValue(mockCredential);
@@ -141,6 +143,7 @@ describe('WebAuthn Service', () => {
       expect(result).toHaveProperty('signature');
       expect(result).toHaveProperty('authenticatorData');
       expect(result).toHaveProperty('clientDataJSON');
+      expect(result).toHaveProperty('prfOutput');
     });
 
     it('should throw BiometricError when user cancels authentication', async () => {
