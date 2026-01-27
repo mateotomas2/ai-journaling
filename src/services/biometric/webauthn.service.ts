@@ -128,9 +128,12 @@ export async function registerBiometric(): Promise<BiometricRegistrationResult> 
 
 /**
  * Authenticate using an existing biometric credential
+ * @param credentialId The credential ID to authenticate with
+ * @param prfSalt Optional salt for PRF extension - provides deterministic secret for key derivation
  */
 export async function authenticateBiometric(
-  credentialId: string
+  credentialId: string,
+  prfSalt?: Uint8Array
 ): Promise<BiometricAuthenticationResult> {
   try {
     // Generate a random challenge
@@ -144,6 +147,18 @@ export async function authenticateBiometric(
       },
     ];
 
+    // Build extensions object with PRF if salt provided
+    const extensions: AuthenticationExtensionsClientInputs = {};
+    if (prfSalt) {
+      // PRF extension for deterministic secret derivation
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (extensions as any).prf = {
+        eval: {
+          first: prfSalt,
+        },
+      };
+    }
+
     // Create authentication options
     const publicKeyCredentialRequestOptions: PublicKeyCredentialRequestOptions =
       {
@@ -152,6 +167,7 @@ export async function authenticateBiometric(
         timeout: TIMEOUT,
         userVerification: 'required', // Require biometric verification
         rpId: RP_ID,
+        extensions,
       };
 
     const credential = (await navigator.credentials.get({
@@ -167,11 +183,20 @@ export async function authenticateBiometric(
 
     const response = credential.response as AuthenticatorAssertionResponse;
 
+    // Extract PRF output if available
+    const clientExtensions = credential.getClientExtensionResults();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const prfResults = (clientExtensions as any).prf?.results;
+    const prfOutput = prfResults?.first
+      ? (prfResults.first as ArrayBuffer)
+      : null;
+
     return {
       credentialId: arrayBufferToBase64(credential.rawId),
       signature: response.signature,
       authenticatorData: response.authenticatorData,
       clientDataJSON: response.clientDataJSON,
+      prfOutput,
     };
   } catch (error) {
     if (error instanceof BiometricError) {
@@ -254,4 +279,40 @@ function base64ToArrayBuffer(base64: string): ArrayBuffer {
     bytes[i] = binary.charCodeAt(i);
   }
   return bytes.buffer;
+}
+
+/**
+ * Check if PRF (Pseudo-Random Function) extension is supported
+ * PRF is required for deterministic key derivation from WebAuthn
+ * Without PRF, biometric unlock cannot work (signatures are non-deterministic)
+ */
+export async function isPrfSupported(): Promise<boolean> {
+  if (!(await isBiometricAvailable())) {
+    return false;
+  }
+
+  // Check browser support for PRF extension
+  // Chrome 116+, Safari 17+, Edge 116+ support PRF
+  const ua = navigator.userAgent;
+
+  const chromeMatch = /Chrome\/(\d+)/.exec(ua);
+  const edgeMatch = /Edg\/(\d+)/.exec(ua);
+  const safariMatch = /Version\/(\d+).*Safari/.exec(ua);
+
+  // Edge reports both Edge and Chrome in UA, check Edge first
+  if (edgeMatch?.[1] && parseInt(edgeMatch[1], 10) >= 116) {
+    return true;
+  }
+
+  // Check Chrome (but not Edge which also has Chrome in UA)
+  if (chromeMatch?.[1] && !edgeMatch && parseInt(chromeMatch[1], 10) >= 116) {
+    return true;
+  }
+
+  // Check Safari
+  if (safariMatch?.[1] && parseInt(safariMatch[1], 10) >= 17) {
+    return true;
+  }
+
+  return false;
 }

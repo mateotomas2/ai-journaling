@@ -24,6 +24,7 @@ import {
   registerBiometric,
   authenticateBiometric,
   checkBiometricSupport,
+  isPrfSupported,
   storeEncryptedKey,
   retrieveEncryptedKey,
   deleteEncryptedKey,
@@ -67,9 +68,19 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
     useState<BiometricSupport | null>(null);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
 
-  // Check biometric support on mount
+  // Check biometric support on mount (requires PRF extension for deterministic key derivation)
   useEffect(() => {
-    checkBiometricSupport().then(setBiometricSupport);
+    async function checkSupport() {
+      const support = await checkBiometricSupport();
+      const prfOk = await isPrfSupported();
+      // Biometric is only available if PRF extension is supported
+      // Without PRF, WebAuthn signatures are non-deterministic and unlock won't work
+      setBiometricSupport({
+        ...support,
+        isAvailable: support.isAvailable && prfOk,
+      });
+    }
+    checkSupport();
   }, []);
 
   // Check if this is first time (no salt exists) and if biometric is enabled
@@ -173,23 +184,34 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
         // Register WebAuthn credential
         const { credentialId } = await registerBiometric();
 
-        // Immediately authenticate to get the signature for key wrapping
-        const { signature } = await authenticateBiometric(credentialId);
+        // Generate PRF salt (stored and used for deterministic secret derivation)
+        const prfSalt = crypto.getRandomValues(new Uint8Array(32));
 
-        // Derive wrapping key from WebAuthn signature
+        // Authenticate with PRF to get deterministic secret for key wrapping
+        const { prfOutput } = await authenticateBiometric(credentialId, prfSalt);
+
+        if (!prfOutput) {
+          setError(
+            'PRF extension not supported by this browser. Biometric unlock requires a compatible browser.'
+          );
+          return false;
+        }
+
+        // Derive wrapping key from PRF output (deterministic!)
         const wrappingSalt = generateWrappingSalt();
-        const wrappingKey = await deriveWrappingKey(signature, wrappingSalt);
+        const wrappingKey = await deriveWrappingKey(prfOutput, wrappingSalt);
 
         // Wrap (encrypt) the encryption key
         const iv = generateIV();
         const wrappedKey = await wrapKey(encryptionKey, wrappingKey, iv);
 
-        // Store wrapped key in keystore
+        // Store wrapped key in keystore (including PRF salt for unlock)
         await storeEncryptedKey(
           credentialId,
           bytesToBase64(wrappedKey),
           bytesToBase64(wrappingSalt),
-          bytesToBase64(iv)
+          bytesToBase64(iv),
+          bytesToBase64(prfSalt)
         );
 
         // Save flags
@@ -241,19 +263,30 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
         return false;
       }
 
-      // Authenticate with WebAuthn
-      const { signature } = await authenticateBiometric(credentialId);
-
-      // Retrieve wrapped key from keystore
+      // Retrieve wrapped key from keystore (need PRF salt first)
       const storedKey = await retrieveEncryptedKey();
       if (!storedKey) {
         setError('Biometric key not found');
         return false;
       }
 
-      // Derive wrapping key from WebAuthn signature
+      // Get the stored PRF salt
+      const prfSalt = base64ToBytes(storedKey.prfSalt);
+
+      // Authenticate with PRF using the same salt - produces the same deterministic output
+      const { prfOutput } = await authenticateBiometric(
+        credentialId,
+        prfSalt
+      );
+
+      if (!prfOutput) {
+        setError('PRF extension not available. Please use password to unlock.');
+        return false;
+      }
+
+      // Derive wrapping key from PRF output (deterministic, same as during setup)
       const wrappingSalt = base64ToBytes(storedKey.salt);
-      const wrappingKey = await deriveWrappingKey(signature, wrappingSalt);
+      const wrappingKey = await deriveWrappingKey(prfOutput, wrappingSalt);
 
       // Unwrap (decrypt) the encryption key
       const wrappedKeyBytes = base64ToBytes(storedKey.wrappedKey);

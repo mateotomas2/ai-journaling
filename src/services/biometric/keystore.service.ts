@@ -49,7 +49,8 @@ export async function storeEncryptedKey(
   credentialId: string,
   wrappedKey: string,
   salt: string,
-  iv: string
+  iv: string,
+  prfSalt: string
 ): Promise<void> {
   try {
     const db = await openDatabase();
@@ -60,6 +61,7 @@ export async function storeEncryptedKey(
       wrappedKey,
       salt,
       iv,
+      prfSalt,
       enrolledAt: Date.now(),
     };
 

@@ -19,6 +19,8 @@ export interface BiometricAuthenticationResult {
   signature: ArrayBuffer;
   authenticatorData: ArrayBuffer;
   clientDataJSON: ArrayBuffer;
+  /** PRF extension output - deterministic secret for key derivation */
+  prfOutput: ArrayBuffer | null;
 }
 
 export interface StoredBiometricKey {
@@ -26,6 +28,7 @@ export interface StoredBiometricKey {
   wrappedKey: string; // base64-encoded encrypted key
   salt: string; // base64-encoded salt for wrapping key derivation
   iv: string; // base64-encoded IV for AES-GCM
+  prfSalt: string; // base64-encoded salt for PRF extension
   enrolledAt: number; // timestamp
 }
 
