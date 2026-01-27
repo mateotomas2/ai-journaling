@@ -25,6 +25,7 @@ import {
   authenticateBiometric,
   checkBiometricSupport,
   isPrfSupported,
+  markPrfNotSupported,
   storeEncryptedKey,
   retrieveEncryptedKey,
   deleteEncryptedKey,
@@ -195,6 +196,11 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
         const { prfOutput } = await authenticateBiometric(credentialId, prfSalt);
 
         if (!prfOutput) {
+          // Mark PRF as not supported so we don't show biometric option again
+          markPrfNotSupported();
+          setBiometricSupport((prev) =>
+            prev ? { ...prev, isAvailable: false } : null
+          );
           const msg =
             'Your device does not support the required security feature (PRF). Biometric unlock requires a compatible authenticator.';
           setError(msg);

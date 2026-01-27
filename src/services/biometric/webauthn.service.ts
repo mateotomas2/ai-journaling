@@ -281,12 +281,19 @@ function base64ToArrayBuffer(base64: string): ArrayBuffer {
   return bytes.buffer;
 }
 
+const PRF_NOT_SUPPORTED_KEY = 'reflekt_prf_not_supported';
+
 /**
  * Check if PRF (Pseudo-Random Function) extension is supported
  * PRF is required for deterministic key derivation from WebAuthn
  * Without PRF, biometric unlock cannot work (signatures are non-deterministic)
  */
 export async function isPrfSupported(): Promise<boolean> {
+  // If we've previously determined PRF doesn't work on this device, don't show biometric
+  if (localStorage.getItem(PRF_NOT_SUPPORTED_KEY) === 'true') {
+    return false;
+  }
+
   if (!(await isBiometricAvailable())) {
     return false;
   }
@@ -315,4 +322,19 @@ export async function isPrfSupported(): Promise<boolean> {
   }
 
   return false;
+}
+
+/**
+ * Mark PRF as not supported on this device
+ * Called after a failed PRF attempt to prevent showing biometric option again
+ */
+export function markPrfNotSupported(): void {
+  localStorage.setItem(PRF_NOT_SUPPORTED_KEY, 'true');
+}
+
+/**
+ * Clear the PRF not supported flag (for testing/reset purposes)
+ */
+export function clearPrfNotSupportedFlag(): void {
+  localStorage.removeItem(PRF_NOT_SUPPORTED_KEY);
 }
