@@ -45,14 +45,21 @@ export async function generateSummary(
   logger.debug('[generateSummary] Conversation length:', conversationText.length, 'characters');
   logger.debug('[generateSummary] Notes context length:', notesContext.length, 'characters');
 
-  // Build the prompt with notes context if available
-  let userPrompt = `Please summarize the following journal conversation from ${date}:`;
+  // Build the prompt based on available content
+  let userPrompt: string;
 
-  if (notesContext) {
-    userPrompt += `\n\n[Today's Notes]\n${notesContext}\n\n[Journal Conversation]`;
+  if (messages.length > 0 && notesContext) {
+    // Both messages and notes
+    userPrompt = `Please summarize the following journal content from ${date}:\n\n[Today's Notes]\n${notesContext}\n\n[Journal Conversation]\n${conversationText}`;
+  } else if (messages.length > 0) {
+    // Only messages
+    userPrompt = `Please summarize the following journal conversation from ${date}:\n\n${conversationText}`;
+  } else if (notesContext) {
+    // Only notes
+    userPrompt = `Please summarize the following journal notes from ${date}:\n\n${notesContext}`;
+  } else {
+    throw new Error('No content to summarize');
   }
-
-  userPrompt += `\n\n${conversationText}`;
 
   const requestBody = {
     model: model || 'openai/gpt-4o',

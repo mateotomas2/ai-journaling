@@ -26,7 +26,7 @@ export function useNotes(dayId: string, category?: string) {
     const subscription = db.notes
       .find({
         selector,
-        sort: [{ createdAt: 'desc' }],
+        sort: [{ createdAt: 'asc' }],
       })
       .$.subscribe({
         next: (docs) => {
@@ -93,6 +93,27 @@ export function useNotes(dayId: string, category?: string) {
     [db]
   );
 
+  const updateNoteCategory = useCallback(
+    async (noteId: string, category: string): Promise<void> => {
+      if (!db) throw new Error('Database not initialized');
+      try {
+        const doc = await db.notes.findOne(noteId).exec();
+        if (!doc) {
+          throw new Error('Note not found');
+        }
+        await doc.patch({
+          category,
+          updatedAt: Date.now(),
+        });
+      } catch (err) {
+        const error = err as Error;
+        setError(error);
+        throw error;
+      }
+    },
+    [db]
+  );
+
   const deleteNote = useCallback(async (noteId: string): Promise<void> => {
     if (!db) throw new Error('Database not initialized');
     try {
@@ -114,6 +135,7 @@ export function useNotes(dayId: string, category?: string) {
     error,
     createNote,
     updateNote,
+    updateNoteCategory,
     deleteNote,
   };
 }
@@ -140,7 +162,9 @@ export function useNoteCategories() {
           const notes = docs.map((doc) => doc.toJSON());
           const categorySet = new Set<string>();
           notes.forEach((note) => {
-            categorySet.add(note.category);
+            if (note.category) {
+              categorySet.add(note.category);
+            }
           });
           const cats = Array.from(categorySet).sort();
           setCategories(cats);

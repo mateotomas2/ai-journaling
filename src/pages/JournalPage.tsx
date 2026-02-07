@@ -6,17 +6,15 @@ import { Calendar } from '@/components/ui/calendar';
 import { ChatInterface } from '../components/chat/ChatInterface';
 import { NotesList } from '../components/notes/NotesList';
 import { formatDayId, isValidDayId, getTodayId } from '../utils/date.utils';
-import { setSelectedDay } from '../utils/session.utils';
+import { setSelectedDay, getSelectedTab, setSelectedTab, type ViewMode } from '../utils/session.utils';
 import { addDays, format, parse } from 'date-fns';
 import { ChevronLeft, ChevronRight, CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-type ViewMode = 'chat' | 'notes';
-
 export function JournalPage() {
   const { date } = useParams<{ date: string }>();
   const navigate = useNavigate();
-  const [viewMode, setViewMode] = useState<ViewMode>('chat');
+  const [viewMode, setViewMode] = useState<ViewMode>(getSelectedTab);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   // Validate date from URL
@@ -114,14 +112,14 @@ export function JournalPage() {
           <Button
             variant={viewMode === 'notes' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setViewMode('notes')}
+            onClick={() => { setViewMode('notes'); setSelectedTab('notes'); }}
           >
             Notes
           </Button>
           <Button
             variant={viewMode === 'chat' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setViewMode('chat')}
+            onClick={() => { setViewMode('chat'); setSelectedTab('chat'); }}
           >
             Chat
           </Button>

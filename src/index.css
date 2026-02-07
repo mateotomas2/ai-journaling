@@ -1,41 +1,5 @@
 @import "tailwindcss";
 
-@theme {
-  /* Colors - Light Mode */
-  --color-background: hsl(0 0% 100%);
-  --color-foreground: hsl(222.2 84% 4.9%);
-
-  --color-card: hsl(0 0% 100%);
-  --color-card-foreground: hsl(222.2 84% 4.9%);
-
-  --color-popover: hsl(0 0% 100%);
-  --color-popover-foreground: hsl(222.2 84% 4.9%);
-
-  --color-primary: hsl(243 75% 59%);
-  --color-primary-foreground: hsl(210 40% 98%);
-
-  --color-secondary: hsl(210 40% 96.1%);
-  --color-secondary-foreground: hsl(222.2 47.4% 11.2%);
-
-  --color-muted: hsl(210 40% 96.1%);
-  --color-muted-foreground: hsl(215.4 16.3% 46.9%);
-
-  --color-accent: hsl(210 40% 96.1%);
-  --color-accent-foreground: hsl(222.2 47.4% 11.2%);
-
-  --color-destructive: hsl(0 84.2% 60.2%);
-  --color-destructive-foreground: hsl(210 40% 98%);
-
-  --color-border: hsl(214.3 31.8% 91.4%);
-  --color-input: hsl(214.3 31.8% 91.4%);
-  --color-ring: hsl(243 75% 59%);
-
-  /* Border Radius */
-  --radius-lg: 0.5rem;
-  --radius-md: calc(0.5rem - 2px);
-  --radius-sm: calc(0.5rem - 4px);
-}
-
 /* CSS Variables for component compatibility */
 :root {
   --background: 0 0% 100%;
@@ -106,4 +70,88 @@
 body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
+}
+
+/* ===== MDXEditor Dark Mode Overrides ===== */
+.mdxeditor {
+  --accentBase: hsl(var(--primary));
+  --accentBgSubtle: hsl(var(--accent));
+  --accentBg: hsl(var(--primary));
+  --accentText: hsl(var(--primary-foreground));
+  --baseText: hsl(var(--foreground));
+  --baseBgSubtle: hsl(var(--muted));
+  --baseBg: hsl(var(--card));
+  --baseLine: hsl(var(--border));
+}
+
+.dark .mdxeditor [class*="_toolbar"] {
+  background-color: hsl(var(--card));
+  border-color: hsl(var(--border));
+}
+
+.dark .mdxeditor [class*="_rootContentEditableWrapper"] {
+  background-color: hsl(var(--card));
+}
+
+/* Editor content text color */
+.dark .mdxeditor [class*="_contentEditable"] {
+  color: hsl(var(--foreground));
+}
+
+.dark .mdxeditor [contenteditable="true"] {
+  color: hsl(var(--foreground));
+}
+
+/* Toolbar buttons, selects, dialogs */
+.dark .mdxeditor [class*="_toolbarToggle"],
+.dark .mdxeditor [class*="_iconButton"],
+.dark .mdxeditor [class*="_selectTrigger"],
+.dark .mdxeditor [class*="_selectContent"],
+.dark .mdxeditor [class*="_dialogContent"],
+.dark .mdxeditor [class*="_dialogInput"] {
+  color: hsl(var(--foreground));
+  background-color: hsl(var(--card));
+  border-color: hsl(var(--border));
+}
+
+/* Toolbar icons */
+.dark .mdxeditor svg {
+  color: hsl(var(--foreground));
+  fill: currentColor;
+}
+
+/* List styles inside editor */
+.mdxeditor [contenteditable="true"] ul {
+  list-style-type: disc;
+  padding-left: 1.5em;
+}
+
+.mdxeditor [contenteditable="true"] ol {
+  list-style-type: decimal;
+  padding-left: 1.5em;
+}
+
+.mdxeditor [contenteditable="true"] li {
+  display: list-item;
+}
+
+.dark .mdxeditor [contenteditable="true"] ul li::marker,
+.dark .mdxeditor [contenteditable="true"] ol li::marker {
+  color: hsl(var(--muted-foreground));
+}
+
+/* ===== Prose/Typography Dark Mode ===== */
+.dark .prose {
+  --tw-prose-body: hsl(var(--foreground));
+  --tw-prose-headings: hsl(var(--foreground));
+  --tw-prose-links: hsl(var(--primary));
+  --tw-prose-bold: hsl(var(--foreground));
+  --tw-prose-counters: hsl(var(--muted-foreground));
+  --tw-prose-bullets: hsl(var(--muted-foreground));
+  --tw-prose-hr: hsl(var(--border));
+  --tw-prose-quotes: hsl(var(--foreground));
+  --tw-prose-quote-borders: hsl(var(--border));
+  --tw-prose-code: hsl(var(--foreground));
+  --tw-prose-pre-code: hsl(var(--foreground));
+  --tw-prose-pre-bg: hsl(var(--muted));
 }

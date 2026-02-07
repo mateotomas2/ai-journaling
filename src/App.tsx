@@ -84,7 +84,7 @@ import { UpdatePrompt } from "@/components/pwa/UpdatePrompt"
 
 export function App() {
   return (
-    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
+    <ThemeProvider attribute="class" defaultTheme="system" storageKey="vite-ui-theme">
       <BrowserRouter basename={import.meta.env.BASE_URL}>
         <DatabaseProvider>
           <AppRoutes />
