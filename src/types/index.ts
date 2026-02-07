@@ -130,3 +130,62 @@ export interface AuthState {
 export interface ApiError {
   error: string;
 }
+
+// Tool types for LLM function calling
+export interface ToolFunction {
+  name: string;
+  description: string;
+  parameters: {
+    type: 'object';
+    properties: Record<string, {
+      type: string;
+      description: string;
+      properties?: Record<string, unknown>;
+    }>;
+    required: string[];
+  };
+}
+
+export interface Tool {
+  type: 'function';
+  function: ToolFunction;
+}
+
+export interface ToolCall {
+  id: string;
+  type: 'function';
+  function: {
+    name: string;
+    arguments: string;
+  };
+}
+
+export interface ToolResult {
+  tool_call_id: string;
+  content: string;
+}
+
+// Extended message types for tool calling
+export interface ChatMessageWithTools {
+  role: 'user' | 'assistant' | 'system' | 'tool';
+  content: string | null;
+  tool_calls?: ToolCall[];
+  tool_call_id?: string;
+}
+
+export interface ChatResponseWithTools {
+  id: string;
+  choices: {
+    message: {
+      role: 'assistant';
+      content: string | null;
+      tool_calls?: ToolCall[];
+    };
+    finish_reason: 'stop' | 'tool_calls' | 'length';
+  }[];
+  usage: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+}

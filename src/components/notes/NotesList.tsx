@@ -1,13 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNotes, useNoteCategories, useSummaryNote } from '@/hooks/useNotes';
 import { NoteCard } from './NoteCard';
+import { RegenerateNotesModal } from './RegenerateNotesModal';
 import { generateSummary } from '@/services/ai/summary.service';
+import { regenerateNotes, type GeneratedNote } from '@/services/ai';
 import { useSettings } from '@/hooks/useSettings';
 import { useDatabase } from '@/hooks/useDatabase';
 import { getSummarizerModel } from '@/services/settings/settings.service';
 import { toast } from 'sonner';
 import { logger } from '@/utils/logger';
-import type { Note, Message } from '@/types';
+import type { Message } from '@/types';
 
 interface NotesListProps {
   dayId: string;
@@ -24,6 +26,9 @@ export function NotesList({ dayId, highlightNoteId }: NotesListProps) {
 
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [shouldScrollToBottom, setShouldScrollToBottom] = useState(false);
+  const [showRegenerateModal, setShowRegenerateModal] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [generatedNotes, setGeneratedNotes] = useState<GeneratedNote[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Scroll to bottom when a note is added
@@ -34,24 +39,8 @@ export function NotesList({ dayId, highlightNoteId }: NotesListProps) {
     }
   }, [shouldScrollToBottom, notes]);
 
-  // Group notes by category
-  const notesByCategory = notes.reduce(
-    (acc, note) => {
-      if (!acc[note.category]) {
-        acc[note.category] = [];
-      }
-      acc[note.category]!.push(note);
-      return acc;
-    },
-    {} as Record<string, Note[]>
-  );
-
-  // Sort categories: "summary" first, then alphabetically
-  const sortedCategories = Object.keys(notesByCategory).sort((a, b) => {
-    if (a === 'summary') return -1;
-    if (b === 'summary') return 1;
-    return a.localeCompare(b);
-  });
+  // Filter out summary notes (handled separately)
+  const nonSummaryNotes = notes.filter((note) => note.category !== 'summary');
 
   const handleAddNote = async () => {
     try {
@@ -177,6 +166,87 @@ export function NotesList({ dayId, highlightNoteId }: NotesListProps) {
     }
   };
 
+  const handleRegenerateNotes = async () => {
+    if (!apiKey) {
+      toast.error('Please configure your OpenRouter API key in settings first.');
+      return;
+    }
+
+    if (!db) {
+      toast.error('Database not initialized.');
+      return;
+    }
+
+    setShowRegenerateModal(true);
+    setIsRegenerating(true);
+    setGeneratedNotes([]);
+
+    try {
+      // Get all messages for this day
+      const messageDocs = await db.messages
+        .find({
+          selector: { dayId },
+          sort: [{ timestamp: 'asc' }],
+        })
+        .exec();
+      const messages = messageDocs.map((doc) => doc.toJSON()) as Message[];
+
+      // Get non-summary notes
+      const notesToRegenerate = notes.filter((n) => n.category !== 'summary');
+
+      if (messages.length === 0 && notesToRegenerate.length === 0) {
+        toast.warning('No messages or notes to regenerate from.');
+        setShowRegenerateModal(false);
+        setIsRegenerating(false);
+        return;
+      }
+
+      const summarizerModel = await getSummarizerModel(db);
+
+      const response = await regenerateNotes(
+        messages,
+        notesToRegenerate,
+        dayId,
+        apiKey,
+        summarizerModel
+      );
+
+      setGeneratedNotes(response.notes);
+    } catch (err) {
+      logger.error('Error regenerating notes:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      toast.error(`Failed to regenerate notes: ${errorMessage}`);
+      setShowRegenerateModal(false);
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
+
+  const handleApplyRegenerated = async (newNotes: GeneratedNote[]) => {
+    if (!db) return;
+
+    try {
+      // Delete existing non-summary notes
+      const notesToDelete = notes.filter((n) => n.category !== 'summary');
+      for (const note of notesToDelete) {
+        await deleteNote(note.id);
+      }
+
+      // Create new notes
+      for (const note of newNotes) {
+        await createNote(note.category, note.content, note.title);
+      }
+
+      toast.success(`Created ${newNotes.length} new notes`);
+      setShowRegenerateModal(false);
+      setGeneratedNotes([]);
+    } catch (err) {
+      logger.error('Error applying regenerated notes:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      toast.error(`Failed to apply notes: ${errorMessage}`);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -235,29 +305,34 @@ export function NotesList({ dayId, highlightNoteId }: NotesListProps) {
         )}
       </div>
 
-      {/* Other categories */}
-      {sortedCategories
-        .filter((cat) => cat !== 'summary')
-        .map((category) => (
-          <div key={category || 'uncategorized'} className="mb-8">
-            {category && (
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 capitalize">
-                {category}
-              </h2>
-            )}
-            {notesByCategory[category]?.map((note) => (
-              <NoteCard
-                key={note.id}
-                note={note}
-                onUpdate={updateNote}
-                onUpdateCategory={updateNoteCategory}
-                onDelete={deleteNote}
-                suggestedCategories={categories}
-                highlight={highlightNoteId === note.id}
-              />
-            ))}
+      {/* Notes - sorted by creation date */}
+      {nonSummaryNotes.length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Notes
+            </h2>
+            <button
+              onClick={handleRegenerateNotes}
+              disabled={isRegenerating}
+              className="px-3 py-1.5 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 disabled:text-gray-400"
+            >
+              {isRegenerating ? 'Regenerating...' : 'Regenerate Notes'}
+            </button>
           </div>
-        ))}
+          {nonSummaryNotes.map((note) => (
+            <NoteCard
+              key={note.id}
+              note={note}
+              onUpdate={updateNote}
+              onUpdateCategory={updateNoteCategory}
+              onDelete={deleteNote}
+              suggestedCategories={categories}
+              highlight={highlightNoteId === note.id}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Scroll target for new notes */}
       <div ref={bottomRef} />
@@ -283,6 +358,21 @@ export function NotesList({ dayId, highlightNoteId }: NotesListProps) {
           </p>
         </div>
       )}
+
+      {/* Regenerate Notes Modal */}
+      <RegenerateNotesModal
+        isOpen={showRegenerateModal}
+        onClose={() => {
+          setShowRegenerateModal(false);
+          setGeneratedNotes([]);
+        }}
+        generatedNotes={generatedNotes}
+        isGenerating={isRegenerating}
+        onApply={handleApplyRegenerated}
+        onRegenerate={handleRegenerateNotes}
+        existingNotesCount={nonSummaryNotes.length}
+        suggestedCategories={categories}
+      />
     </div>
   );
 }
