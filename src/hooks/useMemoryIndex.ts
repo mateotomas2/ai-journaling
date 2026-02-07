@@ -37,6 +37,9 @@ export function useMemoryIndex(options?: {
     totalMessages: 0,
     indexedMessages: 0,
     pendingMessages: 0,
+    totalNotes: 0,
+    indexedNotes: 0,
+    pendingNotes: 0,
     lastUpdated: 0,
     modelVersion: 'unknown',
   });

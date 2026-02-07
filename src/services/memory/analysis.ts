@@ -3,8 +3,13 @@
  * Analyzes embeddings to identify recurring themes and topics across journal entries
  */
 
-import type { Embedding } from '../../types/entities';
 import { cosineSimilarity } from './search';
+
+/** Simplified embedding type for analysis (only needs id and vector) */
+interface AnalysisEmbedding {
+  id: string;
+  vector: number[];
+}
 
 export interface ThemeCluster {
   /** Unique identifier for the cluster */
@@ -37,7 +42,7 @@ export interface RecurringTheme {
  * Groups similar embeddings together to identify recurring themes
  */
 export function clusterEmbeddings(
-  embeddings: Embedding[],
+  embeddings: AnalysisEmbedding[],
   numClusters: number = 5,
   maxIterations: number = 10
 ): ThemeCluster[] {
@@ -164,8 +169,8 @@ export function clusterEmbeddings(
  * Uses clustering to find groups of similar entries
  */
 export function identifyRecurringThemes(
-  embeddings: Embedding[],
-  messageIdMap: Map<string, string>, // embeddingId -> messageId
+  embeddings: AnalysisEmbedding[],
+  messageIdMap: Map<string, string>, // embeddingId -> messageId/entityId
   minFrequency: number = 3,
   maxThemes: number = 10
 ): RecurringTheme[] {

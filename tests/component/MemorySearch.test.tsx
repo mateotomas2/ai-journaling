@@ -8,7 +8,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemorySearch } from '@/components/search/MemorySearch';
 import * as useMemorySearchModule from '@/hooks/useMemorySearch';
-import type { MemorySearchResult } from '../../specs/006-vector-memory/contracts/memory-service';
+import type { MessageSearchResult } from '../../specs/006-vector-memory/contracts/memory-service';
 import type { Message } from '@/types/entities';
 
 // Mock the useMemorySearch hook
@@ -49,11 +49,14 @@ describe('MemorySearch Component', () => {
     timestamp: Date.now(),
   };
 
-  const mockResults: MemorySearchResult[] = [
+  const mockResults: MessageSearchResult[] = [
     {
+      entityType: 'message',
+      entityId: 'msg-1',
       message: mockMessage,
       score: 0.85,
       excerpt: 'I had a great day today feeling accomplished...',
+      dayId: '2026-01-15',
       rank: 1,
     },
   ];
@@ -234,7 +237,7 @@ describe('MemorySearch Component', () => {
       const result = screen.getByText(/feeling accomplished/i);
       await user.click(result);
 
-      expect(onResultSelect).toHaveBeenCalledWith('msg-1', '2026-01-15');
+      expect(onResultSelect).toHaveBeenCalledWith('message', 'msg-1', '2026-01-15');
     });
   });
 

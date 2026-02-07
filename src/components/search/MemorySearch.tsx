@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { useMemorySearch } from '../../hooks/useMemorySearch';
 import { SearchResults } from './SearchResults';
 import { memoryService } from '../../services/memory/search';
+import type { EmbeddingEntityType } from '../../types/entities';
 import { Badge } from '../ui/badge';
 import {
   Dialog,
@@ -28,7 +29,7 @@ export interface MemorySearchProps {
   /** Callback when dialog open state changes */
   onOpenChange: (open: boolean) => void;
   /** Callback when a result is selected (optional) */
-  onResultSelect?: (messageId: string, dayId: string) => void;
+  onResultSelect?: (entityType: EmbeddingEntityType, entityId: string, dayId: string) => void;
 }
 
 /**
@@ -213,7 +214,7 @@ export function MemorySearch({
                 isLoading={isLoading}
                 query={query}
                 onResultClick={(result) => {
-                  onResultSelect?.(result.message.id, result.message.dayId);
+                  onResultSelect?.(result.entityType, result.entityId, result.dayId);
                   onOpenChange(false);
                 }}
               />

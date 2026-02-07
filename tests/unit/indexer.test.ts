@@ -75,7 +75,8 @@ describe('Memory Indexer', () => {
 
       await db.embeddings.insert({
         id: crypto.randomUUID(),
-        messageId: message.id,
+        entityType: 'message',
+        entityId: message.id,
         vector: Array.from(embedding.vector),
         modelVersion: embedding.modelVersion,
         createdAt: Date.now(),
@@ -83,7 +84,7 @@ describe('Memory Indexer', () => {
 
       // Verify embedding was created
       const storedEmbedding = await db.embeddings
-        .find({ selector: { messageId: message.id } })
+        .find({ selector: { entityType: 'message', entityId: message.id } })
         .exec();
 
       expect(storedEmbedding).toHaveLength(1);
@@ -121,7 +122,8 @@ describe('Memory Indexer', () => {
       for (let i = 0; i < messages.length; i++) {
         await db.embeddings.insert({
           id: crypto.randomUUID(),
-          messageId: messages[i]!.id,
+          entityType: 'message',
+          entityId: messages[i]!.id,
           vector: Array.from(embeddings[i]!.vector),
           modelVersion: embeddings[i]!.modelVersion,
           createdAt: Date.now(),
@@ -162,7 +164,8 @@ describe('Memory Indexer', () => {
       const embedding = await embeddingService.generateEmbedding(messageWithEmbedding.content);
       await db.embeddings.insert({
         id: crypto.randomUUID(),
-        messageId: messageWithEmbedding.id,
+        entityType: 'message' as const,
+        entityId: messageWithEmbedding.id,
         vector: Array.from(embedding.vector),
         modelVersion: embedding.modelVersion,
         createdAt: Date.now(),
@@ -170,11 +173,11 @@ describe('Memory Indexer', () => {
 
       // Check status
       const hasEmbedding1 = await db.embeddings
-        .find({ selector: { messageId: messageWithEmbedding.id } })
+        .find({ selector: { entityType: 'message', entityId: messageWithEmbedding.id } })
         .exec();
 
       const hasEmbedding2 = await db.embeddings
-        .find({ selector: { messageId: messageWithoutEmbedding.id } })
+        .find({ selector: { entityType: 'message', entityId: messageWithoutEmbedding.id } })
         .exec();
 
       expect(hasEmbedding1).toHaveLength(1);
@@ -201,7 +204,8 @@ describe('Memory Indexer', () => {
       const embedding = await embeddingService.generateEmbedding(message.content);
       await db.embeddings.insert({
         id: crypto.randomUUID(),
-        messageId: message.id,
+        entityType: 'message',
+        entityId: message.id,
         vector: Array.from(embedding.vector),
         modelVersion: embedding.modelVersion,
         createdAt: Date.now(),
@@ -216,10 +220,10 @@ describe('Memory Indexer', () => {
       const allMessages = await db.messages.find().exec();
       const messageIds = new Set(allMessages.map((m) => m.id));
 
-      const orphanedEmbeddings = allEmbeddings.filter((e) => !messageIds.has(e.messageId));
+      const orphanedEmbeddings = allEmbeddings.filter((e) => !messageIds.has(e.entityId));
 
       expect(orphanedEmbeddings).toHaveLength(1);
-      expect(orphanedEmbeddings[0]?.messageId).toBe(message.id);
+      expect(orphanedEmbeddings[0]?.entityId).toBe(message.id);
     });
 
     test('should remove orphaned embeddings', async () => {
@@ -229,7 +233,8 @@ describe('Memory Indexer', () => {
       // Create orphaned embedding (no corresponding message)
       const orphanedEmbedding = {
         id: crypto.randomUUID(),
-        messageId: 'non-existent-message-id',
+        entityType: 'message' as const,
+        entityId: 'non-existent-message-id',
         vector: Array.from({ length: 384 }, () => Math.random() * 2 - 1),
         modelVersion: 'all-MiniLM-L6-v2@v0',
         createdAt: Date.now(),
@@ -243,7 +248,7 @@ describe('Memory Indexer', () => {
       const messageIds = new Set(allMessages.map((m) => m.id));
 
       // Find and remove orphans
-      const orphans = allEmbeddings.filter((e) => !messageIds.has(e.messageId));
+      const orphans = allEmbeddings.filter((e) => !messageIds.has(e.entityId));
 
       for (const orphan of orphans) {
         await orphan.remove();
@@ -264,7 +269,8 @@ describe('Memory Indexer', () => {
       for (let i = 0; i < orphanCount; i++) {
         await db.embeddings.insert({
           id: crypto.randomUUID(),
-          messageId: `orphan-${i}`,
+          entityType: 'message' as const,
+          entityId: `orphan-${i}`,
           vector: Array.from({ length: 384 }, () => Math.random() * 2 - 1),
           modelVersion: 'all-MiniLM-L6-v2@v0',
           createdAt: Date.now(),
@@ -276,7 +282,7 @@ describe('Memory Indexer', () => {
       const allMessages = await db.messages.find().exec();
       const messageIds = new Set(allMessages.map((m) => m.id));
 
-      const orphans = allEmbeddings.filter((e) => !messageIds.has(e.messageId));
+      const orphans = allEmbeddings.filter((e) => !messageIds.has(e.entityId));
       const removedCount = orphans.length;
 
       for (const orphan of orphans) {
@@ -306,7 +312,8 @@ describe('Memory Indexer', () => {
       const originalEmbedding = await embeddingService.generateEmbedding(message.content);
       await db.embeddings.insert({
         id: crypto.randomUUID(),
-        messageId: message.id,
+        entityType: 'message',
+        entityId: message.id,
         vector: Array.from(originalEmbedding.vector),
         modelVersion: originalEmbedding.modelVersion,
         createdAt: Date.now(),
@@ -318,7 +325,7 @@ describe('Memory Indexer', () => {
 
       // Remove old embedding
       const oldEmbeddingDocs = await db.embeddings
-        .find({ selector: { messageId: message.id } })
+        .find({ selector: { entityType: 'message', entityId: message.id } })
         .exec();
 
       for (const doc of oldEmbeddingDocs) {
@@ -328,7 +335,8 @@ describe('Memory Indexer', () => {
       // Create new embedding
       await db.embeddings.insert({
         id: crypto.randomUUID(),
-        messageId: message.id,
+        entityType: 'message',
+        entityId: message.id,
         vector: Array.from(newEmbedding.vector),
         modelVersion: newEmbedding.modelVersion,
         createdAt: Date.now(),
@@ -336,7 +344,7 @@ describe('Memory Indexer', () => {
 
       // Verify new embedding is different
       const updatedEmbeddingDocs = await db.embeddings
-        .find({ selector: { messageId: message.id } })
+        .find({ selector: { entityType: 'message', entityId: message.id } })
         .exec();
 
       expect(updatedEmbeddingDocs).toHaveLength(1);
@@ -384,7 +392,8 @@ describe('Memory Indexer', () => {
       for (let i = 0; i < messages.length; i++) {
         await db.embeddings.insert({
           id: crypto.randomUUID(),
-          messageId: messages[i]!.id,
+          entityType: 'message',
+          entityId: messages[i]!.id,
           vector: Array.from(embeddings[i]!.vector),
           modelVersion: embeddings[i]!.modelVersion,
           createdAt: Date.now(),

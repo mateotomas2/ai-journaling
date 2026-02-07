@@ -4,7 +4,7 @@
  * Defines the interface for semantic search and memory retrieval operations.
  */
 
-import type { Message } from '../../../src/types/entities';
+import type { Message, Note } from '../../../src/types/entities';
 
 export interface MemorySearchQuery {
   /** The search query text (will be embedded for similarity search) */
@@ -22,7 +22,47 @@ export interface MemorySearchQuery {
   dayId?: string;
 }
 
-export interface MemorySearchResult {
+/** Base interface for search results */
+interface BaseSearchResult {
+  /** Similarity score (0-1, higher is more similar) */
+  score: number;
+  /** Relevant excerpt from the content (for preview) */
+  excerpt: string;
+  /** Ranking position in results (1-based) */
+  rank: number;
+  /** Day ID for navigation */
+  dayId: string;
+}
+
+/** Search result for a message */
+export interface MessageSearchResult extends BaseSearchResult {
+  entityType: 'message';
+  entityId: string;
+  message: Message;
+}
+
+/** Search result for a note */
+export interface NoteSearchResult extends BaseSearchResult {
+  entityType: 'note';
+  entityId: string;
+  note: Note;
+}
+
+/** Discriminated union of all search result types */
+export type MemorySearchResult = MessageSearchResult | NoteSearchResult;
+
+/** Type guard for message search results */
+export function isMessageResult(result: MemorySearchResult): result is MessageSearchResult {
+  return result.entityType === 'message';
+}
+
+/** Type guard for note search results */
+export function isNoteResult(result: MemorySearchResult): result is NoteSearchResult {
+  return result.entityType === 'note';
+}
+
+/** @deprecated Use MemorySearchResult instead */
+export interface LegacyMemorySearchResult {
   /** The matching message */
   message: Message;
   /** Similarity score (0-1, higher is more similar) */
@@ -40,6 +80,12 @@ export interface MemoryIndexStats {
   indexedMessages: number;
   /** Number of messages pending embedding */
   pendingMessages: number;
+  /** Total number of notes */
+  totalNotes: number;
+  /** Number of notes with embeddings */
+  indexedNotes: number;
+  /** Number of notes pending embedding */
+  pendingNotes: number;
   /** Timestamp of last index update */
   lastUpdated: number;
   /** Model version being used */
@@ -51,9 +97,9 @@ export interface MemoryIndexStats {
  */
 export interface IMemoryService {
   /**
-   * Search journal messages using semantic similarity
+   * Search journal messages and notes using semantic similarity
    * @param query Search query parameters
-   * @returns Array of matching messages with scores
+   * @returns Array of matching results with scores
    */
   search(query: MemorySearchQuery): Promise<MemorySearchResult[]>;
 
@@ -77,6 +123,27 @@ export interface IMemoryService {
    * @param messageId ID of message to remove
    */
   removeFromIndex(messageId: string): Promise<void>;
+
+  /**
+   * Index a new note for search
+   * Generates and stores embedding asynchronously
+   * @param note The note to index
+   * @returns Promise that resolves when indexing is complete
+   */
+  indexNote(note: Note): Promise<void>;
+
+  /**
+   * Re-index an existing note (after content update)
+   * @param noteId ID of note to re-index
+   * @returns Promise that resolves when re-indexing is complete
+   */
+  reindexNote(noteId: string): Promise<void>;
+
+  /**
+   * Remove a note from the index
+   * @param noteId ID of note to remove
+   */
+  removeNoteFromIndex(noteId: string): Promise<void>;
 
   /**
    * Get index statistics

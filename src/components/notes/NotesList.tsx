@@ -11,9 +11,10 @@ import type { Note, Message } from '@/types';
 
 interface NotesListProps {
   dayId: string;
+  highlightNoteId?: string | undefined;
 }
 
-export function NotesList({ dayId }: NotesListProps) {
+export function NotesList({ dayId, highlightNoteId }: NotesListProps) {
   const { notes, isLoading, error, createNote, updateNote, updateNoteCategory, deleteNote } =
     useNotes(dayId);
   const { categories } = useNoteCategories();
@@ -208,6 +209,7 @@ export function NotesList({ dayId }: NotesListProps) {
               onUpdate={updateNote}
               onDelete={deleteNote}
               isSpecialCategory={true}
+              highlight={highlightNoteId === summaryNote.id}
             />
             <button
               onClick={handleRegenerateSummary}
@@ -251,6 +253,7 @@ export function NotesList({ dayId }: NotesListProps) {
                 onUpdateCategory={updateNoteCategory}
                 onDelete={deleteNote}
                 suggestedCategories={categories}
+                highlight={highlightNoteId === note.id}
               />
             ))}
           </div>

@@ -4,10 +4,30 @@
  */
 
 import type { IMemoryIndexer } from '../../../specs/006-vector-memory/contracts/memory-service';
+import type { EmbeddingEntityType } from '../../types/entities';
 import { embeddingService } from '../embedding/generator';
 import { getDatabase } from '../../db';
 
 const QUEUE_STORAGE_KEY = 'memory-indexer-queue';
+
+/** Format: "entityType:entityId" */
+type QueueItem = `${EmbeddingEntityType}:${string}`;
+
+function parseQueueItem(item: string): { entityType: EmbeddingEntityType; entityId: string } | null {
+  const [entityType, entityId] = item.split(':');
+  if (entityType === 'message' || entityType === 'note') {
+    return { entityType, entityId: entityId! };
+  }
+  // Legacy format: just messageId
+  if (entityType && !entityId) {
+    return { entityType: 'message', entityId: entityType };
+  }
+  return null;
+}
+
+function formatQueueItem(entityType: EmbeddingEntityType, entityId: string): QueueItem {
+  return `${entityType}:${entityId}`;
+}
 
 class MemoryIndexer implements IMemoryIndexer {
   private queue: Set<string> = new Set();
@@ -58,12 +78,20 @@ class MemoryIndexer implements IMemoryIndexer {
   }
 
   /**
-   * Queue a message for embedding generation
+   * Queue a message for embedding generation (legacy method)
    */
   queueForEmbedding(messageId: string): void {
-    this.queue.add(messageId);
+    this.queueEntityForEmbedding('message', messageId);
+  }
+
+  /**
+   * Queue an entity for embedding generation
+   */
+  queueEntityForEmbedding(entityType: EmbeddingEntityType, entityId: string): void {
+    const queueItem = formatQueueItem(entityType, entityId);
+    this.queue.add(queueItem);
     this.saveQueue(); // Persist after adding
-    console.log(`[MemoryIndexer] Queued message ${messageId} for embedding (queue size: ${this.queue.size})`);
+    console.log(`[MemoryIndexer] Queued ${entityType} ${entityId} for embedding (queue size: ${this.queue.size})`);
   }
 
   /**
@@ -75,7 +103,7 @@ class MemoryIndexer implements IMemoryIndexer {
 
   /**
    * Process the embedding queue
-   * Generates embeddings for all queued messages
+   * Generates embeddings for all queued entities (messages and notes)
    */
   async processQueue(): Promise<void> {
     if (this.isProcessing) {
@@ -106,60 +134,84 @@ class MemoryIndexer implements IMemoryIndexer {
         return;
       }
 
-      console.log(`[MemoryIndexer] Processing ${this.queue.size} messages...`);
+      console.log(`[MemoryIndexer] Processing ${this.queue.size} entities...`);
 
-      const messageIds = Array.from(this.queue);
+      const queueItems = Array.from(this.queue);
       const processedCount = { success: 0, failed: 0, skipped: 0 };
 
-      // Process messages one by one (could be optimized with batching later)
-      for (const messageId of messageIds) {
+      // Process entities one by one (could be optimized with batching later)
+      for (const queueItem of queueItems) {
+        const parsed = parseQueueItem(queueItem);
+        if (!parsed) {
+          console.warn(`[MemoryIndexer] Invalid queue item ${queueItem}, removing from queue`);
+          this.queue.delete(queueItem);
+          processedCount.skipped++;
+          continue;
+        }
+
+        const { entityType, entityId } = parsed;
+
         try {
-          // Check if message already has embedding
+          // Check if entity already has embedding
           const existingEmbedding = await db.embeddings
             .find({
-              selector: { messageId },
+              selector: { entityType, entityId },
             })
             .exec();
 
           if (existingEmbedding.length > 0) {
-            console.log(`[MemoryIndexer] Message ${messageId} already has embedding, skipping`);
-            this.queue.delete(messageId);
+            console.log(`[MemoryIndexer] ${entityType} ${entityId} already has embedding, skipping`);
+            this.queue.delete(queueItem);
             processedCount.skipped++;
             continue;
           }
 
-          // Fetch message content
-          const message = await db.messages.findOne(messageId).exec();
+          // Fetch entity content based on type
+          let content: string | null = null;
 
-          if (!message) {
-            console.warn(`[MemoryIndexer] Message ${messageId} not found, removing from queue`);
-            this.queue.delete(messageId);
+          if (entityType === 'message') {
+            const message = await db.messages.findOne(entityId).exec();
+            if (message) {
+              content = message.content;
+            }
+          } else if (entityType === 'note') {
+            const note = await db.notes.findOne(entityId).exec();
+            if (note) {
+              // Combine title and content for notes
+              content = note.title ? `${note.title}\n\n${note.content}` : note.content;
+            }
+          }
+
+          if (!content) {
+            console.warn(`[MemoryIndexer] ${entityType} ${entityId} not found, removing from queue`);
+            this.queue.delete(queueItem);
             processedCount.skipped++;
             continue;
           }
 
           // Generate embedding
-          const embeddingResult = await embeddingService.generateEmbedding(message.content);
+          const embeddingResult = await embeddingService.generateEmbedding(content);
 
-          // Store embedding
+          // Store embedding with new schema
           await db.embeddings.insert({
             id: crypto.randomUUID(),
-            messageId: message.id,
+            entityType,
+            entityId,
             vector: Array.from(embeddingResult.vector),
             modelVersion: embeddingResult.modelVersion,
             createdAt: Date.now(),
           });
 
           console.log(
-            `[MemoryIndexer] Generated embedding for message ${messageId} (${embeddingResult.processingTimeMs.toFixed(0)}ms)`
+            `[MemoryIndexer] Generated embedding for ${entityType} ${entityId} (${embeddingResult.processingTimeMs.toFixed(0)}ms)`
           );
 
-          this.queue.delete(messageId);
+          this.queue.delete(queueItem);
           this.saveQueue(); // Persist after removing
           processedCount.success++;
         } catch (error) {
-          console.error(`[MemoryIndexer] Failed to process message ${messageId}:`, error);
-          // Keep in queue for retry, but don't block other messages
+          console.error(`[MemoryIndexer] Failed to process ${entityType} ${entityId}:`, error);
+          // Keep in queue for retry, but don't block other entities
           processedCount.failed++;
         }
       }
@@ -234,7 +286,8 @@ class MemoryIndexer implements IMemoryIndexer {
           try {
             await db.embeddings.insert({
               id: crypto.randomUUID(),
-              messageId,
+              entityType: 'message',
+              entityId: messageId,
               vector: Array.from(result.vector),
               modelVersion: result.modelVersion,
               createdAt: Date.now(),
@@ -256,9 +309,16 @@ class MemoryIndexer implements IMemoryIndexer {
   }
 
   /**
-   * Check if a message has a valid embedding
+   * Check if a message has a valid embedding (legacy method)
    */
   async hasEmbedding(messageId: string): Promise<boolean> {
+    return this.hasEntityEmbedding('message', messageId);
+  }
+
+  /**
+   * Check if an entity has a valid embedding
+   */
+  async hasEntityEmbedding(entityType: EmbeddingEntityType, entityId: string): Promise<boolean> {
     const db = await getDatabase();
     if (!db) {
       return false;
@@ -266,7 +326,7 @@ class MemoryIndexer implements IMemoryIndexer {
 
     const embeddings = await db.embeddings
       .find({
-        selector: { messageId },
+        selector: { entityType, entityId },
       })
       .exec();
 
@@ -275,7 +335,7 @@ class MemoryIndexer implements IMemoryIndexer {
 
   /**
    * Clean up orphaned embeddings
-   * Removes embeddings for deleted messages
+   * Removes embeddings for deleted messages and notes
    * @returns Number of embeddings removed
    */
   async cleanupOrphans(): Promise<number> {
@@ -286,15 +346,24 @@ class MemoryIndexer implements IMemoryIndexer {
 
     console.log('[MemoryIndexer] Starting orphan cleanup...');
 
-    // Fetch all embeddings and messages
+    // Fetch all embeddings, messages, and notes
     const allEmbeddings = await db.embeddings.find().exec();
     const allMessages = await db.messages.find().exec();
+    const allNotes = await db.notes.find().exec();
 
-    // Create set of valid message IDs
+    // Create sets of valid IDs
     const validMessageIds = new Set(allMessages.map((m) => m.id));
+    const validNoteIds = new Set(allNotes.map((n) => n.id));
 
     // Find orphaned embeddings
-    const orphanedEmbeddings = allEmbeddings.filter((e) => !validMessageIds.has(e.messageId));
+    const orphanedEmbeddings = allEmbeddings.filter((e) => {
+      if (e.entityType === 'message') {
+        return !validMessageIds.has(e.entityId);
+      } else if (e.entityType === 'note') {
+        return !validNoteIds.has(e.entityId);
+      }
+      return true; // Remove embeddings with unknown entity types
+    });
 
     console.log(`[MemoryIndexer] Found ${orphanedEmbeddings.length} orphaned embeddings`);
 
@@ -302,7 +371,7 @@ class MemoryIndexer implements IMemoryIndexer {
     for (const orphan of orphanedEmbeddings) {
       try {
         await orphan.remove();
-        console.log(`[MemoryIndexer] Removed orphaned embedding for message ${orphan.messageId}`);
+        console.log(`[MemoryIndexer] Removed orphaned embedding for ${orphan.entityType} ${orphan.entityId}`);
       } catch (error) {
         console.error(`[MemoryIndexer] Failed to remove orphaned embedding:`, error);
       }
@@ -317,6 +386,20 @@ class MemoryIndexer implements IMemoryIndexer {
    * Index a single message immediately (bypasses queue)
    */
   async indexMessageImmediate(messageId: string): Promise<void> {
+    await this.indexEntityImmediate('message', messageId);
+  }
+
+  /**
+   * Index a single note immediately (bypasses queue)
+   */
+  async indexNoteImmediate(noteId: string): Promise<void> {
+    await this.indexEntityImmediate('note', noteId);
+  }
+
+  /**
+   * Index a single entity immediately (bypasses queue)
+   */
+  async indexEntityImmediate(entityType: EmbeddingEntityType, entityId: string): Promise<void> {
     const db = await getDatabase();
     if (!db) {
       throw new Error('Database not initialized');
@@ -329,36 +412,64 @@ class MemoryIndexer implements IMemoryIndexer {
     }
 
     // Check if already has embedding
-    const hasExisting = await this.hasEmbedding(messageId);
+    const hasExisting = await this.hasEntityEmbedding(entityType, entityId);
     if (hasExisting) {
-      console.log(`[MemoryIndexer] Message ${messageId} already has embedding`);
+      console.log(`[MemoryIndexer] ${entityType} ${entityId} already has embedding`);
       return;
     }
 
-    // Fetch message
-    const message = await db.messages.findOne(messageId).exec();
-    if (!message) {
-      throw new Error(`Message ${messageId} not found`);
+    // Fetch entity content
+    let content: string | null = null;
+
+    if (entityType === 'message') {
+      const message = await db.messages.findOne(entityId).exec();
+      if (message) {
+        content = message.content;
+      }
+    } else if (entityType === 'note') {
+      const note = await db.notes.findOne(entityId).exec();
+      if (note) {
+        content = note.title ? `${note.title}\n\n${note.content}` : note.content;
+      }
+    }
+
+    if (!content) {
+      throw new Error(`${entityType} ${entityId} not found`);
     }
 
     // Generate and store embedding
-    const embeddingResult = await embeddingService.generateEmbedding(message.content);
+    const embeddingResult = await embeddingService.generateEmbedding(content);
 
     await db.embeddings.insert({
       id: crypto.randomUUID(),
-      messageId: message.id,
+      entityType,
+      entityId,
       vector: Array.from(embeddingResult.vector),
       modelVersion: embeddingResult.modelVersion,
       createdAt: Date.now(),
     });
 
-    console.log(`[MemoryIndexer] Indexed message ${messageId} immediately`);
+    console.log(`[MemoryIndexer] Indexed ${entityType} ${entityId} immediately`);
   }
 
   /**
    * Re-index a message (removes old embedding and creates new one)
    */
   async reindexMessage(messageId: string): Promise<void> {
+    await this.reindexEntity('message', messageId);
+  }
+
+  /**
+   * Re-index a note (removes old embedding and creates new one)
+   */
+  async reindexNote(noteId: string): Promise<void> {
+    await this.reindexEntity('note', noteId);
+  }
+
+  /**
+   * Re-index an entity (removes old embedding and creates new one)
+   */
+  async reindexEntity(entityType: EmbeddingEntityType, entityId: string): Promise<void> {
     const db = await getDatabase();
     if (!db) {
       throw new Error('Database not initialized');
@@ -367,7 +478,7 @@ class MemoryIndexer implements IMemoryIndexer {
     // Remove existing embeddings
     const existingEmbeddings = await db.embeddings
       .find({
-        selector: { messageId },
+        selector: { entityType, entityId },
       })
       .exec();
 
@@ -375,10 +486,10 @@ class MemoryIndexer implements IMemoryIndexer {
       await embedding.remove();
     }
 
-    console.log(`[MemoryIndexer] Removed ${existingEmbeddings.length} existing embeddings for message ${messageId}`);
+    console.log(`[MemoryIndexer] Removed ${existingEmbeddings.length} existing embeddings for ${entityType} ${entityId}`);
 
     // Index with new embedding
-    await this.indexMessageImmediate(messageId);
+    await this.indexEntityImmediate(entityType, entityId);
   }
 
   /**
@@ -390,6 +501,9 @@ class MemoryIndexer implements IMemoryIndexer {
     totalMessages: number;
     indexedMessages: number;
     pendingMessages: number;
+    totalNotes: number;
+    indexedNotes: number;
+    pendingNotes: number;
   }> {
     const db = await getDatabase();
     if (!db) {
@@ -397,17 +511,28 @@ class MemoryIndexer implements IMemoryIndexer {
     }
 
     const allMessages = await db.messages.find().exec();
+    const allNotes = await db.notes.find().exec();
     const allEmbeddings = await db.embeddings.find().exec();
 
-    const indexedMessageIds = new Set(allEmbeddings.map((e) => e.messageId));
+    // Separate embeddings by entity type
+    const messageEmbeddings = allEmbeddings.filter((e) => e.entityType === 'message');
+    const noteEmbeddings = allEmbeddings.filter((e) => e.entityType === 'note');
+
+    const indexedMessageIds = new Set(messageEmbeddings.map((e) => e.entityId));
+    const indexedNoteIds = new Set(noteEmbeddings.map((e) => e.entityId));
+
     const pendingMessages = allMessages.filter((m) => !indexedMessageIds.has(m.id));
+    const pendingNotes = allNotes.filter((n) => !indexedNoteIds.has(n.id));
 
     return {
       queueSize: this.queue.size,
       isProcessing: this.isProcessing,
       totalMessages: allMessages.length,
-      indexedMessages: allEmbeddings.length,
+      indexedMessages: messageEmbeddings.length,
       pendingMessages: pendingMessages.length,
+      totalNotes: allNotes.length,
+      indexedNotes: noteEmbeddings.length,
+      pendingNotes: pendingNotes.length,
     };
   }
 

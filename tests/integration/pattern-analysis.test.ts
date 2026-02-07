@@ -7,7 +7,13 @@ import { describe, test, expect, beforeAll, afterAll } from 'vitest';
 import { createDatabase, closeDatabase } from '../../src/db';
 import { identifyRecurringThemes, clusterEmbeddings } from '../../src/services/memory/analysis';
 import { generateThemeInsights } from '../../src/services/memory/patterns';
-import type { Embedding, Message } from '../../src/types/entities';
+import type { Message } from '../../src/types/entities';
+
+// Analysis embeddings only need id and vector for the algorithm
+interface AnalysisEmbedding {
+  id: string;
+  vector: number[];
+}
 
 describe('Pattern Analysis Integration', () => {
   beforeAll(async () => {
@@ -20,50 +26,32 @@ describe('Pattern Analysis Integration', () => {
 
   test('should cluster similar embeddings together', () => {
     // Create test embeddings with two distinct clusters
-    const embeddings: Embedding[] = [
+    const embeddings: AnalysisEmbedding[] = [
       // Cluster 1: Work-related (similar vectors)
       {
         id: 'emb-1',
-        messageId: 'msg-1',
         vector: Array(384).fill(0).map((_, i) => (i < 50 ? 0.8 : 0.1)),
-        modelVersion: 'test@v1',
-        createdAt: Date.now(),
       },
       {
         id: 'emb-2',
-        messageId: 'msg-2',
         vector: Array(384).fill(0).map((_, i) => (i < 50 ? 0.75 : 0.15)),
-        modelVersion: 'test@v1',
-        createdAt: Date.now(),
       },
       {
         id: 'emb-3',
-        messageId: 'msg-3',
         vector: Array(384).fill(0).map((_, i) => (i < 50 ? 0.85 : 0.05)),
-        modelVersion: 'test@v1',
-        createdAt: Date.now(),
       },
       // Cluster 2: Exercise-related (similar vectors, different from cluster 1)
       {
         id: 'emb-4',
-        messageId: 'msg-4',
         vector: Array(384).fill(0).map((_, i) => (i >= 200 && i < 250 ? 0.9 : 0.1)),
-        modelVersion: 'test@v1',
-        createdAt: Date.now(),
       },
       {
         id: 'emb-5',
-        messageId: 'msg-5',
         vector: Array(384).fill(0).map((_, i) => (i >= 200 && i < 250 ? 0.85 : 0.12)),
-        modelVersion: 'test@v1',
-        createdAt: Date.now(),
       },
       {
         id: 'emb-6',
-        messageId: 'msg-6',
         vector: Array(384).fill(0).map((_, i) => (i >= 200 && i < 250 ? 0.88 : 0.08)),
-        modelVersion: 'test@v1',
-        createdAt: Date.now(),
       },
     ];
 
@@ -82,12 +70,12 @@ describe('Pattern Analysis Integration', () => {
   });
 
   test('should identify recurring themes from embeddings', () => {
-    const embeddings: Embedding[] = [
-      { id: 'emb-1', messageId: 'msg-1', vector: Array(384).fill(0.1), modelVersion: 'test@v1', createdAt: Date.now() },
-      { id: 'emb-2', messageId: 'msg-2', vector: Array(384).fill(0.1), modelVersion: 'test@v1', createdAt: Date.now() },
-      { id: 'emb-3', messageId: 'msg-3', vector: Array(384).fill(0.1), modelVersion: 'test@v1', createdAt: Date.now() },
-      { id: 'emb-4', messageId: 'msg-4', vector: Array(384).fill(0.2), modelVersion: 'test@v1', createdAt: Date.now() },
-      { id: 'emb-5', messageId: 'msg-5', vector: Array(384).fill(0.2), modelVersion: 'test@v1', createdAt: Date.now() },
+    const embeddings: AnalysisEmbedding[] = [
+      { id: 'emb-1', vector: Array(384).fill(0.1) },
+      { id: 'emb-2', vector: Array(384).fill(0.1) },
+      { id: 'emb-3', vector: Array(384).fill(0.1) },
+      { id: 'emb-4', vector: Array(384).fill(0.2) },
+      { id: 'emb-5', vector: Array(384).fill(0.2) },
     ];
 
     const embeddingIdToMessageId = new Map([
@@ -170,8 +158,8 @@ describe('Pattern Analysis Integration', () => {
   });
 
   test('should handle empty embeddings gracefully', () => {
-    const embeddings: Embedding[] = [];
-    const embeddingIdToMessageId = new Map();
+    const embeddings: AnalysisEmbedding[] = [];
+    const embeddingIdToMessageId = new Map<string, string>();
 
     const themes = identifyRecurringThemes(embeddings, embeddingIdToMessageId, 2, 5);
 
@@ -179,10 +167,10 @@ describe('Pattern Analysis Integration', () => {
   });
 
   test('should filter themes by minimum frequency', () => {
-    const embeddings: Embedding[] = [
-      { id: 'emb-1', messageId: 'msg-1', vector: Array(384).fill(0.1), modelVersion: 'test@v1', createdAt: Date.now() },
-      { id: 'emb-2', messageId: 'msg-2', vector: Array(384).fill(0.1), modelVersion: 'test@v1', createdAt: Date.now() },
-      { id: 'emb-3', messageId: 'msg-3', vector: Array(384).fill(0.1), modelVersion: 'test@v1', createdAt: Date.now() },
+    const embeddings: AnalysisEmbedding[] = [
+      { id: 'emb-1', vector: Array(384).fill(0.1) },
+      { id: 'emb-2', vector: Array(384).fill(0.1) },
+      { id: 'emb-3', vector: Array(384).fill(0.1) },
     ];
 
     const embeddingIdToMessageId = new Map([
@@ -202,16 +190,13 @@ describe('Pattern Analysis Integration', () => {
 
   test('should limit number of themes returned', () => {
     // Create many embeddings
-    const embeddings: Embedding[] = Array.from({ length: 20 }, (_, i) => ({
+    const embeddings: AnalysisEmbedding[] = Array.from({ length: 20 }, (_, i) => ({
       id: `emb-${i}`,
-      messageId: `msg-${i}`,
       vector: Array(384).fill(0).map(() => Math.random()),
-      modelVersion: 'test@v1',
-      createdAt: Date.now(),
     }));
 
     const embeddingIdToMessageId = new Map(
-      embeddings.map((e) => [e.id, e.messageId])
+      embeddings.map((e) => [e.id, `msg-${e.id.split('-')[1]}`])
     );
 
     const themes = identifyRecurringThemes(embeddings, embeddingIdToMessageId, 2, 3);

@@ -8,8 +8,10 @@ import type {
   MemorySearchQuery,
   MemorySearchResult,
   MemoryIndexStats,
+  MessageSearchResult,
+  NoteSearchResult,
 } from '../../../specs/006-vector-memory/contracts/memory-service';
-import type { Message } from '../../types/entities';
+import type { Message, Note } from '../../types/entities';
 import { embeddingService } from '../embedding/generator';
 import { getDatabase } from '../../db';
 import { memoryIndexer } from './indexer';
@@ -110,7 +112,7 @@ function extractExcerpt(content: string, maxLength: number = 150): string {
  */
 class MemoryService implements IMemoryService {
   /**
-   * Search journal messages using semantic similarity
+   * Search journal messages and notes using semantic similarity
    */
   async search(query: MemorySearchQuery): Promise<MemorySearchResult[]> {
     const db = await getDatabase();
@@ -131,12 +133,14 @@ class MemoryService implements IMemoryService {
     // Fetch all embeddings from database
     const allEmbeddings = await db.embeddings.find().exec();
 
-    // Convert to searchable format
+    // Convert to searchable format with entity type info
     const vectors = allEmbeddings.map((doc) => ({
-      id: doc.messageId,
+      id: doc.entityId,
       vector: new Float32Array(doc.vector),
       metadata: {
         embeddingId: doc.id,
+        entityType: doc.entityType,
+        entityId: doc.entityId,
         createdAt: doc.createdAt,
         modelVersion: doc.modelVersion,
       },
@@ -151,49 +155,100 @@ class MemoryService implements IMemoryService {
     // Filter by minimum score
     const filtered = similarVectors.filter((result) => result.score >= minScore);
 
-    // Fetch corresponding messages
-    const messageIds = filtered.map((result) => result.id);
-    const messages = await db.messages
-      .find({
-        selector: {
-          id: { $in: messageIds },
-        },
-      })
-      .exec();
+    // Separate message and note IDs
+    const messageIds: string[] = [];
+    const noteIds: string[] = [];
 
-    // Create a map for quick lookup
+    for (const result of filtered) {
+      const entityType = result.metadata?.entityType as string | undefined;
+      if (entityType === 'note') {
+        noteIds.push(result.id);
+      } else {
+        // Default to message for backward compatibility
+        messageIds.push(result.id);
+      }
+    }
+
+    // Fetch corresponding messages and notes
+    const [messages, notes] = await Promise.all([
+      messageIds.length > 0
+        ? db.messages.find({ selector: { id: { $in: messageIds } } }).exec()
+        : Promise.resolve([]),
+      noteIds.length > 0
+        ? db.notes.find({ selector: { id: { $in: noteIds } } }).exec()
+        : Promise.resolve([]),
+    ]);
+
+    // Create maps for quick lookup
     const messageMap = new Map(messages.map((msg) => [msg.id, msg]));
+    const noteMap = new Map(notes.map((note) => [note.id, note]));
 
     // Build search results with proper ranking
     const results: MemorySearchResult[] = [];
     let rank = 1;
 
     for (const similar of filtered.slice(0, limit)) {
-      const message = messageMap.get(similar.id);
-      if (!message) {
-        continue; // Message might have been deleted
-      }
+      const entityType = similar.metadata?.entityType as string | undefined;
 
-      // Apply additional filters if specified
-      if (query.dateRange) {
-        if (query.dateRange.start && message.timestamp < query.dateRange.start) {
+      if (entityType === 'note') {
+        const note = noteMap.get(similar.id);
+        if (!note) continue;
+
+        // Apply day filter
+        if (query.dayId && note.dayId !== query.dayId) {
           continue;
         }
-        if (query.dateRange.end && message.timestamp > query.dateRange.end) {
+
+        // Apply date range filter using createdAt
+        if (query.dateRange) {
+          if (query.dateRange.start && note.createdAt < query.dateRange.start) {
+            continue;
+          }
+          if (query.dateRange.end && note.createdAt > query.dateRange.end) {
+            continue;
+          }
+        }
+
+        const noteResult: NoteSearchResult = {
+          entityType: 'note',
+          entityId: note.id,
+          note: note.toJSON() as Note,
+          score: similar.score,
+          excerpt: extractExcerpt(note.content),
+          dayId: note.dayId,
+          rank: rank++,
+        };
+        results.push(noteResult);
+      } else {
+        // Default to message
+        const message = messageMap.get(similar.id);
+        if (!message) continue;
+
+        // Apply additional filters if specified
+        if (query.dateRange) {
+          if (query.dateRange.start && message.timestamp < query.dateRange.start) {
+            continue;
+          }
+          if (query.dateRange.end && message.timestamp > query.dateRange.end) {
+            continue;
+          }
+        }
+
+        if (query.dayId && message.dayId !== query.dayId) {
           continue;
         }
-      }
 
-      if (query.dayId && message.dayId !== query.dayId) {
-        continue;
+        const messageResult: MessageSearchResult = {
+          entityType: 'message',
+          entityId: message.id,
+          message: message.toJSON() as Message,
+          score: similar.score,
+          excerpt: extractExcerpt(message.content),
+          dayId: message.dayId,
+          rank: rank++,
+        };
+        results.push(messageResult);
       }
-
-      results.push({
-        message: message.toJSON() as Message,
-        score: similar.score,
-        excerpt: extractExcerpt(message.content),
-        rank: rank++,
-      });
     }
 
     return results;
@@ -233,14 +288,57 @@ class MemoryService implements IMemoryService {
     }
 
     // Find and remove the embedding
-    const embedding = await db.embeddings
+    const embeddings = await db.embeddings
       .find({
-        selector: { messageId },
+        selector: { entityType: 'message', entityId: messageId },
       })
       .exec();
 
-    if (embedding.length > 0) {
-      await embedding[0]!.remove();
+    for (const embedding of embeddings) {
+      await embedding.remove();
+    }
+  }
+
+  /**
+   * Index a new note for search
+   * Queues the note for embedding generation
+   */
+  async indexNote(note: Note): Promise<void> {
+    // Queue the note for embedding generation
+    memoryIndexer.queueEntityForEmbedding('note', note.id);
+
+    // Process the queue to generate embeddings
+    memoryIndexer.processQueue().catch((error) => {
+      console.error('[MemoryService] Failed to process embedding queue:', error);
+    });
+  }
+
+  /**
+   * Re-index an existing note
+   * Removes old embedding and creates a new one
+   */
+  async reindexNote(noteId: string): Promise<void> {
+    await memoryIndexer.reindexNote(noteId);
+  }
+
+  /**
+   * Remove a note from the index
+   */
+  async removeNoteFromIndex(noteId: string): Promise<void> {
+    const db = await getDatabase();
+    if (!db) {
+      throw new Error('Database not initialized');
+    }
+
+    // Find and remove the embedding
+    const embeddings = await db.embeddings
+      .find({
+        selector: { entityType: 'note', entityId: noteId },
+      })
+      .exec();
+
+    for (const embedding of embeddings) {
+      await embedding.remove();
     }
   }
 
@@ -254,11 +352,18 @@ class MemoryService implements IMemoryService {
     }
 
     const allMessages = await db.messages.find().exec();
+    const allNotes = await db.notes.find().exec();
     const allEmbeddings = await db.embeddings.find().exec();
 
-    // Find messages without embeddings
-    const embeddedMessageIds = new Set(allEmbeddings.map((e) => e.messageId));
+    // Separate embeddings by entity type
+    const messageEmbeddings = allEmbeddings.filter((e) => e.entityType === 'message');
+    const noteEmbeddings = allEmbeddings.filter((e) => e.entityType === 'note');
+
+    // Find entities without embeddings
+    const embeddedMessageIds = new Set(messageEmbeddings.map((e) => e.entityId));
+    const embeddedNoteIds = new Set(noteEmbeddings.map((e) => e.entityId));
     const pendingMessages = allMessages.filter((m) => !embeddedMessageIds.has(m.id));
+    const pendingNotes = allNotes.filter((n) => !embeddedNoteIds.has(n.id));
 
     // Get latest embedding timestamp
     let lastUpdated = 0;
@@ -275,8 +380,11 @@ class MemoryService implements IMemoryService {
 
     return {
       totalMessages: allMessages.length,
-      indexedMessages: allEmbeddings.length,
+      indexedMessages: messageEmbeddings.length,
       pendingMessages: pendingMessages.length,
+      totalNotes: allNotes.length,
+      indexedNotes: noteEmbeddings.length,
+      pendingNotes: pendingNotes.length,
       lastUpdated,
       modelVersion,
     };
@@ -348,8 +456,10 @@ class MemoryService implements IMemoryService {
       throw new Error('Database not initialized');
     }
 
-    // Get all embeddings
-    const allEmbeddings = await db.embeddings.find().exec();
+    // Get all embeddings (only messages for now)
+    const allEmbeddings = await db.embeddings.find({
+      selector: { entityType: 'message' },
+    }).exec();
 
     if (allEmbeddings.length === 0) {
       return {
@@ -362,13 +472,14 @@ class MemoryService implements IMemoryService {
     // Create embedding ID to message ID map
     const embeddingIdToMessageId = new Map<string, string>();
     allEmbeddings.forEach((emb) => {
-      embeddingIdToMessageId.set(emb.id, emb.messageId);
+      embeddingIdToMessageId.set(emb.id, emb.entityId);
     });
 
     // Convert to plain objects for analysis
     const embeddings = allEmbeddings.map((doc) => ({
       id: doc.id,
-      messageId: doc.messageId,
+      entityType: doc.entityType,
+      entityId: doc.entityId,
       vector: doc.vector,
       modelVersion: doc.modelVersion,
       createdAt: doc.createdAt,

@@ -129,3 +129,39 @@ Object.defineProperty(globalThis, 'crypto', {
   value: mockCrypto,
   writable: true,
 });
+
+/**
+ * Creates a mock embedding with the new schema format
+ */
+export function createMockEmbedding(overrides: {
+  id?: string;
+  entityType?: 'message' | 'note';
+  entityId?: string;
+  messageId?: string; // Legacy, will be used as entityId if entityId not provided
+  vector?: number[];
+  modelVersion?: string;
+  createdAt?: number;
+} = {}): {
+  id: string;
+  entityType: 'message' | 'note';
+  entityId: string;
+  vector: number[];
+  modelVersion: string;
+  createdAt: number;
+} {
+  const id = overrides.id ?? crypto.randomUUID();
+  const entityType = overrides.entityType ?? 'message';
+  const entityId = overrides.entityId ?? overrides.messageId ?? crypto.randomUUID();
+  const vector = overrides.vector ?? Array.from({ length: 384 }, () => Math.random() * 2 - 1);
+  const modelVersion = overrides.modelVersion ?? 'all-MiniLM-L6-v2@v0';
+  const createdAt = overrides.createdAt ?? Date.now();
+
+  return {
+    id,
+    entityType,
+    entityId,
+    vector,
+    modelVersion,
+    createdAt,
+  };
+}

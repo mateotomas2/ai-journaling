@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate, Navigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -13,9 +13,31 @@ import { cn } from '@/lib/utils';
 
 export function JournalPage() {
   const { date } = useParams<{ date: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<ViewMode>(getSelectedTab);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+
+  // Get noteId from URL params for scrolling to specific note
+  const highlightNoteId = searchParams.get('noteId');
+
+  // If noteId is present, ensure we're on notes view and clear the param after initial render
+  useEffect(() => {
+    if (highlightNoteId) {
+      // Switch to notes view if not already
+      if (viewMode !== 'notes') {
+        setViewMode('notes');
+        setSelectedTab('notes');
+      }
+
+      // Clear the noteId param after a short delay to allow scrolling
+      const timeout = setTimeout(() => {
+        setSearchParams({}, { replace: true });
+      }, 2000); // Clear after 2 seconds (animation duration + buffer)
+
+      return () => clearTimeout(timeout);
+    }
+  }, [highlightNoteId, viewMode, setSearchParams]);
 
   // Validate date from URL
   const dayId = date && isValidDayId(date) ? date : null;
@@ -128,7 +150,7 @@ export function JournalPage() {
 
       {/* Content */}
       <div className="flex-1 rounded-xl border border-border bg-card shadow-sm overflow-auto">
-        <JournalPageContent dayId={dayId} viewMode={viewMode} />
+        <JournalPageContent dayId={dayId} viewMode={viewMode} highlightNoteId={highlightNoteId} />
       </div>
     </div>
   );
@@ -137,13 +159,14 @@ export function JournalPage() {
 interface JournalPageContentProps {
   dayId: string;
   viewMode: ViewMode;
+  highlightNoteId?: string | null;
 }
 
-function JournalPageContent({ dayId, viewMode }: JournalPageContentProps) {
+function JournalPageContent({ dayId, viewMode, highlightNoteId }: JournalPageContentProps) {
   return (
     <>
       {viewMode === 'notes' ? (
-        <NotesList dayId={dayId} />
+        <NotesList dayId={dayId} highlightNoteId={highlightNoteId ?? undefined} />
       ) : (
         <ChatInterface dayId={dayId} />
       )}

@@ -27,6 +27,7 @@ interface NoteCardProps {
   onUpdateCategory?: (noteId: string, category: string) => Promise<void>;
   suggestedCategories?: string[];
   isSpecialCategory?: boolean; // For summary or other special categories
+  highlight?: boolean; // Whether to highlight and scroll to this note
 }
 
 export function NoteCard({
@@ -36,14 +37,32 @@ export function NoteCard({
   onUpdateCategory,
   suggestedCategories = [],
   isSpecialCategory = false,
+  highlight = false,
 }: NoteCardProps) {
   const [editedContent, setEditedContent] = useState(note.content);
   const [editedTitle, setEditedTitle] = useState(note.title || '');
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [isHighlighted, setIsHighlighted] = useState(false);
   const saveTimeoutRef = useRef<number | null>(null);
   const editorRef = useRef<MDXEditorMethods>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Handle highlight and scroll
+  useEffect(() => {
+    if (highlight && cardRef.current) {
+      // Scroll to the card
+      cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Trigger highlight animation
+      setIsHighlighted(true);
+      // Remove highlight after animation completes
+      const timeout = setTimeout(() => {
+        setIsHighlighted(false);
+      }, 1500);
+      return () => clearTimeout(timeout);
+    }
+  }, [highlight]);
 
   useEffect(() => {
     setEditedContent(note.content);
@@ -115,7 +134,14 @@ export function NoteCard({
   };
 
   return (
-    <div className="bg-card text-card-foreground rounded-lg shadow-sm border border-border p-4 mb-4">
+    <div
+      ref={cardRef}
+      className={`bg-card text-card-foreground rounded-lg shadow-sm border p-4 mb-4 transition-all duration-500 ${
+        isHighlighted
+          ? 'border-primary ring-2 ring-primary/30 bg-primary/5'
+          : 'border-border'
+      }`}
+    >
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2 flex-1">

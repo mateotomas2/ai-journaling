@@ -7,6 +7,7 @@ import { describe, test, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { createDatabase, closeDatabase } from '../../src/db';
 import { embeddingService } from '../../src/services/embedding/generator';
 import { memoryService } from '../../src/services/memory/search';
+import { isMessageResult } from '../../specs/006-vector-memory/contracts/memory-service';
 import type { Message } from '../../src/types/entities';
 
 describe('Memory Pipeline Integration', () => {
@@ -56,7 +57,8 @@ describe('Memory Pipeline Integration', () => {
 
     await db.embeddings.insert({
       id: crypto.randomUUID(),
-      messageId: message.id,
+      entityType: 'message',
+      entityId: message.id,
       vector: Array.from(embedding.vector),
       modelVersion: embedding.modelVersion,
       createdAt: Date.now(),
@@ -64,7 +66,7 @@ describe('Memory Pipeline Integration', () => {
 
     // Verify embedding was created
     const storedEmbedding = await db.embeddings
-      .find({ selector: { messageId: message.id } })
+      .find({ selector: { entityType: 'message', entityId: message.id } })
       .exec();
 
     expect(storedEmbedding).toHaveLength(1);
@@ -102,7 +104,8 @@ describe('Memory Pipeline Integration', () => {
       const embedding = await embeddingService.generateEmbedding(message.content);
       await db.embeddings.insert({
         id: crypto.randomUUID(),
-        messageId: message.id,
+        entityType: 'message',
+        entityId: message.id,
         vector: Array.from(embedding.vector),
         modelVersion: embedding.modelVersion,
         createdAt: Date.now(),
@@ -120,7 +123,9 @@ describe('Memory Pipeline Integration', () => {
     // Should only include recent entry
     expect(results.length).toBeGreaterThan(0);
     results.forEach((result) => {
-      expect(result.message.timestamp).toBeGreaterThan(now - 2 * 24 * 60 * 60 * 1000);
+      if (isMessageResult(result)) {
+        expect(result.message.timestamp).toBeGreaterThan(now - 2 * 24 * 60 * 60 * 1000);
+      }
     });
   });
 });

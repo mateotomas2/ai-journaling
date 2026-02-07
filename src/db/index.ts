@@ -70,6 +70,14 @@ export async function createDatabase(passphrase: string): Promise<JournalDatabas
     },
     embeddings: {
       schema: embeddingSchema,
+      migrationStrategies: {
+        // Migration from v0 to v1: Convert messageId to entityType + entityId
+        1: (oldDoc: { id: string; messageId: string; vector: number[]; modelVersion: string; createdAt: number }) => ({
+          ...oldDoc,
+          entityType: 'message' as const,
+          entityId: oldDoc.messageId,
+        }),
+      },
     },
   });
 

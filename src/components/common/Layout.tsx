@@ -113,8 +113,12 @@ export function Layout({ children }: LayoutProps) {
       <MemorySearch
         open={isSearchOpen}
         onOpenChange={setIsSearchOpen}
-        onResultSelect={(_messageId, dayId) => {
-          navigate(`/journal/${dayId}`);
+        onResultSelect={(entityType, entityId, dayId) => {
+          if (entityType === 'note') {
+            navigate(`/journal/${dayId}?noteId=${entityId}`);
+          } else {
+            navigate(`/journal/${dayId}`);
+          }
         }}
       />
     </div>

@@ -5,7 +5,7 @@
 
 import { describe, test, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { createDatabase, closeDatabase } from '../../src/db';
-import type { Embedding } from '../../src/types/entities';
+import { createMockEmbedding } from '../setup';
 
 describe('Embedding Encryption', () => {
   const TEST_PASSWORD = 'test-encryption-password-123';
@@ -34,13 +34,7 @@ describe('Embedding Encryption', () => {
     if (!db) throw new Error('Database not initialized');
 
     // Create test embedding
-    const testEmbedding: Embedding = {
-      id: crypto.randomUUID(),
-      messageId: crypto.randomUUID(),
-      vector: Array.from({ length: 384 }, () => Math.random() * 2 - 1), // Random values [-1, 1]
-      modelVersion: 'all-MiniLM-L6-v2@v0',
-      createdAt: Date.now(),
-    };
+    const testEmbedding = createMockEmbedding();
 
     // Insert embedding
     await db.embeddings.insert(testEmbedding);
@@ -50,7 +44,8 @@ describe('Embedding Encryption', () => {
 
     expect(retrieved).toBeTruthy();
     expect(retrieved?.id).toBe(testEmbedding.id);
-    expect(retrieved?.messageId).toBe(testEmbedding.messageId);
+    expect(retrieved?.entityType).toBe(testEmbedding.entityType);
+    expect(retrieved?.entityId).toBe(testEmbedding.entityId);
     expect(retrieved?.vector).toHaveLength(384);
     expect(retrieved?.modelVersion).toBe(testEmbedding.modelVersion);
     expect(retrieved?.createdAt).toBe(testEmbedding.createdAt);
@@ -67,13 +62,7 @@ describe('Embedding Encryption', () => {
 
     // Create test embedding with known values
     const testVector = Array.from({ length: 384 }, (_, i) => i / 384); // Sequential values
-    const testEmbedding: Embedding = {
-      id: crypto.randomUUID(),
-      messageId: crypto.randomUUID(),
-      vector: testVector,
-      modelVersion: 'all-MiniLM-L6-v2@v0',
-      createdAt: Date.now(),
-    };
+    const testEmbedding = createMockEmbedding({ vector: testVector });
 
     // Insert embedding
     const doc = await db.embeddings.insert(testEmbedding);
@@ -97,16 +86,10 @@ describe('Embedding Encryption', () => {
 
     // Create multiple test embeddings
     const embeddingsCount = 10;
-    const testEmbeddings: Embedding[] = [];
+    const testEmbeddings = [];
 
     for (let i = 0; i < embeddingsCount; i++) {
-      testEmbeddings.push({
-        id: crypto.randomUUID(),
-        messageId: crypto.randomUUID(),
-        vector: Array.from({ length: 384 }, () => Math.random() * 2 - 1),
-        modelVersion: 'all-MiniLM-L6-v2@v0',
-        createdAt: Date.now() + i,
-      });
+      testEmbeddings.push(createMockEmbedding({ createdAt: Date.now() + i }));
     }
 
     // Insert all embeddings
@@ -122,7 +105,7 @@ describe('Embedding Encryption', () => {
       const found = retrieved.find((e) => e.id === embedding.id);
 
       expect(found).toBeTruthy();
-      expect(found?.messageId).toBe(embedding.messageId);
+      expect(found?.entityId).toBe(embedding.entityId);
       expect(found?.vector).toHaveLength(384);
       expect(found?.modelVersion).toBe(embedding.modelVersion);
     }
@@ -148,13 +131,7 @@ describe('Embedding Encryption', () => {
       preciseVector[i] = preciseVector[i]! / magnitude;
     }
 
-    const testEmbedding: Embedding = {
-      id: crypto.randomUUID(),
-      messageId: crypto.randomUUID(),
-      vector: preciseVector,
-      modelVersion: 'all-MiniLM-L6-v2@v0',
-      createdAt: Date.now(),
-    };
+    const testEmbedding = createMockEmbedding({ vector: preciseVector });
 
     // Insert and retrieve
     await db.embeddings.insert(testEmbedding);
@@ -171,42 +148,28 @@ describe('Embedding Encryption', () => {
     }
   });
 
-  test('should query embeddings by messageId index', async () => {
+  test('should query embeddings by entityId index', async () => {
     const db = await import('../../src/db').then((m) => m.getDatabase());
     if (!db) throw new Error('Database not initialized');
 
-    const messageId = crypto.randomUUID();
+    const entityId = crypto.randomUUID();
 
-    // Create multiple embeddings for the same message
-    // (In practice, there should only be one, but testing index functionality)
-    const embedding1: Embedding = {
-      id: crypto.randomUUID(),
-      messageId,
-      vector: Array.from({ length: 384 }, () => Math.random() * 2 - 1),
-      modelVersion: 'all-MiniLM-L6-v2@v0',
-      createdAt: Date.now(),
-    };
-
-    const embedding2: Embedding = {
-      id: crypto.randomUUID(),
-      messageId: crypto.randomUUID(), // Different message
-      vector: Array.from({ length: 384 }, () => Math.random() * 2 - 1),
-      modelVersion: 'all-MiniLM-L6-v2@v0',
-      createdAt: Date.now() + 1000,
-    };
+    // Create multiple embeddings for the same entity
+    const embedding1 = createMockEmbedding({ entityId });
+    const embedding2 = createMockEmbedding({ createdAt: Date.now() + 1000 }); // Different entity
 
     await db.embeddings.insert(embedding1);
     await db.embeddings.insert(embedding2);
 
-    // Query by messageId (using index)
+    // Query by entityId (using index)
     const results = await db.embeddings
       .find({
-        selector: { messageId },
+        selector: { entityType: 'message', entityId },
       })
       .exec();
 
     expect(results).toHaveLength(1);
-    expect(results[0]?.messageId).toBe(messageId);
+    expect(results[0]?.entityId).toBe(entityId);
     expect(results[0]?.id).toBe(embedding1.id);
   });
 
@@ -217,28 +180,10 @@ describe('Embedding Encryption', () => {
     const now = Date.now();
 
     // Create embeddings with different timestamps
-    const embeddings: Embedding[] = [
-      {
-        id: crypto.randomUUID(),
-        messageId: crypto.randomUUID(),
-        vector: Array.from({ length: 384 }, () => Math.random() * 2 - 1),
-        modelVersion: 'all-MiniLM-L6-v2@v0',
-        createdAt: now - 3000,
-      },
-      {
-        id: crypto.randomUUID(),
-        messageId: crypto.randomUUID(),
-        vector: Array.from({ length: 384 }, () => Math.random() * 2 - 1),
-        modelVersion: 'all-MiniLM-L6-v2@v0',
-        createdAt: now - 2000,
-      },
-      {
-        id: crypto.randomUUID(),
-        messageId: crypto.randomUUID(),
-        vector: Array.from({ length: 384 }, () => Math.random() * 2 - 1),
-        modelVersion: 'all-MiniLM-L6-v2@v0',
-        createdAt: now - 1000,
-      },
+    const embeddings = [
+      createMockEmbedding({ createdAt: now - 3000 }),
+      createMockEmbedding({ createdAt: now - 2000 }),
+      createMockEmbedding({ createdAt: now - 1000 }),
     ];
 
     await db.embeddings.bulkInsert(embeddings);
@@ -262,7 +207,8 @@ describe('Embedding Encryption', () => {
     // Try to insert embedding with wrong vector dimensions
     const invalidEmbedding = {
       id: crypto.randomUUID(),
-      messageId: crypto.randomUUID(),
+      entityType: 'message' as const,
+      entityId: crypto.randomUUID(),
       vector: [1, 2, 3], // Only 3 dimensions instead of 384
       modelVersion: 'all-MiniLM-L6-v2@v0',
       createdAt: Date.now(),
@@ -278,7 +224,8 @@ describe('Embedding Encryption', () => {
     // Try to insert embedding with out-of-range values
     const invalidEmbedding = {
       id: crypto.randomUUID(),
-      messageId: crypto.randomUUID(),
+      entityType: 'message' as const,
+      entityId: crypto.randomUUID(),
       vector: Array.from({ length: 384 }, () => 2.0), // Values > 1.0
       modelVersion: 'all-MiniLM-L6-v2@v0',
       createdAt: Date.now(),

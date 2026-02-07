@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useDatabase } from './useDatabase';
 import type { Note } from '../types/entities';
+import { memoryService } from '../services/memory/search';
 
 /**
  * Hook to manage notes for a specific day
@@ -61,7 +62,14 @@ export function useNotes(dayId: string, category?: string) {
           createdAt: Date.now(),
           updatedAt: Date.now(),
         });
-        return note.toJSON();
+        const noteJson = note.toJSON();
+
+        // Index the note for vector search
+        memoryService.indexNote(noteJson).catch((err) => {
+          console.error('Failed to index note:', err);
+        });
+
+        return noteJson;
       } catch (err) {
         const error = err as Error;
         setError(error);
@@ -83,6 +91,11 @@ export function useNotes(dayId: string, category?: string) {
           content,
           ...(title !== undefined && { title }),
           updatedAt: Date.now(),
+        });
+
+        // Re-index the note for vector search
+        memoryService.reindexNote(noteId).catch((err) => {
+          console.error('Failed to reindex note:', err);
         });
       } catch (err) {
         const error = err as Error;
@@ -122,6 +135,11 @@ export function useNotes(dayId: string, category?: string) {
         throw new Error('Note not found');
       }
       await doc.remove();
+
+      // Remove from vector search index
+      memoryService.removeNoteFromIndex(noteId).catch((err) => {
+        console.error('Failed to remove note from index:', err);
+      });
     } catch (err) {
       const error = err as Error;
       setError(error);

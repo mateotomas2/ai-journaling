@@ -2,7 +2,7 @@ import type { RxJsonSchema } from 'rxdb';
 import type { Embedding } from '../../types/entities';
 
 export const embeddingSchema: RxJsonSchema<Embedding> = {
-  version: 0,
+  version: 1,
   primaryKey: 'id',
   type: 'object',
   properties: {
@@ -10,9 +10,18 @@ export const embeddingSchema: RxJsonSchema<Embedding> = {
       type: 'string',
       maxLength: 36, // UUID
     },
-    messageId: {
+    entityType: {
+      type: 'string',
+      enum: ['message', 'note'],
+      maxLength: 10,
+    },
+    entityId: {
       type: 'string',
       maxLength: 36, // UUID
+    },
+    messageId: {
+      type: 'string',
+      maxLength: 36, // UUID - Deprecated: kept for migration compatibility
     },
     vector: {
       type: 'array',
@@ -36,8 +45,8 @@ export const embeddingSchema: RxJsonSchema<Embedding> = {
       maximum: 4102444799999, // 2099-12-31
     },
   },
-  required: ['id', 'messageId', 'vector', 'modelVersion', 'createdAt'],
-  indexes: ['messageId', 'createdAt'],
+  required: ['id', 'entityType', 'entityId', 'vector', 'modelVersion', 'createdAt'],
+  indexes: ['entityType', 'entityId', 'createdAt'],
   encrypted: ['vector'], // Encrypt vectors at rest using existing RxDB encryption
   additionalProperties: false,
 };

@@ -4,11 +4,12 @@
  */
 
 import type { MemorySearchResult } from '../../../specs/006-vector-memory/contracts/memory-service';
+import { isMessageResult, isNoteResult } from '../../../specs/006-vector-memory/contracts/memory-service';
 import { Card, CardContent, CardHeader } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { formatDayId, formatShortDate } from '../../utils/date.utils';
 import { cn } from '@/lib/utils';
-import { Calendar, Hash, TrendingUp } from 'lucide-react';
+import { Calendar, Hash, TrendingUp, MessageSquare, FileText } from 'lucide-react';
 
 export interface SearchResultsProps {
   /** Search results to display */
@@ -71,58 +72,88 @@ export function SearchResults({
 
   return (
     <div className={cn('space-y-3', className)}>
-      {results.map((result) => (
-        <Card
-          key={result.message.id}
-          className={cn(
-            'transition-all hover:shadow-md border-l-4',
-            getRelevanceBorderColor(result.score),
-            onResultClick && 'cursor-pointer'
-          )}
-          onClick={() => onResultClick?.(result)}
-        >
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between gap-2">
-              {/* Date and Rank */}
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <Calendar className="w-4 h-4" />
-                  <span className="font-medium">
-                    {formatShortDate(result.message.dayId)}
-                  </span>
-                </div>
-                {result.rank && (
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Hash className="w-3 h-3" />
-                    <span>{result.rank}</span>
+      {results.map((result) => {
+        const isNote = isNoteResult(result);
+        const isMessage = isMessageResult(result);
+        const entityId = result.entityId;
+        const dayId = result.dayId;
+
+        return (
+          <Card
+            key={entityId}
+            className={cn(
+              'transition-all hover:shadow-md border-l-4',
+              getRelevanceBorderColor(result.score),
+              onResultClick && 'cursor-pointer'
+            )}
+            onClick={() => onResultClick?.(result)}
+          >
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between gap-2">
+                {/* Type icon, Date and Rank */}
+                <div className="flex items-center gap-3">
+                  {/* Entity type icon */}
+                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    {isNote ? (
+                      <FileText className="w-4 h-4" />
+                    ) : (
+                      <MessageSquare className="w-4 h-4" />
+                    )}
                   </div>
-                )}
+
+                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <Calendar className="w-4 h-4" />
+                    <span className="font-medium">
+                      {formatShortDate(dayId)}
+                    </span>
+                  </div>
+                  {result.rank && (
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Hash className="w-3 h-3" />
+                      <span>{result.rank}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Category badge for notes and relevance badge */}
+                <div className="flex items-center gap-2">
+                  {isNote && result.note.category && (
+                    <Badge variant="outline" className="text-xs">
+                      {result.note.category}
+                    </Badge>
+                  )}
+                  <Badge
+                    variant={getRelevanceBadgeVariant(result.score)}
+                    className="text-xs flex items-center gap-1"
+                  >
+                    <TrendingUp className="w-3 h-3" />
+                    {(result.score * 100).toFixed(0)}%
+                  </Badge>
+                </div>
+              </div>
+            </CardHeader>
+
+            <CardContent className="space-y-2">
+              {/* Note title if present */}
+              {isNote && result.note.title && (
+                <div className="text-sm font-medium text-card-foreground">
+                  {result.note.title}
+                </div>
+              )}
+
+              {/* Excerpt */}
+              <div className="text-sm leading-relaxed text-card-foreground">
+                {result.excerpt || (isNote ? result.note.content : isMessage ? result.message.content : '')}
               </div>
 
-              {/* Relevance Badge */}
-              <Badge
-                variant={getRelevanceBadgeVariant(result.score)}
-                className="text-xs flex items-center gap-1"
-              >
-                <TrendingUp className="w-3 h-3" />
-                {(result.score * 100).toFixed(0)}%
-              </Badge>
-            </div>
-          </CardHeader>
-
-          <CardContent className="space-y-2">
-            {/* Excerpt */}
-            <div className="text-sm leading-relaxed text-card-foreground">
-              {result.excerpt || result.message.content}
-            </div>
-
-            {/* Full Date */}
-            <div className="text-xs text-muted-foreground/60">
-              {formatDayId(result.message.dayId)}
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+              {/* Full Date */}
+              <div className="text-xs text-muted-foreground/60">
+                {formatDayId(dayId)}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 }

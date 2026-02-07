@@ -54,9 +54,13 @@ export interface AIModel {
   contextLength?: number;
 }
 
+export type EmbeddingEntityType = 'message' | 'note';
+
 export interface Embedding {
   id: string;
-  messageId: string;
+  entityType: EmbeddingEntityType;
+  entityId: string;
+  messageId?: string; // Deprecated: kept for migration compatibility
   vector: number[]; // 384-dimension array, stored as JSON, converted to Float32Array for computation
   modelVersion: string; // Format: "model-name@version" e.g., "all-MiniLM-L6-v2@v0"
   createdAt: number;
