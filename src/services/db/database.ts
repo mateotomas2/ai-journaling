@@ -1,9 +1,13 @@
-import { createRxDatabase, type RxDatabase, type RxCollection } from 'rxdb';
+import { createRxDatabase, type RxDatabase, type RxCollection, addRxPlugin } from 'rxdb';
 import { getRxStorageDexie } from 'rxdb/plugins/storage-dexie';
 import { wrappedKeyEncryptionCryptoJsStorage } from 'rxdb/plugins/encryption-crypto-js';
 import { settingsSchema, daySchema, messageSchema, summarySchema } from './schemas';
 import { noteSchema } from '../../db/schemas/note.schema';
 import type { Settings, Day, Message, Summary, Note } from '@/types';
+import { RxDBMigrationSchemaPlugin } from 'rxdb/plugins/migration-schema';
+
+// Add this BEFORE you call createRxDatabase
+addRxPlugin(RxDBMigrationSchemaPlugin);
 
 // Collection types
 export type SettingsCollection = RxCollection<Settings>;

@@ -1,50 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Privacy-first AI-powered journaling with local vector memory" />
-    <meta name="theme-color" content="#6366f1" />
 
-    <!-- Content Security Policy -->
-    <meta http-equiv="Content-Security-Policy" content="
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Privacy-first AI-powered journaling with local vector memory" />
+  <meta name="theme-color" content="#6366f1" />
+
+  <!-- Content Security Policy -->
+  <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
-      script-src 'self' 'wasm-unsafe-eval';
+      script-src 'self' 'wasm-unsafe-eval' 'sha256-LYVj++XY5e4os9/qlqVr9tEESqquDE9H4spWfTJu0mA=';
       style-src 'self' 'unsafe-inline';
       connect-src 'self' https://openrouter.ai https://huggingface.co https://*.huggingface.co https://cdn.jsdelivr.net;
       img-src 'self' data: blob:;
       worker-src 'self' blob:;
       font-src 'self' data:;
+      frame-src 'self' https://rxdb.info/;
     ">
 
-    <!-- iOS-specific meta tags -->
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="AI Journal" />
+  <!-- iOS-specific meta tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="AI Journal" />
 
-    <!-- Icons -->
-    <link rel="icon" type="image/png" sizes="16x16" href="/ai-journaling/icons/icon-16x16.png" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/ai-journaling/icons/icon-32x32.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/ai-journaling/icons/apple-touch-icon.png" />
+  <!-- Icons -->
+  <link rel="icon" type="image/png" sizes="16x16" href="/ai-journaling/icons/icon-16x16.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/ai-journaling/icons/icon-32x32.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/ai-journaling/icons/apple-touch-icon.png" />
 
-    <script>
-      // Single Page Apps for GitHub Pages
-      // https://github.com/rafgraph/spa-github-pages
-      (function(l) {
-        if (l.search[1] === '/' ) {
-          var decoded = l.search.slice(1).split('&').map(function(s) {
-            return s.replace(/~and~/g, '&')
-          }).join('?');
-          window.history.replaceState(null, null,
-              l.pathname.slice(0, -1) + decoded + l.hash
-          );
-        }
-      }(window.location))
-    </script>
-    <title>AI Journal</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+  <script>
+    // Single Page Apps for GitHub Pages
+    // https://github.com/rafgraph/spa-github-pages
+    (function (l) {
+      if (l.search[1] === '/') {
+        var decoded = l.search.slice(1).split('&').map(function (s) {
+          return s.replace(/~and~/g, '&')
+        }).join('?');
+        window.history.replaceState(null, null,
+          l.pathname.slice(0, -1) + decoded + l.hash
+        );
+      }
+    }(window.location))
+  </script>
+  <title>AI Journal</title>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
 </html>

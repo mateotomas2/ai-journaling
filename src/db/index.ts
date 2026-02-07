@@ -12,6 +12,10 @@ import { embeddingSchema } from './schemas/embedding.schema';
 import type { Settings } from '../types';
 import type { Day, Message, Summary, Note, Embedding } from '../types/entities';
 import { migrateSummariesToNotes } from './migrations/summary-to-notes';
+import { RxDBMigrationSchemaPlugin } from 'rxdb/plugins/migration-schema';
+
+// Add this BEFORE you call createRxDatabase
+addRxPlugin(RxDBMigrationSchemaPlugin);
 
 // Add dev mode plugin in development
 if (import.meta.env.DEV) {
