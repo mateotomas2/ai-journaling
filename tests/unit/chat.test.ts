@@ -40,11 +40,24 @@ describe('Chat Service', () => {
       const result = await sendChatMessage(messages, apiKey);
 
       expect(result).toBe('Hello! How can I help you today?');
-      expect(mockFetch).toHaveBeenCalledWith('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages, apiKey }),
-      });
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://openrouter.ai/api/v1/chat/completions',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Authorization': 'Bearer sk-or-test-key',
+            'Content-Type': 'application/json',
+          }),
+          body: expect.any(String),
+        })
+      );
+
+      // Verify body structure
+      const callArgs = mockFetch.mock.calls[0];
+      expect(callArgs).toBeDefined();
+      const body = JSON.parse(callArgs![1].body);
+      expect(body.messages).toEqual(messages);
+      expect(body.model).toBe('openai/gpt-4o');
     });
 
     it('should throw error when API returns error', async () => {

@@ -4,7 +4,16 @@
  * Based on: https://huggingface.co/docs/transformers.js/tutorials/react
  */
 
-import { pipeline } from '@huggingface/transformers';
+import { pipeline, type FeatureExtractionPipeline } from '@huggingface/transformers';
+
+/**
+ * Progress callback type for model loading
+ */
+type ProgressInfo = {
+  status: string;
+  file?: string;
+  progress?: number;
+};
 
 /**
  * Singleton pipeline manager for embedding model
@@ -12,16 +21,19 @@ import { pipeline } from '@huggingface/transformers';
  */
 class MyEmbeddingPipeline {
   static model = 'Xenova/all-MiniLM-L6-v2';
-  static instance: any = null;
+  static instance: Promise<FeatureExtractionPipeline> | null = null;
 
-  static async getInstance(progress_callback: any = null) {
+  static async getInstance(progressCallback?: (progress: ProgressInfo) => void): Promise<FeatureExtractionPipeline> {
     if (!this.instance) {
       console.log('[Worker] Creating new pipeline instance...');
-      this.instance = pipeline('feature-extraction', this.model, {
-        dtype: 'q8',
-        device: 'wasm',
-        progress_callback,
-      });
+      this.instance = (async () => {
+        const result = await pipeline('feature-extraction', this.model, {
+          dtype: 'q8',
+          device: 'wasm',
+          progress_callback: progressCallback,
+        } as Record<string, unknown>);
+        return result as FeatureExtractionPipeline;
+      })();
     }
     return this.instance;
   }
@@ -65,10 +77,11 @@ async function initializeModel(): Promise<void> {
     console.log('[Worker] Downloading model from HuggingFace CDN...');
 
     // Set up progress callback
-    const progressCallback = (progress: any) => {
+    const progressCallback = (progress: ProgressInfo) => {
       if (progress.status === 'progress' && progress.file) {
-        console.log(`[Worker] Downloading ${progress.file}: ${progress.progress?.toFixed(0) || '?'}%`);
-      } else if (progress.status === 'done') {
+        const pct = typeof progress.progress === 'number' ? progress.progress.toFixed(0) : '?';
+        console.log(`[Worker] Downloading ${progress.file}: ${pct}%`);
+      } else if (progress.status === 'done' && progress.file) {
         console.log(`[Worker] Downloaded ${progress.file}`);
       }
     };

@@ -3,9 +3,22 @@
  * Used to derive encryption keys from user passwords
  */
 
-const PBKDF2_ITERATIONS = 100000;
+// NIST SP 800-132 recommends 310,000+ iterations for SHA-256 (2023)
+// Legacy users may have keys derived with 100,000 iterations
+const PBKDF2_ITERATIONS_V2 = 310000;
+const PBKDF2_ITERATIONS_V1 = 100000;
 const SALT_LENGTH = 16;
 const KEY_LENGTH = 256;
+
+/**
+ * Current iteration count for new key derivations
+ */
+export const CURRENT_ITERATIONS = PBKDF2_ITERATIONS_V2;
+
+/**
+ * Legacy iteration count for backward compatibility
+ */
+export const LEGACY_ITERATIONS = PBKDF2_ITERATIONS_V1;
 
 /**
  * Generate a random salt for key derivation
@@ -16,10 +29,14 @@ export function generateSalt(): Uint8Array {
 
 /**
  * Derive an AES-GCM key from a password and salt using PBKDF2
+ * @param password - User's password
+ * @param salt - Random salt bytes
+ * @param iterations - Optional iteration count (defaults to current standard)
  */
 export async function deriveKey(
   password: string,
-  salt: Uint8Array
+  salt: Uint8Array,
+  iterations: number = CURRENT_ITERATIONS
 ): Promise<CryptoKey> {
   const encoder = new TextEncoder();
 
@@ -37,7 +54,7 @@ export async function deriveKey(
     {
       name: 'PBKDF2',
       salt: salt.buffer as ArrayBuffer,
-      iterations: PBKDF2_ITERATIONS,
+      iterations,
       hash: 'SHA-256',
     },
     keyMaterial,

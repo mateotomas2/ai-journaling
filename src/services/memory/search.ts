@@ -19,6 +19,16 @@ import type { RecurringTheme } from './analysis';
 import type { PatternInsight } from './patterns';
 
 /**
+ * Metadata associated with a vector embedding
+ */
+export interface VectorMetadata {
+  messageId?: string;
+  dayId?: string;
+  timestamp?: number;
+  [key: string]: unknown;
+}
+
+/**
  * Compute cosine similarity between two vectors
  * Returns a value between 0 and 1, where 1 means identical
  */
@@ -53,9 +63,9 @@ export function cosineSimilarity(a: Float32Array, b: Float32Array): number {
  */
 export function findSimilar(
   queryVector: Float32Array,
-  vectors: Array<{ id: string; vector: Float32Array; metadata?: any }>,
+  vectors: Array<{ id: string; vector: Float32Array; metadata?: VectorMetadata | undefined }>,
   topK: number = 10
-): Array<{ id: string; score: number; metadata?: any }> {
+): Array<{ id: string; score: number; metadata?: VectorMetadata | undefined }> {
   // Compute similarity scores for all vectors
   const scores = vectors.map((item) => ({
     id: item.id,

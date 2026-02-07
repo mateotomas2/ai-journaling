@@ -4,6 +4,8 @@ export {
   exportKeyAsHex,
   saltToBase64,
   base64ToSalt,
+  CURRENT_ITERATIONS,
+  LEGACY_ITERATIONS,
 } from './keyDerivation';
 
 export { encrypt, decrypt } from './encryption';

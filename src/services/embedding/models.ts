@@ -2,6 +2,13 @@
  * Model configuration and device detection for embedding generation
  */
 
+// WebGPU type declarations for browsers that support it
+interface NavigatorGPU {
+  readonly gpu?: {
+    requestAdapter(): Promise<unknown | null>;
+  };
+}
+
 export const EMBEDDING_MODEL_CONFIG = {
   modelName: 'Xenova/all-MiniLM-L6-v2',
   modelVersion: 'all-MiniLM-L6-v2@v0',
@@ -25,8 +32,9 @@ export async function detectWebGPUSupport(): Promise<boolean> {
   }
 
   try {
-    const adapter = await (navigator as any).gpu.requestAdapter();
-    return adapter !== null;
+    const nav = navigator as NavigatorGPU;
+    const adapter = await nav.gpu?.requestAdapter();
+    return adapter !== null && adapter !== undefined;
   } catch (error) {
     console.warn('[Models] WebGPU detection failed:', error);
     return false;

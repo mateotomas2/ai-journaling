@@ -12,17 +12,20 @@ describe('Query Service', () => {
 
   describe('queryHistory', () => {
     it('should query summaries and return response with citations', async () => {
-      const mockResponse = {
-        response: 'Based on your journal entries, your sleep has been good.',
-        citations: [
-          { date: '2026-01-15', excerpt: 'Slept 8 hours last night' },
-          { date: '2026-01-16', excerpt: 'Felt well-rested' },
+      // Mock OpenRouter API response format
+      const apiResponse = {
+        choices: [
+          {
+            message: {
+              content: 'Based on your journal entries, your sleep has been good.\n---CITATIONS---\n[{"date":"2026-01-15","excerpt":"Slept 8 hours last night"},{"date":"2026-01-16","excerpt":"Felt well-rested"}]',
+            },
+          },
         ],
       };
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve(mockResponse),
+        json: () => Promise.resolve(apiResponse),
       });
 
       const { queryHistory } = await import('@/services/ai/query');
@@ -34,11 +37,14 @@ describe('Query Service', () => {
 
       const result = await queryHistory('How was my sleep?', summaries, 'test-api-key');
 
-      expect(result).toEqual(mockResponse);
-      expect(mockFetch).toHaveBeenCalledWith('/api/query', expect.objectContaining({
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      }));
+      expect(result.response).toBe('Based on your journal entries, your sleep has been good.');
+      expect(result.citations).toHaveLength(2);
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://openrouter.ai/api/v1/chat/completions',
+        expect.objectContaining({
+          method: 'POST',
+        })
+      );
     });
 
     it('should throw error when API fails', async () => {

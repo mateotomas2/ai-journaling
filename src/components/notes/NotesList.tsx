@@ -5,6 +5,8 @@ import { generateSummary } from '@/services/ai/summary.service';
 import { useSettings } from '@/hooks/useSettings';
 import { useDatabase } from '@/hooks/useDatabase';
 import { getSummarizerModel } from '@/services/settings/settings.service';
+import { toast } from 'sonner';
+import { logger } from '@/utils/logger';
 import type { Note, Message } from '@/types';
 
 interface NotesListProps {
@@ -46,7 +48,7 @@ export function NotesList({ dayId }: NotesListProps) {
 
   const handleCreateNote = async () => {
     if (!newCategory.trim() || !newContent.trim()) {
-      alert('Please provide both a category and content for the note.');
+      toast.error('Please provide both a category and content for the note.');
       return;
     }
 
@@ -61,31 +63,32 @@ export function NotesList({ dayId }: NotesListProps) {
       setNewTitle('');
       setNewContent('');
       setShowAddNote(false);
+      toast.success('Note created successfully');
     } catch (err) {
-      console.error('Error creating note:', err);
-      alert('Failed to create note. Please try again.');
+      logger.error('Error creating note:', err);
+      toast.error('Failed to create note. Please try again.');
     }
   };
 
   const handleGenerateSummary = async () => {
-    console.log('[NotesList] Starting summary generation...');
-    console.log('[NotesList] API Key present:', !!apiKey);
-    console.log('[NotesList] Database present:', !!db);
+    logger.debug('[NotesList] Starting summary generation...');
+    logger.debug('[NotesList] API Key present:', !!apiKey);
+    logger.debug('[NotesList] Database present:', !!db);
 
     if (!apiKey) {
-      alert('Please configure your OpenRouter API key in settings first.');
+      toast.error('Please configure your OpenRouter API key in settings first.');
       return;
     }
 
     if (!db) {
-      alert('Database not initialized.');
+      toast.error('Database not initialized.');
       return;
     }
 
     setIsGeneratingSummary(true);
     try {
       // Get all messages for this day
-      console.log('[NotesList] Fetching messages for day:', dayId);
+      logger.debug('[NotesList] Fetching messages for day:', dayId);
       const messageDocs = await db.messages
         .find({
           selector: { dayId },
@@ -93,20 +96,20 @@ export function NotesList({ dayId }: NotesListProps) {
         })
         .exec();
       const messages = messageDocs.map((doc) => doc.toJSON()) as Message[];
-      console.log('[NotesList] Found messages:', messages.length);
+      logger.debug('[NotesList] Found messages:', messages.length);
 
       if (messages.length === 0) {
-        alert('No messages to summarize for this day.');
+        toast.warning('No messages to summarize for this day.');
         setIsGeneratingSummary(false);
         return;
       }
 
       // Get the user's selected summarizer model
       const summarizerModel = await getSummarizerModel(db);
-      console.log('[NotesList] Using model:', summarizerModel);
+      logger.debug('[NotesList] Using model:', summarizerModel);
 
       // Generate summary using AI
-      console.log('[NotesList] Calling generateSummary...');
+      logger.debug('[NotesList] Calling generateSummary...');
       const response = await generateSummary(
         messages,
         dayId,
@@ -114,18 +117,17 @@ export function NotesList({ dayId }: NotesListProps) {
         db,
         summarizerModel
       );
-      console.log('[NotesList] Summary generated, content length:', response.content.length);
+      logger.debug('[NotesList] Summary generated, content length:', response.content.length);
 
       // Create summary note
-      console.log('[NotesList] Creating note...');
+      logger.debug('[NotesList] Creating note...');
       await createNote('summary', response.content);
-      console.log('[NotesList] Note created successfully');
+      logger.debug('[NotesList] Note created successfully');
+      toast.success('Summary generated successfully');
     } catch (err) {
-      console.error('[NotesList] Error generating summary:', err);
+      logger.error('[NotesList] Error generating summary:', err);
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      alert(
-        `Failed to generate summary: ${errorMessage}\n\nPlease check your API key and try again.`
-      );
+      toast.error(`Failed to generate summary: ${errorMessage}`);
     } finally {
       setIsGeneratingSummary(false);
     }
@@ -147,7 +149,7 @@ export function NotesList({ dayId }: NotesListProps) {
       const messages = messageDocs.map((doc) => doc.toJSON()) as Message[];
 
       if (messages.length === 0) {
-        alert('No messages to summarize for this day.');
+        toast.warning('No messages to summarize for this day.');
         setIsGeneratingSummary(false);
         return;
       }
@@ -164,12 +166,11 @@ export function NotesList({ dayId }: NotesListProps) {
       );
 
       await updateNote(summaryNote.id, response.content);
+      toast.success('Summary regenerated successfully');
     } catch (err) {
-      console.error('Error regenerating summary:', err);
+      logger.error('Error regenerating summary:', err);
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      alert(
-        `Failed to regenerate summary: ${errorMessage}\n\nPlease check your API key and try again.`
-      );
+      toast.error(`Failed to regenerate summary: ${errorMessage}`);
     } finally {
       setIsGeneratingSummary(false);
     }

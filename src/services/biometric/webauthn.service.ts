@@ -10,6 +10,34 @@ import {
   BiometricErrorCode,
 } from './types';
 
+/**
+ * PRF (Pseudo-Random Function) extension types for WebAuthn
+ * This extension is not yet in standard TypeScript DOM types
+ * See: https://w3c.github.io/webauthn/#prf-extension
+ */
+interface PRFInput {
+  eval?: {
+    first: BufferSource;
+    second?: BufferSource;
+  };
+}
+
+interface PRFOutput {
+  results?: {
+    first: ArrayBuffer;
+    second?: ArrayBuffer;
+  };
+}
+
+// Using intersection types to avoid 'extends' compatibility issues
+type AuthenticationExtensionsWithPRF = AuthenticationExtensionsClientInputs & {
+  prf?: PRFInput;
+};
+
+type AuthenticationExtensionsOutputWithPRF = AuthenticationExtensionsClientOutputs & {
+  prf?: PRFOutput;
+};
+
 const RP_NAME = 'Daily Journal';
 const RP_ID = window.location.hostname;
 const USER_ID = 'daily-journal-user'; // Single-user app
@@ -148,13 +176,15 @@ export async function authenticateBiometric(
     ];
 
     // Build extensions object with PRF if salt provided
-    const extensions: AuthenticationExtensionsClientInputs = {};
+    const extensions: AuthenticationExtensionsWithPRF = {};
     if (prfSalt) {
       // PRF extension for deterministic secret derivation
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (extensions as any).prf = {
+      // Create a new ArrayBuffer from Uint8Array to ensure proper type
+      const saltBuffer = new ArrayBuffer(prfSalt.length);
+      new Uint8Array(saltBuffer).set(prfSalt);
+      extensions.prf = {
         eval: {
-          first: prfSalt,
+          first: saltBuffer,
         },
       };
     }
@@ -184,12 +214,9 @@ export async function authenticateBiometric(
     const response = credential.response as AuthenticatorAssertionResponse;
 
     // Extract PRF output if available
-    const clientExtensions = credential.getClientExtensionResults();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const prfResults = (clientExtensions as any).prf?.results;
-    const prfOutput = prfResults?.first
-      ? (prfResults.first as ArrayBuffer)
-      : null;
+    const clientExtensions = credential.getClientExtensionResults() as AuthenticationExtensionsOutputWithPRF;
+    const prfResults = clientExtensions.prf?.results;
+    const prfOutput = prfResults?.first ?? null;
 
     return {
       credentialId: arrayBufferToBase64(credential.rawId),

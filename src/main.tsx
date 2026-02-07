@@ -3,6 +3,13 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import './index.css';
 
+// Extend Window interface for PWA update function
+declare global {
+  interface Window {
+    __updateSW?: (reloadPage?: boolean) => Promise<void>;
+  }
+}
+
 const rootElement = document.getElementById('root');
 if (!rootElement) {
   throw new Error('Root element not found');
@@ -29,6 +36,6 @@ if ('serviceWorker' in navigator) {
     });
 
     // Make updateSW available globally for UpdatePrompt component
-    (window as any).__updateSW = updateSW;
+    window.__updateSW = updateSW;
   });
 }

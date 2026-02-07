@@ -1,4 +1,5 @@
 import { useState, useEffect, type FormEvent, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { useDatabase } from '@/hooks/useDatabase';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -138,6 +139,15 @@ export function UnlockPage() {
                       {error}
                     </div>
                   )}
+
+                  <div className="mt-4 text-center">
+                    <Link
+                      to="/forgot-password"
+                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      Forgot password?
+                    </Link>
+                  </div>
                 </CardContent>
               </Card>
             )}
@@ -178,6 +188,15 @@ export function UnlockPage() {
                   {error}
                 </div>
               )}
+
+              <div className="mt-4 text-center">
+                <Link
+                  to="/forgot-password"
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Forgot password?
+                </Link>
+              </div>
             </CardContent>
           </Card>
         )}

@@ -2,6 +2,9 @@ import type { Message } from '../../types/entities';
 import type { JournalDatabase } from '../../db';
 import { SUMMARY_SYSTEM_PROMPT } from './prompts';
 import { getNotesForDay } from '../db/notes';
+import { fetchWithRetry } from '@/utils/fetch';
+import { aiRateLimiter, RateLimitError } from '@/utils/rate-limiter';
+import { logger } from '@/utils/logger';
 
 export interface NoteSummaryResponse {
   content: string;
@@ -14,13 +17,13 @@ export async function generateSummary(
   db: JournalDatabase,
   model?: string
 ): Promise<NoteSummaryResponse> {
-  console.log('[generateSummary] Starting with', messages.length, 'messages');
-  console.log('[generateSummary] Model:', model || 'openai/gpt-4o (default)');
+  logger.debug('[generateSummary] Starting with', messages.length, 'messages');
+  logger.debug('[generateSummary] Model:', model || 'openai/gpt-4o (default)');
 
   // Fetch same-day notes (excluding summary category)
   const allNotes = await getNotesForDay(db, date);
   const notes = allNotes.filter((note) => note.category !== 'summary');
-  console.log('[generateSummary] Found', notes.length, 'notes for context');
+  logger.debug('[generateSummary] Found', notes.length, 'notes for context');
 
   // Format notes into context string
   let notesContext = '';
@@ -39,8 +42,8 @@ export async function generateSummary(
     .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
     .join('\n\n');
 
-  console.log('[generateSummary] Conversation length:', conversationText.length, 'characters');
-  console.log('[generateSummary] Notes context length:', notesContext.length, 'characters');
+  logger.debug('[generateSummary] Conversation length:', conversationText.length, 'characters');
+  logger.debug('[generateSummary] Notes context length:', notesContext.length, 'characters');
 
   // Build the prompt with notes context if available
   let userPrompt = `Please summarize the following journal conversation from ${date}:`;
@@ -62,24 +65,37 @@ export async function generateSummary(
     ],
   };
 
-  console.log('[generateSummary] Making API request to OpenRouter...');
+  logger.debug('[generateSummary] Making API request to OpenRouter...');
 
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  // Check rate limit before making request
+  if (!aiRateLimiter.canMakeRequest()) {
+    const resetTime = aiRateLimiter.getResetTime();
+    throw new RateLimitError(
+      resetTime,
+      `Rate limit exceeded. Try again in ${Math.ceil(resetTime / 1000)} seconds.`
+    );
+  }
+
+  aiRateLimiter.recordRequest();
+
+  const response = await fetchWithRetry('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
-      'HTTP-Referer': 'https://reflekt.app',
+      'HTTP-Referer': typeof window !== 'undefined' ? window.location.origin : 'https://localhost',
       'X-Title': 'Reflekt Journal',
     },
     body: JSON.stringify(requestBody),
+    timeout: 90000, // 90 seconds for summary generation
+    maxRetries: 2,
   });
 
-  console.log('[generateSummary] Response status:', response.status, response.statusText);
+  logger.debug('[generateSummary] Response status:', response.status, response.statusText);
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({})) as { error?: { message?: string } };
-    console.error('[generateSummary] Error response:', errorData);
+    logger.error('[generateSummary] Error response:', errorData);
     const errorMessage = errorData.error?.message || 'Summary generation failed';
     throw new Error(errorMessage);
   }
@@ -88,15 +104,15 @@ export async function generateSummary(
     choices: Array<{ message: { content: string } }>;
   };
 
-  console.log('[generateSummary] Response data:', data);
+  logger.debug('[generateSummary] Response data:', data);
 
   const content = data.choices[0]?.message?.content;
   if (!content) {
-    console.error('[generateSummary] No content in response');
+    logger.error('[generateSummary] No content in response');
     throw new Error('No response from AI');
   }
 
-  console.log('[generateSummary] Generated content length:', content.length);
+  logger.debug('[generateSummary] Generated content length:', content.length);
 
   // Return the markdown content directly
   return { content: content.trim() };

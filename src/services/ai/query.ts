@@ -1,5 +1,7 @@
 import type { QueryResponse } from '@/types';
 import { QUERY_SYSTEM_PROMPT } from './prompts';
+import { fetchWithRetry } from '@/utils/fetch';
+import { aiRateLimiter, RateLimitError } from '@/utils/rate-limiter';
 
 interface SummaryForQuery {
   date: string;
@@ -23,12 +25,23 @@ export async function queryHistory(
     .map((s) => `=== ${s.date} ===\n${s.rawContent}`)
     .join('\n\n');
 
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  // Check rate limit before making request
+  if (!aiRateLimiter.canMakeRequest()) {
+    const resetTime = aiRateLimiter.getResetTime();
+    throw new RateLimitError(
+      resetTime,
+      `Rate limit exceeded. Try again in ${Math.ceil(resetTime / 1000)} seconds.`
+    );
+  }
+
+  aiRateLimiter.recordRequest();
+
+  const response = await fetchWithRetry('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
-      'HTTP-Referer': 'https://reflekt.app',
+      'HTTP-Referer': typeof window !== 'undefined' ? window.location.origin : 'https://localhost',
       'X-Title': 'Reflekt Journal',
     },
     body: JSON.stringify({
@@ -41,6 +54,8 @@ export async function queryHistory(
         },
       ],
     }),
+    timeout: 60000,
+    maxRetries: 2,
   });
 
   if (!response.ok) {

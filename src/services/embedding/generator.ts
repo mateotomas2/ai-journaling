@@ -20,6 +20,7 @@ class EmbeddingService implements IEmbeddingService {
     string,
     { resolve: (value: EmbeddingResult) => void; reject: (error: Error) => void }
   > = new Map();
+  private initPromise: Promise<void> | null = null;
 
   /**
    * Initialize the embedding service and load the model
@@ -30,22 +31,30 @@ class EmbeddingService implements IEmbeddingService {
       return;
     }
 
-    if (this.isLoading) {
-      // Wait for existing initialization to complete
-      return new Promise((resolve, reject) => {
-        const checkReady = setInterval(() => {
-          if (this.isReady) {
-            clearInterval(checkReady);
-            resolve();
-          } else if (!this.isLoading) {
-            clearInterval(checkReady);
-            reject(new Error('Initialization failed'));
-          }
-        }, 100);
-      });
+    // If initialization is in progress, return the existing promise
+    // This avoids polling and multiple concurrent initializations
+    if (this.initPromise) {
+      return this.initPromise;
     }
 
     this.isLoading = true;
+    this.initPromise = this.doInitialize();
+
+    try {
+      await this.initPromise;
+    } finally {
+      // Clear the promise after completion (success or failure)
+      // This allows retry on failure
+      if (!this.isReady) {
+        this.initPromise = null;
+      }
+    }
+  }
+
+  /**
+   * Internal initialization logic
+   */
+  private async doInitialize(): Promise<void> {
 
     try {
       console.log('[EmbeddingService] Creating Web Worker...');

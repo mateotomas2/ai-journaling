@@ -18,6 +18,8 @@ import {
   generateWrappingSalt,
   bytesToBase64,
   base64ToBytes,
+  CURRENT_ITERATIONS,
+  LEGACY_ITERATIONS,
 } from '@/services/crypto';
 import {
   registerBiometric,
@@ -31,8 +33,30 @@ import {
 } from '@/services/biometric';
 
 const SALT_STORAGE_KEY = 'reflekt_salt';
+const ITERATIONS_STORAGE_KEY = 'reflekt_iterations';
 const BIOMETRIC_ENABLED_KEY = 'reflekt_biometric_enabled';
 const BIOMETRIC_CREDENTIAL_ID_KEY = 'reflekt_biometric_credential_id';
+
+/**
+ * Get the PBKDF2 iteration count for key derivation.
+ * Returns stored value for existing users, or current standard for new users.
+ */
+function getIterations(): number {
+  const stored = localStorage.getItem(ITERATIONS_STORAGE_KEY);
+  if (stored) {
+    const parsed = parseInt(stored, 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+  // Legacy users don't have iterations stored - use old value for compatibility
+  const hasSalt = localStorage.getItem(SALT_STORAGE_KEY);
+  if (hasSalt) {
+    return LEGACY_ITERATIONS;
+  }
+  // New users get current standard
+  return CURRENT_ITERATIONS;
+}
 
 interface DatabaseContextValue {
   db: JournalDatabase | null;
@@ -100,8 +124,11 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
         const salt = generateSalt();
         localStorage.setItem(SALT_STORAGE_KEY, saltToBase64(salt));
 
-        // Derive encryption key from password
-        const key = await deriveKey(password, salt);
+        // Store iteration count for future migrations
+        localStorage.setItem(ITERATIONS_STORAGE_KEY, String(CURRENT_ITERATIONS));
+
+        // Derive encryption key from password with current iteration count
+        const key = await deriveKey(password, salt, CURRENT_ITERATIONS);
         const keyHex = await exportKeyAsHex(key);
 
         // Initialize database with derived key
@@ -136,8 +163,11 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
 
       const salt = base64ToSalt(saltBase64);
 
-      // Derive key from password
-      const key = await deriveKey(password, salt);
+      // Get iteration count (legacy or current)
+      const iterations = getIterations();
+
+      // Derive key from password with appropriate iteration count
+      const key = await deriveKey(password, salt, iterations);
       const keyHex = await exportKeyAsHex(key);
 
       // Try to initialize database - will fail if password is wrong
@@ -177,7 +207,8 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
         }
 
         const salt = base64ToSalt(saltBase64);
-        const encryptionKey = await deriveKey(password, salt);
+        const iterations = getIterations();
+        const encryptionKey = await deriveKey(password, salt, iterations);
 
         // Register WebAuthn credential (single fingerprint prompt)
         const { credentialId } = await registerBiometric();
@@ -343,7 +374,8 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
         }
 
         const salt = base64ToSalt(saltBase64);
-        await deriveKey(password, salt); // Will throw if password is wrong
+        const iterations = getIterations();
+        await deriveKey(password, salt, iterations); // Will throw if password is wrong
 
         // Delete keystore
         await deleteEncryptedKey();

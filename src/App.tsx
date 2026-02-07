@@ -6,6 +6,7 @@ import { EntriesPage } from './pages/EntriesPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { UnlockPage } from './pages/UnlockPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { Setup } from './pages/Setup';
 import { useDatabase } from './hooks/useDatabase';
 import { useEmbeddingService } from './hooks/useEmbeddingService';
@@ -40,9 +41,14 @@ function AppRoutes() {
     return <Setup />;
   }
 
-  // Returning user who hasn't unlocked: show unlock page
+  // Returning user who hasn't unlocked: show unlock page or forgot password
   if (!isUnlocked) {
-    return <UnlockPage />;
+    return (
+      <Routes>
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="*" element={<UnlockPage />} />
+      </Routes>
+    );
   }
 
   // Show loading while embedding service initializes

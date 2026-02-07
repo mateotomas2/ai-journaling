@@ -4,7 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "compile:validators": "tsx scripts/compile-validators.ts",
+    "predev": "npm run compile:validators",
     "dev": "vite",
+    "prebuild": "npm run compile:validators",
     "build": "npm run generate-icons && tsc && vite build",
     "generate-icons": "node scripts/generate-icons.js",
     "preview": "vite preview",
@@ -55,6 +58,7 @@
     "postcss": "^8.5.6",
     "sharp": "^0.34.5",
     "tailwindcss": "^4.1.18",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
     "vite-plugin-pwa": "^1.2.0",

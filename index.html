@@ -6,6 +6,17 @@
     <meta name="description" content="Privacy-first AI-powered journaling with local vector memory" />
     <meta name="theme-color" content="#6366f1" />
 
+    <!-- Content Security Policy -->
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      script-src 'self' 'wasm-unsafe-eval';
+      style-src 'self' 'unsafe-inline';
+      connect-src 'self' https://openrouter.ai https://huggingface.co https://*.huggingface.co https://cdn.jsdelivr.net;
+      img-src 'self' data: blob:;
+      worker-src 'self' blob:;
+      font-src 'self' data:;
+    ">
+
     <!-- iOS-specific meta tags -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />

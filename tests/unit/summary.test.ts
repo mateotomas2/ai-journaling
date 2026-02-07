@@ -74,13 +74,16 @@ describe('Summary Service', () => {
 
       await generateSummary(messages, '2026-01-17', 'test-api-key', mockDb, 'anthropic/claude-sonnet-4.5');
 
-      expect(mockFetch).toHaveBeenCalledWith('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: expect.objectContaining({
-          'Authorization': 'Bearer test-api-key',
-        }),
-        body: expect.stringContaining('anthropic/claude-sonnet-4.5'),
-      });
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://openrouter.ai/api/v1/chat/completions',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Authorization': 'Bearer test-api-key',
+          }),
+          body: expect.stringContaining('anthropic/claude-sonnet-4.5'),
+        })
+      );
 
       const callArgs = mockFetch.mock.calls[0];
       if (!callArgs) throw new Error('Expected mock to be called');

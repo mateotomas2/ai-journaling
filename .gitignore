@@ -6,6 +6,9 @@ dist/
 build/
 .vite/
 
+# Generated validators (compiled at build time)
+src/db/validators/compiled.js
+
 # Environment variables
 .env
 .env.local
