@@ -30,9 +30,39 @@ declare global {
   }
 }
 
+const LS_TOKEN = 'reflekt_gdrive_token';
+const LS_TOKEN_EXPIRES = 'reflekt_gdrive_token_expires';
+
 let tokenClient: TokenClient | null = null;
 let accessToken: string | null = null;
 let tokenExpiresAt = 0;
+
+// Restore token from localStorage on module load
+(function restoreToken() {
+  const stored = localStorage.getItem(LS_TOKEN);
+  const expires = localStorage.getItem(LS_TOKEN_EXPIRES);
+  if (stored && expires) {
+    const expiresAt = Number(expires);
+    if (Date.now() < expiresAt - 60_000) {
+      accessToken = stored;
+      tokenExpiresAt = expiresAt;
+    } else {
+      // Expired — clean up
+      localStorage.removeItem(LS_TOKEN);
+      localStorage.removeItem(LS_TOKEN_EXPIRES);
+    }
+  }
+})();
+
+function persistToken(token: string, expiresAt: number): void {
+  localStorage.setItem(LS_TOKEN, token);
+  localStorage.setItem(LS_TOKEN_EXPIRES, String(expiresAt));
+}
+
+function clearPersistedToken(): void {
+  localStorage.removeItem(LS_TOKEN);
+  localStorage.removeItem(LS_TOKEN_EXPIRES);
+}
 
 function getClientId(): string {
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -96,6 +126,7 @@ export async function signIn(): Promise<string> {
       }
       accessToken = response.access_token;
       tokenExpiresAt = Date.now() + response.expires_in * 1000;
+      persistToken(accessToken, tokenExpiresAt);
       resolve(response.access_token);
     };
 
@@ -112,6 +143,7 @@ export async function getAccessToken(): Promise<string | null> {
   // Token expired or missing — caller should trigger re-auth via signIn()
   accessToken = null;
   tokenExpiresAt = 0;
+  clearPersistedToken();
   return null;
 }
 
@@ -122,6 +154,7 @@ export function signOut(): void {
   accessToken = null;
   tokenExpiresAt = 0;
   tokenClient = null;
+  clearPersistedToken();
 }
 
 export function isSignedIn(): boolean {
