@@ -10,13 +10,13 @@
   <!-- Content Security Policy -->
   <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
-      script-src 'self' 'wasm-unsafe-eval' 'sha256-LYVj++XY5e4os9/qlqVr9tEESqquDE9H4spWfTJu0mA=';
+      script-src 'self' 'wasm-unsafe-eval' 'sha256-LYVj++XY5e4os9/qlqVr9tEESqquDE9H4spWfTJu0mA=' https://accounts.google.com/gsi/;
       style-src 'self' 'unsafe-inline';
-      connect-src 'self' https://openrouter.ai https://huggingface.co https://*.huggingface.co https://cdn.jsdelivr.net;
+      connect-src 'self' https://openrouter.ai https://huggingface.co https://*.huggingface.co https://cdn.jsdelivr.net https://accounts.google.com https://www.googleapis.com https://oauth2.googleapis.com;
       img-src 'self' data: blob:;
       worker-src 'self' blob:;
       font-src 'self' data:;
-      frame-src 'self' https://rxdb.info/;
+      frame-src 'self' https://rxdb.info/ https://accounts.google.com;
     ">
 
   <!-- iOS-specific meta tags -->

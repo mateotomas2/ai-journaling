@@ -9,6 +9,7 @@ import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { Setup } from './pages/Setup';
 import { useDatabase } from './hooks/useDatabase';
 import { useEmbeddingService } from './hooks/useEmbeddingService';
+import { useGoogleDriveSync } from './hooks/useGoogleDriveSync';
 import { Loading } from './components/common/Loading';
 import { getSelectedDay } from './utils/session.utils';
 import { getTodayId } from './utils/date.utils';
@@ -30,6 +31,9 @@ function AppRoutes() {
   const { isInitializing: embeddingInitializing, error: embeddingError } = useEmbeddingService({
     autoInitialize: isUnlocked && !isFirstTime,
   });
+
+  // Initialize Google Drive sync when unlocked
+  useGoogleDriveSync();
 
   if (isLoading) {
     return <Loading message="Loading..." />;

@@ -4,6 +4,7 @@ import { PromptCustomization } from '@/components/settings/PromptCustomization';
 import { SecuritySection } from '@/components/settings/SecuritySection';
 import { DataManagement } from '@/components/settings/DataManagement';
 import { PWASection } from '@/components/settings/PWASection';
+import { GoogleDriveSync } from '@/components/settings/GoogleDriveSync';
 import { exportAllData, importData, clearAllData } from '@/services/settings/data-management.service';
 import { Settings } from 'lucide-react';
 
@@ -28,6 +29,7 @@ export function SettingsPage() {
         <PromptCustomization />
         <SecuritySection />
         <PWASection />
+        <GoogleDriveSync />
         <DataManagement
           onExport={exportAllData}
           onImport={importData}

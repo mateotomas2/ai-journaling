@@ -34,11 +34,15 @@ export type JournalCollections = {
 export type JournalDatabase = RxDatabase<JournalCollections>;
 
 let dbInstance: JournalDatabase | null = null;
+let storedPassphrase: string | null = null;
 
 export async function createDatabase(passphrase: string): Promise<JournalDatabase> {
   if (dbInstance) {
     return dbInstance;
   }
+
+  // Store passphrase for sync encryption
+  storedPassphrase = passphrase;
 
   // Build storage chain: Dexie → Validator (for dev mode) → Encryption
   const baseStorage = getRxStorageDexie();
@@ -134,4 +138,22 @@ export async function closeDatabase(): Promise<void> {
 
 export function isDatabaseInitialized(): boolean {
   return dbInstance !== null;
+}
+
+export async function getSyncEncryptionKey(): Promise<CryptoKey> {
+  if (!storedPassphrase) {
+    throw new Error('Database not initialized - no encryption key available');
+  }
+
+  const hexBytes = new Uint8Array(
+    storedPassphrase.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16))
+  );
+
+  return crypto.subtle.importKey(
+    'raw',
+    hexBytes.buffer as ArrayBuffer,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
 }

@@ -5,6 +5,7 @@
 
 import { getDatabase } from '@/db';
 import type { Day, Message, Summary } from '@/types';
+import type { Note } from '@/types/entities';
 
 export interface ExportData {
   version: string;
@@ -64,6 +65,39 @@ export async function downloadExport(): Promise<void> {
 /**
  * Export data for a specific date range
  */
+export interface SyncData {
+  version: string;
+  syncedAt: string;
+  days: Day[];
+  messages: Message[];
+  summaries: Summary[];
+  notes: Note[];
+}
+
+export async function exportAllSyncData(): Promise<SyncData> {
+  const db = await getDatabase();
+
+  if (!db) {
+    throw new Error('Database not initialized');
+  }
+
+  const [daysResult, messagesResult, summariesResult, notesResult] = await Promise.all([
+    db.days.find().exec(),
+    db.messages.find().exec(),
+    db.summaries.find().exec(),
+    db.notes.find().exec(),
+  ]);
+
+  return {
+    version: '1.0.0',
+    syncedAt: new Date().toISOString(),
+    days: daysResult.map((doc) => doc.toJSON() as Day),
+    messages: messagesResult.map((doc) => doc.toJSON() as Message),
+    summaries: summariesResult.map((doc) => doc.toJSON() as Summary),
+    notes: notesResult.map((doc) => doc.toJSON() as Note),
+  };
+}
+
 export async function exportDateRange(startDate: string, endDate: string): Promise<ExportData> {
   const db = await getDatabase();
 
