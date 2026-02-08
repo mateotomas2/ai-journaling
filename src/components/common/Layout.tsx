@@ -3,12 +3,13 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { OfflineIndicator } from './OfflineIndicator';
 import { useKeyboardNavigation } from '../../hooks/useKeyboardNavigation';
+import { useApiUsage } from '../../hooks/useApiUsage';
 import { MemorySearch } from '../search/MemorySearch';
 import { cn } from '@/lib/utils';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { ModeToggle } from '@/components/mode-toggle';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
-import { Search } from 'lucide-react';
+import { Search, DollarSign } from 'lucide-react';
 
 interface LayoutProps {
   children: ReactNode;
@@ -18,6 +19,7 @@ export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const { usage } = useApiUsage();
 
   // Cmd+K / Ctrl+K to open search
   useEffect(() => {
@@ -95,6 +97,22 @@ export function Layout({ children }: LayoutProps) {
                   <span className="text-xs">⌘</span>K
                 </kbd>
               </Button>
+              {usage && (
+                <Link
+                  to="/settings"
+                  className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md hover:bg-muted"
+                  title={usage.limit != null
+                    ? `Used $${usage.usage.toFixed(2)} of $${usage.limit.toFixed(2)}`
+                    : `Used $${usage.usage.toFixed(2)}`
+                  }
+                >
+                  <DollarSign className="w-3 h-3 mr-[-5px]" />
+                  <span>{usage.usage.toFixed(2)}{usage.limit != null && (
+                    <span className="text-muted-foreground/60">/{usage.limit.toFixed(2)}</span>
+                  )}</span>
+
+                </Link>
+              )}
               <div className="w-px h-6 bg-border mx-2" />
               <ModeToggle />
               <InstallPrompt />

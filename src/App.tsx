@@ -53,7 +53,7 @@ function AppRoutes() {
 
   // Show loading while embedding service initializes
   if (embeddingInitializing) {
-    return <Loading message="Loading AI models..." />;
+    return <Loading message="Loading local AI embedding model..." />;
   }
 
   // Show error if embedding service failed to initialize (but don't block the app)
