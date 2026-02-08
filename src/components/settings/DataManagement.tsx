@@ -53,7 +53,7 @@ export function DataManagement({ onExport, onImport, onClearData }: DataManageme
       setImportResult(result);
 
       if (result.success) {
-        const total = result.imported.days + result.imported.messages + result.imported.summaries;
+        const total = result.imported.days + result.imported.messages + result.imported.summaries + result.imported.notes;
         showToast(`Successfully imported ${total} items`, 'success');
       } else if (result.errors.length > 0) {
         showToast(`Import completed with errors: ${result.errors[0]}`, 'info');
@@ -173,11 +173,13 @@ export function DataManagement({ onExport, onImport, onClearData }: DataManageme
                 <div className="space-y-1 ml-6">
                   <p>
                     <span className="font-medium">Imported:</span> {importResult.imported.days} days,{' '}
-                    {importResult.imported.messages} messages, {importResult.imported.summaries} summaries
+                    {importResult.imported.messages} messages, {importResult.imported.summaries} summaries,{' '}
+                    {importResult.imported.notes} notes
                   </p>
                   <p>
                     <span className="font-medium">Skipped:</span> {importResult.skipped.days} days,{' '}
-                    {importResult.skipped.messages} messages, {importResult.skipped.summaries} summaries
+                    {importResult.skipped.messages} messages, {importResult.skipped.summaries} summaries,{' '}
+                    {importResult.skipped.notes} notes
                   </p>
                   {importResult.errors.length > 0 && (
                     <div className="mt-2 text-destructive">

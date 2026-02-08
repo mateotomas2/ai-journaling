@@ -6,6 +6,7 @@
 import { z } from 'zod';
 import { getDatabase } from '@/db';
 import type { Day, Message, Summary } from '@/types';
+import type { Note } from '@/types/entities';
 
 // Schema for validating import data
 const SummarySectionsSchema = z.object({
@@ -46,6 +47,17 @@ const ImportDataSchema = z.object({
       rawContent: z.string(),
     })
   ),
+  notes: z.array(
+    z.object({
+      id: z.string(),
+      dayId: z.string(),
+      category: z.string(),
+      title: z.string().optional(),
+      content: z.string(),
+      createdAt: z.number(),
+      updatedAt: z.number(),
+    })
+  ).optional().default([]),
 });
 
 export type ImportData = z.infer<typeof ImportDataSchema>;
@@ -56,11 +68,13 @@ export interface ImportResult {
     days: number;
     messages: number;
     summaries: number;
+    notes: number;
   };
   skipped: {
     days: number;
     messages: number;
     summaries: number;
+    notes: number;
   };
   errors: string[];
 }
@@ -85,8 +99,8 @@ export async function importJournalData(data: ImportData): Promise<ImportResult>
 
   const result: ImportResult = {
     success: true,
-    imported: { days: 0, messages: 0, summaries: 0 },
-    skipped: { days: 0, messages: 0, summaries: 0 },
+    imported: { days: 0, messages: 0, summaries: 0, notes: 0 },
+    skipped: { days: 0, messages: 0, summaries: 0, notes: 0 },
     errors: [],
   };
 
@@ -135,6 +149,23 @@ export async function importJournalData(data: ImportData): Promise<ImportResult>
     } catch (err) {
       result.errors.push(
         `Summary ${summary.id}: ${err instanceof Error ? err.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  // Import notes
+  for (const note of data.notes) {
+    try {
+      const existing = await db.notes.findOne(note.id).exec();
+      if (existing) {
+        result.skipped.notes++;
+        continue;
+      }
+      await db.notes.insert(note as Note);
+      result.imported.notes++;
+    } catch (err) {
+      result.errors.push(
+        `Note ${note.id}: ${err instanceof Error ? err.message : 'Unknown error'}`
       );
     }
   }

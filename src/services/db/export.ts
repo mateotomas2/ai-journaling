@@ -13,6 +13,7 @@ export interface ExportData {
   days: Day[];
   messages: Message[];
   summaries: Summary[];
+  notes: Note[];
 }
 
 /**
@@ -25,15 +26,17 @@ export async function exportJournalData(): Promise<ExportData> {
     throw new Error('Database not initialized');
   }
 
-  const [daysResult, messagesResult, summariesResult] = await Promise.all([
+  const [daysResult, messagesResult, summariesResult, notesResult] = await Promise.all([
     db.days.find().exec(),
     db.messages.find().exec(),
     db.summaries.find().exec(),
+    db.notes.find().exec(),
   ]);
 
   const days = daysResult.map((doc) => doc.toJSON() as Day);
   const messages = messagesResult.map((doc) => doc.toJSON() as Message);
   const summaries = summariesResult.map((doc) => doc.toJSON() as Summary);
+  const notes = notesResult.map((doc) => doc.toJSON() as Note);
 
   return {
     version: '1.0.0',
@@ -41,6 +44,7 @@ export async function exportJournalData(): Promise<ExportData> {
     days,
     messages,
     summaries,
+    notes,
   };
 }
 
@@ -105,15 +109,17 @@ export async function exportDateRange(startDate: string, endDate: string): Promi
     throw new Error('Database not initialized');
   }
 
-  const [daysResult, messagesResult, summariesResult] = await Promise.all([
+  const [daysResult, messagesResult, summariesResult, notesResult] = await Promise.all([
     db.days.find({ selector: { id: { $gte: startDate, $lte: endDate } } }).exec(),
     db.messages.find({ selector: { dayId: { $gte: startDate, $lte: endDate } } }).exec(),
     db.summaries.find({ selector: { dayId: { $gte: startDate, $lte: endDate } } }).exec(),
+    db.notes.find({ selector: { dayId: { $gte: startDate, $lte: endDate } } }).exec(),
   ]);
 
   const days = daysResult.map((doc) => doc.toJSON() as Day);
   const messages = messagesResult.map((doc) => doc.toJSON() as Message);
   const summaries = summariesResult.map((doc) => doc.toJSON() as Summary);
+  const notes = notesResult.map((doc) => doc.toJSON() as Note);
 
   return {
     version: '1.0.0',
@@ -121,5 +127,6 @@ export async function exportDateRange(startDate: string, endDate: string): Promi
     days,
     messages,
     summaries,
+    notes,
   };
 }

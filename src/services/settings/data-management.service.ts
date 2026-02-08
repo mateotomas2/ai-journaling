@@ -36,6 +36,7 @@ export async function clearAllData(): Promise<void> {
     db.days.find().remove(),
     db.messages.find().remove(),
     db.summaries.find().remove(),
+    db.notes.find().remove(),
   ]);
 
   // Reset settings to initial state (don't delete, just clear values)
