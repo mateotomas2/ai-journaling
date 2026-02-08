@@ -109,31 +109,10 @@ export async function getAccessToken(): Promise<string | null> {
     return accessToken;
   }
 
-  // Try silent refresh
-  try {
-    await ensureGisLoaded();
-    const client = initTokenClient();
-
-    return await new Promise<string | null>((resolve) => {
-      client.callback = (response: TokenResponse) => {
-        if (response.error) {
-          accessToken = null;
-          tokenExpiresAt = 0;
-          resolve(null);
-          return;
-        }
-        accessToken = response.access_token;
-        tokenExpiresAt = Date.now() + response.expires_in * 1000;
-        resolve(response.access_token);
-      };
-
-      client.requestAccessToken({ prompt: '' });
-    });
-  } catch {
-    accessToken = null;
-    tokenExpiresAt = 0;
-    return null;
-  }
+  // Token expired or missing — caller should trigger re-auth via signIn()
+  accessToken = null;
+  tokenExpiresAt = 0;
+  return null;
 }
 
 export function signOut(): void {

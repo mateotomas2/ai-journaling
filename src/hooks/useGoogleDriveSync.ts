@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useDatabase } from './useDatabase';
 import { getSyncEncryptionKey } from '@/db';
-import { signIn, signOut, isSignedIn } from '@/services/google/auth';
+import { signIn, signOut } from '@/services/google/auth';
 import {
   SyncEngine,
   isSyncEnabled,
@@ -13,7 +13,7 @@ export function useGoogleDriveSync() {
   const { db } = useDatabase();
   const engineRef = useRef<SyncEngine | null>(null);
 
-  const [isConnected, setIsConnected] = useState(() => isSyncEnabled() && isSignedIn());
+  const [isConnected, setIsConnected] = useState(() => isSyncEnabled());
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({
     state: 'idle',
     lastSyncTime: localStorage.getItem('reflekt_gdrive_last_sync'),
