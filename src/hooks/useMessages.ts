@@ -94,10 +94,26 @@ export function useMessages(dayId: string) {
     [db]
   );
 
+  const deleteAllMessages = useCallback(
+    async () => {
+      if (!db) {
+        throw new Error('Database not initialized');
+      }
+
+      const docs = await db.messages
+        .find({ selector: { dayId } })
+        .exec();
+
+      await Promise.all(docs.map((doc) => doc.remove()));
+    },
+    [db, dayId]
+  );
+
   return {
     messages,
     isLoading,
     addMessage,
     updateMessage,
+    deleteAllMessages,
   };
 }

@@ -36,10 +36,10 @@ export interface SearchOptions {
   minScore?: number;
   /** Filter by specific day ID */
   dayId?: string;
-  /** Filter by date range */
+  /** Filter by date range (YYYY-MM-DD format) */
   dateRange?: {
-    start?: number;
-    end?: number;
+    startDate?: string;
+    endDate?: string;
   };
 }
 

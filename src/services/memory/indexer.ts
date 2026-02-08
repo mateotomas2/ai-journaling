@@ -178,7 +178,7 @@ class MemoryIndexer implements IMemoryIndexer {
             const note = await db.notes.findOne(entityId).exec();
             if (note) {
               // Combine title and content for notes
-              content = note.title ? `${note.title}\n\n${note.content}` : note.content;
+              content = `[${note.category}] ${note.title ? `${note.title}\n\n` : ''}${note.content}`;
             }
           }
 
@@ -429,7 +429,7 @@ class MemoryIndexer implements IMemoryIndexer {
     } else if (entityType === 'note') {
       const note = await db.notes.findOne(entityId).exec();
       if (note) {
-        content = note.title ? `${note.title}\n\n${note.content}` : note.content;
+        content = `[${note.category}] ${note.title ? `${note.title}\n\n` : ''}${note.content}`;
       }
     }
 

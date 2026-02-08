@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import { useMessages } from './useMessages';
 import { useDay } from './useDay';
 import { useSettings } from './useSettings';
-import { getLocalTimezone } from '../utils/date.utils';
+import { getLocalTimezone, getTodayId } from '../utils/date.utils';
 import {
   sendChatMessageWithTools,
   buildChatMessagesWithTools,
@@ -21,7 +21,7 @@ interface UseJournalChatOptions {
 }
 
 export function useJournalChat({ dayId, model }: UseJournalChatOptions) {
-  const { messages, isLoading: messagesLoading, addMessage, updateMessage } = useMessages(dayId);
+  const { messages, isLoading: messagesLoading, addMessage, updateMessage, deleteAllMessages } = useMessages(dayId);
   const { createOrUpdateDay } = useDay(dayId);
   const { apiKey, systemPrompt } = useSettings();
   const [isSending, setIsSending] = useState(false);
@@ -60,9 +60,12 @@ export function useJournalChat({ dayId, model }: UseJournalChatOptions) {
           role: msg.role as 'user' | 'assistant',
           content: msg.content,
         }));
-        // Use custom or default prompt, always append tool instructions
+        // Use custom or default prompt, always append tool instructions + date context
         const basePrompt = systemPrompt || JOURNAL_SYSTEM_PROMPT;
-        const activePrompt = buildSystemPromptWithTools(basePrompt);
+        const activePrompt = buildSystemPromptWithTools(basePrompt, {
+          currentDate: getTodayId(),
+          journalDate: dayId,
+        });
         const chatMessages: ChatMessageWithTools[] = buildChatMessagesWithTools(
           activePrompt,
           conversationHistory
@@ -102,9 +105,16 @@ export function useJournalChat({ dayId, model }: UseJournalChatOptions) {
             });
 
             // Execute each tool call and add results
+            // Collect IDs of messages already in conversation context
+            const conversationMessageIds = [
+              ...messages.map((m) => m.id),
+              userMessage.id,
+              assistantMessage.id,
+            ];
+
             for (const toolCall of result.toolCalls) {
               console.log(`[useJournalChat] Executing tool: ${toolCall.function.name}`);
-              const toolResult = await executeToolCall(toolCall, dayId);
+              const toolResult = await executeToolCall(toolCall, conversationMessageIds);
               console.log(`[useJournalChat] Tool result:`, toolResult);
               chatMessages.push({
                 role: 'tool',
@@ -149,6 +159,10 @@ export function useJournalChat({ dayId, model }: UseJournalChatOptions) {
     }
   }, []);
 
+  const clearMessages = useCallback(async () => {
+    await deleteAllMessages();
+  }, [deleteAllMessages]);
+
   return {
     messages,
     isLoading: messagesLoading,
@@ -156,6 +170,7 @@ export function useJournalChat({ dayId, model }: UseJournalChatOptions) {
     error,
     sendMessage,
     stopSending,
+    clearMessages,
     needsApiKey: !apiKey,
   };
 }

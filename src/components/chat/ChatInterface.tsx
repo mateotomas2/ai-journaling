@@ -47,6 +47,7 @@ export function ChatInterface({ dayId }: ChatInterfaceProps) {
     error,
     sendMessage,
     stopSending,
+    clearMessages,
     needsApiKey,
   } = useJournalChat({ dayId, model: selectedModel });
 
@@ -59,6 +60,7 @@ export function ChatInterface({ dayId }: ChatInterfaceProps) {
       <ChatHeader
         selectedModel={selectedModel}
         onModelChange={handleModelChange}
+        onNewChat={clearMessages}
       />
       <MessageList messages={messages} isLoading={isLoading} />
 

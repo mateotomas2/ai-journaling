@@ -118,6 +118,11 @@ export function useNotes(dayId: string, category?: string) {
           category,
           updatedAt: Date.now(),
         });
+
+        // Re-index the note for vector search (category is part of embedding text)
+        memoryService.reindexNote(noteId).catch((err) => {
+          console.error('Failed to reindex note after category change:', err);
+        });
       } catch (err) {
         const error = err as Error;
         setError(error);

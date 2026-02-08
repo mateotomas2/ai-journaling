@@ -13,10 +13,10 @@ export interface MemorySearchQuery {
   limit?: number;
   /** Minimum similarity score (0-1) to include in results */
   minScore?: number;
-  /** Optional date range filter */
+  /** Optional date range filter (YYYY-MM-DD format, compared against dayId) */
   dateRange?: {
-    start?: number; // Unix timestamp
-    end?: number; // Unix timestamp
+    startDate?: string;
+    endDate?: string;
   };
   /** Optional day ID filter (search within specific day) */
   dayId?: string;

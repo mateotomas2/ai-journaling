@@ -1,5 +1,5 @@
 import { format, parseISO, startOfDay, endOfDay, isToday, isSameDay } from 'date-fns';
-import { toZonedTime, fromZonedTime } from 'date-fns-tz';
+import { toZonedTime } from 'date-fns-tz';
 
 export function getTodayId(timezone: string = getLocalTimezone()): string {
   const now = new Date();
@@ -30,13 +30,12 @@ export function isValidDayId(dayId: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(dayId);
 }
 
-export function getDayStartEnd(dayId: string, timezone: string) {
+export function getDayStartEnd(dayId: string) {
   const date = parseISO(dayId);
-  const zonedDate = toZonedTime(date, timezone);
 
   return {
-    start: fromZonedTime(startOfDay(zonedDate), timezone).getTime(),
-    end: fromZonedTime(endOfDay(zonedDate), timezone).getTime(),
+    start: startOfDay(date).getTime(),
+    end: endOfDay(date).getTime(),
   };
 }
 

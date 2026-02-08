@@ -5,6 +5,8 @@
 
 import type { Tool, ToolCall, ToolResult } from '@/types';
 import { memoryService } from '@/services/memory/search';
+import { getTodayId } from '@/utils/date.utils';
+import { format, subDays, parseISO } from 'date-fns';
 
 /**
  * Memory search tool - allows LLM to search past journal entries and notes
@@ -14,7 +16,7 @@ export const MEMORY_SEARCH_TOOL: Tool = {
   function: {
     name: 'search_journal_memory',
     description:
-      'Search past journal entries and notes using semantic similarity. Use this when the user asks about past experiences, wants to recall something they wrote before, or when you need context from their journal history.',
+      'Search journal entries and notes using semantic similarity. Use this when you need context from their journal history. Use this when the user asks for anything that you have no information about.',
     parameters: {
       type: 'object',
       properties: {
@@ -32,15 +34,15 @@ export const MEMORY_SEARCH_TOOL: Tool = {
         },
         dateRange: {
           type: 'object',
-          description: 'Optional date range filter',
+          description: 'Optional date range filter using YYYY-MM-DD format',
           properties: {
-            startDaysAgo: {
-              type: 'number',
-              description: 'Start of range as days ago from today',
+            startDate: {
+              type: 'string',
+              description: 'Earliest date to include (YYYY-MM-DD)',
             },
-            endDaysAgo: {
-              type: 'number',
-              description: 'End of range as days ago from today (0 = today)',
+            endDate: {
+              type: 'string',
+              description: 'Latest date to include (YYYY-MM-DD)',
             },
           },
         },
@@ -63,8 +65,8 @@ interface MemorySearchArgs {
   limit?: number;
   minScore?: number;
   dateRange?: {
-    startDaysAgo?: number;
-    endDaysAgo?: number;
+    startDate?: string;
+    endDate?: string;
   };
 }
 
@@ -73,7 +75,7 @@ interface MemorySearchArgs {
  */
 export async function executeToolCall(
   toolCall: ToolCall,
-  currentDayId: string
+  conversationMessageIds: string[]
 ): Promise<ToolResult> {
   const { name, arguments: argsString } = toolCall.function;
 
@@ -82,13 +84,15 @@ export async function executeToolCall(
       let args = JSON.parse(argsString) as MemorySearchArgs;
       console.log('Memory search args:', args);
 
-      if (args.dateRange?.startDaysAgo === undefined && args.dateRange?.endDaysAgo === undefined) {
+      if (args.dateRange?.startDate === undefined && args.dateRange?.endDate === undefined) {
+        const today = getTodayId();
+        const weekAgo = format(subDays(parseISO(today), 7), 'yyyy-MM-dd');
         args.dateRange = {
-          startDaysAgo: 7,
-          endDaysAgo: 0,
+          startDate: weekAgo,
+          endDate: today,
         };
       }
-      return await executeMemorySearch(toolCall.id, args, currentDayId);
+      return await executeMemorySearch(toolCall.id, args, conversationMessageIds);
     }
 
     return {
@@ -114,50 +118,29 @@ export async function executeToolCall(
 async function executeMemorySearch(
   toolCallId: string,
   args: MemorySearchArgs,
-  currentDayId: string
+  conversationMessageIds: string[]
 ): Promise<ToolResult> {
   const { query, limit = 5, minScore = 0.3, dateRange } = args;
 
-  // Build date range filter if provided
-  let dateRangeFilter: { start?: number; end?: number } | undefined;
-  if (dateRange) {
-    const now = Date.now();
-    const dayMs = 24 * 60 * 60 * 1000;
+  // Execute the search - pass date range as dayId strings directly
+  const excludeCount = conversationMessageIds.length;
+  const results = await memoryService.search({
+    query,
+    limit: limit + excludeCount,
+    minScore,
+    ...(dateRange && { dateRange }),
+  });
 
-    if (dateRange.startDaysAgo !== undefined) {
-      dateRangeFilter = dateRangeFilter || {};
-      dateRangeFilter.start = now - dateRange.startDaysAgo * dayMs;
-    }
-    if (dateRange.endDaysAgo !== undefined) {
-      dateRangeFilter = dateRangeFilter || {};
-      dateRangeFilter.end = now - dateRange.endDaysAgo * dayMs;
-    }
-  }
-
-  // Execute the search - only include dateRange if we have filter values
-  const results = await memoryService.search(
-    dateRangeFilter
-      ? {
-        query,
-        limit: limit + 1, // Get one extra to filter out current day
-        minScore,
-        dateRange: dateRangeFilter,
-      }
-      : {
-        query,
-        limit: limit + 1,
-        minScore,
-      }
+  // Filter out messages already in the current conversation context
+  const excludeSet = new Set(conversationMessageIds);
+  const filteredResults = results.filter(
+    (r) => !(r.entityType === 'message' && excludeSet.has(r.entityId))
   );
-
-  console.log('Memory search results:', results);
-
-  // Filter out results from the current day to avoid returning current conversation
-  const filteredResults = results.filter((r) => r.dayId !== currentDayId);
 
   // Take up to limit results after filtering
   const finalResults = filteredResults.slice(0, limit);
 
+  console.log("finalResults", finalResults)
   if (finalResults.length === 0) {
     return {
       tool_call_id: toolCallId,

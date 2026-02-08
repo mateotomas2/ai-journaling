@@ -58,27 +58,53 @@ export const TOOL_INSTRUCTIONS = `
 
 ## Memory Search Tool
 
-You have access to a tool called \`search_journal_memory\` that lets you search the user's past journal entries and notes. Use this tool when:
+You have access to a tool called \`search_journal_memory\` that lets you search the user's journal entries and notes. Use this tool when:
 
+Notes can be anything, they have a broad use so make sure you consult the journal memory whenever you lack information. 
+
+- Make sure the query is relevant and avoid it beeing to specific
 - The user asks about something they wrote before ("What did I say about..." or "Have I mentioned...")
 - The user references past events or experiences that may be in their journal
 - You want to identify patterns or recurring themes in their journaling
 - The user asks about their history with a topic (health, relationships, work, etc.)
 - Finding relevant context would help you give a more personalized response
+- The journal notes can contain a lot of things, so use it when asked to search for something
 
 When presenting information from the search results:
 - Reference the dates naturally (e.g., "On January 15th, you mentioned...")
 - Quote or paraphrase relevant content to show you found specific entries
 - Look for patterns if multiple entries relate to the topic
 - Be transparent about what you found (or didn't find)
+- Include enough elements in the limit property, default 5
+- minScore is better to be low (0.3)
 
-Do not use the tool for every message - only when searching past entries would genuinely add value to the conversation.`;
+Example: 
+
+User: What did I dream today?
+Tool call: query=dream limit=5 daterange.startDate=today daterange.endDate=today
+`;
 
 /**
- * Combine a system prompt with tool instructions
+ * Combine a system prompt with tool instructions and date context
  */
-export function buildSystemPromptWithTools(basePrompt: string): string {
-  return basePrompt + TOOL_INSTRUCTIONS;
+export function buildSystemPromptWithTools(
+  basePrompt: string,
+  options?: { currentDate?: string; journalDate?: string }
+): string {
+  let prompt = basePrompt;
+
+  if (options?.currentDate || options?.journalDate) {
+    prompt += '\n\n## Date Context\n';
+    // if (options.currentDate) {
+    //   prompt += `Today's date: ${options.currentDate}\n`;
+    // }
+    if (options.journalDate) {
+      prompt += `Journal entry date: ${options.journalDate}\n`;
+    }
+  }
+
+  prompt += TOOL_INSTRUCTIONS;
+  return prompt;
 }
 
 /**

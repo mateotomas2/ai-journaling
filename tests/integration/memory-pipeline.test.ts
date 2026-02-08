@@ -112,19 +112,19 @@ describe('Memory Pipeline Integration', () => {
       });
     }
 
-    // Search with date filter (last 2 days)
+    // Search with date filter (only 2026-01-17 onwards, should exclude the old entry)
     const results = await memoryService.search({
       query: 'work stress',
       dateRange: {
-        start: now - 2 * 24 * 60 * 60 * 1000,
+        startDate: '2026-01-17',
       },
     });
 
-    // Should only include recent entry
+    // Should only include recent entry (dayId 2026-01-18)
     expect(results.length).toBeGreaterThan(0);
     results.forEach((result) => {
       if (isMessageResult(result)) {
-        expect(result.message.timestamp).toBeGreaterThan(now - 2 * 24 * 60 * 60 * 1000);
+        expect(result.message.dayId >= '2026-01-17').toBe(true);
       }
     });
   });

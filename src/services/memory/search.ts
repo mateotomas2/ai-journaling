@@ -199,12 +199,12 @@ class MemoryService implements IMemoryService {
           continue;
         }
 
-        // Apply date range filter using createdAt
+        // Apply date range filter using dayId
         if (query.dateRange) {
-          if (query.dateRange.start && note.createdAt < query.dateRange.start) {
+          if (query.dateRange.startDate && note.dayId < query.dateRange.startDate) {
             continue;
           }
-          if (query.dateRange.end && note.createdAt > query.dateRange.end) {
+          if (query.dateRange.endDate && note.dayId > query.dateRange.endDate) {
             continue;
           }
         }
@@ -224,12 +224,12 @@ class MemoryService implements IMemoryService {
         const message = messageMap.get(similar.id);
         if (!message) continue;
 
-        // Apply additional filters if specified
+        // Apply date range filter using dayId
         if (query.dateRange) {
-          if (query.dateRange.start && message.timestamp < query.dateRange.start) {
+          if (query.dateRange.startDate && message.dayId < query.dateRange.startDate) {
             continue;
           }
-          if (query.dateRange.end && message.timestamp > query.dateRange.end) {
+          if (query.dateRange.endDate && message.dayId > query.dateRange.endDate) {
             continue;
           }
         }
@@ -407,11 +407,12 @@ class MemoryService implements IMemoryService {
       await embeddingService.initialize();
     }
 
-    // Get all messages
+    // Get all messages and notes
     const allMessages = await db.messages.find().exec();
-    const total = allMessages.length;
+    const allNotes = await db.notes.find().exec();
+    const total = allMessages.length + allNotes.length;
 
-    console.log(`[MemoryService] Rebuilding index for ${total} messages using batch processing...`);
+    console.log(`[MemoryService] Rebuilding index for ${allMessages.length} messages and ${allNotes.length} notes...`);
 
     // Clear existing embeddings
     const allEmbeddings = await db.embeddings.find().exec();
@@ -420,23 +421,39 @@ class MemoryService implements IMemoryService {
     }
 
     if (total === 0) {
-      console.log('[MemoryService] No messages to index');
+      console.log('[MemoryService] No messages or notes to index');
       return;
     }
 
-    // Extract message IDs
-    const messageIds = allMessages.map((m) => m.id);
-
-    // Use batch processing for better performance
-    const batchSize = 10;
-    await memoryIndexer.processBatch(messageIds, batchSize);
-
-    // Report progress
-    if (onProgress) {
-      onProgress(total, total);
+    // Index messages using batch processing
+    if (allMessages.length > 0) {
+      const messageIds = allMessages.map((m) => m.id);
+      const batchSize = 10;
+      await memoryIndexer.processBatch(messageIds, batchSize);
     }
 
-    console.log(`[MemoryService] Index rebuild complete: ${total} messages indexed`);
+    // Report progress for messages
+    if (onProgress) {
+      onProgress(allMessages.length, total);
+    }
+
+    // Index notes one by one (they use indexEntityImmediate which handles content construction)
+    if (allNotes.length > 0) {
+      console.log(`[MemoryService] Indexing ${allNotes.length} notes...`);
+      for (let i = 0; i < allNotes.length; i++) {
+        const note = allNotes[i]!;
+        try {
+          await memoryIndexer.indexNoteImmediate(note.id);
+        } catch (error) {
+          console.error(`[MemoryService] Failed to index note ${note.id}:`, error);
+        }
+        if (onProgress) {
+          onProgress(allMessages.length + i + 1, total);
+        }
+      }
+    }
+
+    console.log(`[MemoryService] Index rebuild complete: ${allMessages.length} messages and ${allNotes.length} notes indexed`);
   }
 
   /**

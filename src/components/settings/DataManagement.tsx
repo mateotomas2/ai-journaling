@@ -4,7 +4,8 @@ import type { ImportResult } from '@/services/db/import';
 import { ClearDataConfirmation } from './ClearDataConfirmation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Upload, Download, Trash2, AlertTriangle, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Upload, Download, Trash2, AlertTriangle, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import { memoryService } from '@/services/memory/search';
 
 interface DataManagementProps {
   onExport: () => Promise<void>;
@@ -20,6 +21,8 @@ export function DataManagement({ onExport, onImport, onClearData }: DataManageme
   const [isImporting, setIsImporting] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [isRebuilding, setIsRebuilding] = useState(false);
+  const [rebuildProgress, setRebuildProgress] = useState<{ current: number; total: number } | null>(null);
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -84,6 +87,23 @@ export function DataManagement({ onExport, onImport, onClearData }: DataManageme
 
   const handleCancelClear = () => {
     setShowClearConfirm(false);
+  };
+
+  const handleRebuildIndex = async () => {
+    setIsRebuilding(true);
+    setRebuildProgress(null);
+    try {
+      await memoryService.rebuildIndex((current, total) => {
+        setRebuildProgress({ current, total });
+      });
+      showToast('Search index rebuilt successfully', 'success');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      showToast(`Failed to rebuild index: ${message}`, 'error');
+    } finally {
+      setIsRebuilding(false);
+      setRebuildProgress(null);
+    }
   };
 
   return (
@@ -172,6 +192,29 @@ export function DataManagement({ onExport, onImport, onClearData }: DataManageme
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Search Index */}
+          <div className="space-y-4 pt-4">
+            <h3 className="text-lg font-semibold border-b pb-2">Search Index</h3>
+            <div>
+              <p className="text-sm text-muted-foreground mb-3">
+                Rebuild the vector search index for all messages and notes. Use this after importing data or if search results seem inaccurate.
+              </p>
+              <Button
+                onClick={handleRebuildIndex}
+                disabled={isRebuilding}
+                variant="outline"
+                className="w-full sm:w-auto"
+              >
+                <RefreshCw className={`mr-2 h-4 w-4 ${isRebuilding ? 'animate-spin' : ''}`} />
+                {isRebuilding
+                  ? rebuildProgress
+                    ? `Rebuilding... (${rebuildProgress.current}/${rebuildProgress.total})`
+                    : 'Rebuilding...'
+                  : 'Rebuild Search Index'}
+              </Button>
+            </div>
           </div>
 
           {/* Danger Zone */}
