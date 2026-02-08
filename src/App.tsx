@@ -3,7 +3,6 @@ import { DatabaseProvider } from './db/DatabaseContext';
 import { Layout } from './components/common/Layout';
 import { JournalPage } from './pages/JournalPage';
 import { EntriesPage } from './pages/EntriesPage';
-import { HistoryPage } from './pages/HistoryPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { UnlockPage } from './pages/UnlockPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
@@ -71,7 +70,6 @@ function AppRoutes() {
         <Route path="/journal/:date" element={<JournalPage />} />
         <Route path="/day/:date" element={<DayRedirect />} />
         <Route path="/entries" element={<EntriesPage />} />
-        <Route path="/history" element={<HistoryPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Routes>
     </Layout>

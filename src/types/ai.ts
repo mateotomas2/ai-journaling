@@ -27,24 +27,3 @@ export interface SummaryResponse {
   rawContent: string;
 }
 
-export interface QueryRequest {
-  query: string;
-  summaries: {
-    date: string;
-    rawContent: string;
-  }[];
-  dateRange?: {
-    start: string;
-    end: string;
-  };
-}
-
-export interface Citation {
-  date: string;
-  excerpt: string;
-}
-
-export interface QueryResponse {
-  response: string;
-  citations: Citation[];
-}

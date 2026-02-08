@@ -8,7 +8,7 @@ import { NotesList } from '../components/notes/NotesList';
 import { formatDayId, isValidDayId, getTodayId } from '../utils/date.utils';
 import { setSelectedDay, getSelectedTab, setSelectedTab, type ViewMode } from '../utils/session.utils';
 import { addDays, format, parse } from 'date-fns';
-import { ChevronLeft, ChevronRight, CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarIcon, StickyNote, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function JournalPage() {
@@ -84,8 +84,8 @@ export function JournalPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
       {/* Date Navigation Header */}
-      <div className="flex items-center justify-between pb-4 mb-4 border-b border-border">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between pb-4">
+        <div className="flex items-center gap-1">
           <Button
             variant="outline"
             size="sm"
@@ -101,7 +101,7 @@ export function JournalPage() {
               <Button
                 variant="outline"
                 className={cn(
-                  "justify-start text-left font-medium min-w-[200px]",
+                  "justify-start text-left font-medium",
                   !dayId && "text-muted-foreground"
                 )}
               >
@@ -136,14 +136,16 @@ export function JournalPage() {
             size="sm"
             onClick={() => { setViewMode('notes'); setSelectedTab('notes'); }}
           >
-            Notes
+            <StickyNote className="w-4 h-4" />
+            <span className="hidden sm:inline">Notes</span>
           </Button>
           <Button
             variant={viewMode === 'chat' ? 'default' : 'outline'}
             size="sm"
             onClick={() => { setViewMode('chat'); setSelectedTab('chat'); }}
           >
-            Chat
+            <MessageCircle className="w-4 h-4" />
+            <span className="hidden sm:inline">Chat</span>
           </Button>
         </div>
       </div>

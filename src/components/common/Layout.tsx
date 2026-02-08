@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { ModeToggle } from '@/components/mode-toggle';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
-import { Search, DollarSign } from 'lucide-react';
+import { Search, DollarSign, BookOpen, List, Settings } from 'lucide-react';
 
 interface LayoutProps {
   children: ReactNode;
@@ -39,33 +39,32 @@ export function Layout({ children }: LayoutProps) {
     shortcuts: [
       { key: 'j', action: () => navigate('/journal'), description: 'Go to journal' },
       { key: 'e', action: () => navigate('/entries'), description: 'Go to entries' },
-      { key: 'h', action: () => navigate('/history'), description: 'Go to history' },
       { key: 's', action: () => navigate('/settings'), description: 'Go to settings' },
     ],
   });
 
   const navItems = [
-    { path: '/journal', label: 'Journal', shortcut: 'J' },
-    { path: '/entries', label: 'Entries', shortcut: 'E' },
-    { path: '/history', label: 'History', shortcut: 'H' },
-    { path: '/settings', label: 'Settings', shortcut: 'S' },
+    { path: '/journal', label: 'Journal', shortcut: 'J', icon: BookOpen },
+    { path: '/entries', label: 'Entries', shortcut: 'E', icon: List },
+    { path: '/settings', label: 'Settings', shortcut: 'S', icon: Settings },
   ];
 
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-b from-muted/30 to-background text-foreground">
       <header className="sticky top-0 z-50 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-5xl mx-auto px-4 sm:px-4 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <Link to="/journal" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
               <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
                 <span className="text-primary-foreground font-bold text-sm">DJ</span>
               </div>
-              <h1 className="text-xl font-bold tracking-tight">Daily Journal</h1>
+              <h1 className="text-xl font-bold tracking-tight">Reflekt</h1>
             </Link>
             <div className="flex items-center gap-2">
               <nav className="flex items-center gap-1" role="navigation" aria-label="Main navigation">
                 {navItems.map((item) => {
                   const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
+                  const Icon = item.icon;
                   return (
                     <Link
                       key={item.path}
@@ -78,7 +77,8 @@ export function Layout({ children }: LayoutProps) {
                       title={`${item.label} (Press ${item.shortcut})`}
                       aria-current={isActive ? 'page' : undefined}
                     >
-                      {item.label}
+                      <Icon className="w-4 h-4" />
+                      <span className="hidden sm:inline">{item.label}</span>
                     </Link>
                   );
                 })}
@@ -100,7 +100,7 @@ export function Layout({ children }: LayoutProps) {
               {usage && (
                 <Link
                   to="/settings"
-                  className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md hover:bg-muted"
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md hover:bg-muted"
                   title={usage.limit != null
                     ? `Used $${usage.usage.toFixed(2)} of $${usage.limit.toFixed(2)}`
                     : `Used $${usage.usage.toFixed(2)}`
@@ -121,7 +121,7 @@ export function Layout({ children }: LayoutProps) {
         </div>
       </header>
       <main className="flex-1">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="max-w-5xl mx-auto px-4 sm:px-4 lg:px-8 py-4">
           {children}
         </div>
       </main>

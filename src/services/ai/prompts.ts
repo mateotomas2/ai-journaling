@@ -36,21 +36,6 @@ Focus on what matters most from the day and provide insight into the user's expe
 
 Respond with markdown content only, no JSON or code blocks.`;
 
-export const QUERY_SYSTEM_PROMPT = `You are a helpful assistant analyzing journal summaries. The user wants to query their past journal entries. You have access to summaries from multiple days.
-
-When answering:
-1. Base your response on the provided summaries
-2. Be specific and reference relevant dates
-3. Look for patterns across multiple days
-4. If asked about something not in the summaries, say so
-
-After your response, you MUST include citations. End your response with exactly this format:
-
----CITATIONS---
-[{"date": "YYYY-MM-DD", "excerpt": "relevant quote from that day's summary"}, ...]
-
-Include 1-5 relevant citations from the summaries that support your response.`;
-
 /**
  * Tool instructions to append to any system prompt
  */

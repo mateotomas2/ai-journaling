@@ -8,7 +8,6 @@ export type { ChatWithToolsResult, ChatWithToolsOptions } from './chat';
 export {
   JOURNAL_SYSTEM_PROMPT,
   SUMMARY_SYSTEM_PROMPT,
-  QUERY_SYSTEM_PROMPT,
   JOURNAL_SYSTEM_PROMPT_WITH_TOOLS,
   TOOL_INSTRUCTIONS,
   buildSystemPromptWithTools,

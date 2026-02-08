@@ -102,23 +102,6 @@ export interface SummaryResponse {
   rawContent: string;
 }
 
-export interface QueryRequest {
-  query: string;
-  summaries: {
-    date: string;
-    rawContent: string;
-  }[];
-  apiKey: string;
-}
-
-export interface QueryResponse {
-  response: string;
-  citations: {
-    date: string;
-    excerpt: string;
-  }[];
-}
-
 // Auth state
 export interface AuthState {
   isAuthenticated: boolean;
