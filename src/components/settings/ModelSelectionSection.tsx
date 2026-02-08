@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { ModelSelector } from './ModelSelector';
 import { useDatabase } from '@/hooks/useDatabase';
+import { useSettings } from '@/hooks/useSettings';
 import { getSummarizerModel, updateSummarizerModel, getChatModel, updateChatModel } from '@/services/settings/settings.service';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export function ModelSelectionSection() {
   const { db } = useDatabase();
+  const { apiKey } = useSettings();
   const [summarizerModel, setSummarizerModel] = useState<string>('openai/gpt-4o');
   const [summarizerLoading, setSummarizerLoading] = useState(true);
   const [summarizerError, setSummarizerError] = useState<string>('');
@@ -91,7 +93,7 @@ export function ModelSelectionSection() {
           {chatLoading ? (
             <div className="text-sm text-muted-foreground">Loading...</div>
           ) : (
-            <ModelSelector value={chatModel} onChange={handleChatChange} />
+            <ModelSelector value={chatModel} onChange={handleChatChange} apiKey={apiKey ?? undefined} />
           )}
         </div>
 
@@ -107,7 +109,7 @@ export function ModelSelectionSection() {
           {summarizerLoading ? (
             <div className="text-sm text-muted-foreground">Loading...</div>
           ) : (
-            <ModelSelector value={summarizerModel} onChange={handleSummarizerChange} />
+            <ModelSelector value={summarizerModel} onChange={handleSummarizerChange} apiKey={apiKey ?? undefined} />
           )}
         </div>
       </CardContent>

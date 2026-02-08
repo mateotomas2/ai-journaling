@@ -17,9 +17,10 @@ interface ChatHeaderProps {
   selectedModel: string;
   onModelChange: (modelId: string) => void;
   onNewChat: () => void;
+  apiKey?: string | undefined;
 }
 
-export function ChatHeader({ selectedModel, onModelChange, onNewChat }: ChatHeaderProps) {
+export function ChatHeader({ selectedModel, onModelChange, onNewChat, apiKey }: ChatHeaderProps) {
   const [showConfirm, setShowConfirm] = useState(false);
 
   return (
@@ -36,7 +37,7 @@ export function ChatHeader({ selectedModel, onModelChange, onNewChat }: ChatHead
         >
           <RotateCcw className="h-4 w-4" />
         </Button>
-        <ModelSelectorIcon value={selectedModel} onChange={onModelChange} />
+        <ModelSelectorIcon value={selectedModel} onChange={onModelChange} apiKey={apiKey} />
       </div>
 
       <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>

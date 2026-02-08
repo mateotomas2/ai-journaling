@@ -22,9 +22,10 @@ import {
 interface ModelSelectorIconProps {
   value: string;
   onChange: (modelId: string) => void;
+  apiKey?: string | undefined;
 }
 
-export function ModelSelectorIcon({ value, onChange }: ModelSelectorIconProps) {
+export function ModelSelectorIcon({ value, onChange, apiKey }: ModelSelectorIconProps) {
   const [open, setOpen] = useState(false)
   const [models, setModels] = useState<AIModel[]>(FALLBACK_MODELS);
   const [isLoading, setIsLoading] = useState(true);
@@ -35,7 +36,7 @@ export function ModelSelectorIcon({ value, onChange }: ModelSelectorIconProps) {
       try {
         setIsLoading(true);
         setHasError(false);
-        const fetchedModels = await fetchModels();
+        const fetchedModels = await fetchModels(apiKey);
         setModels(fetchedModels);
       } catch (error) {
         console.error('Failed to load models:', error);
@@ -47,7 +48,7 @@ export function ModelSelectorIcon({ value, onChange }: ModelSelectorIconProps) {
     }
 
     loadModels();
-  }, []);
+  }, [apiKey]);
 
   const selectedModel = models.find((model) => model.id === value)
 

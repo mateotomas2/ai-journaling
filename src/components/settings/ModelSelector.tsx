@@ -23,9 +23,10 @@ import { Label } from "@/components/ui/label"
 interface ModelSelectorProps {
   value: string;
   onChange: (modelId: string) => void;
+  apiKey?: string | undefined;
 }
 
-export function ModelSelector({ value, onChange }: ModelSelectorProps) {
+export function ModelSelector({ value, onChange, apiKey }: ModelSelectorProps) {
   const [open, setOpen] = useState(false)
   const [models, setModels] = useState<AIModel[]>(FALLBACK_MODELS);
   const [isLoading, setIsLoading] = useState(true);
@@ -36,7 +37,7 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
       try {
         setIsLoading(true);
         setHasError(false);
-        const fetchedModels = await fetchModels();
+        const fetchedModels = await fetchModels(apiKey);
         setModels(fetchedModels);
       } catch (error) {
         console.error('Failed to load models:', error);
@@ -48,7 +49,7 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
     }
 
     loadModels();
-  }, []);
+  }, [apiKey]);
 
   const selectedModel = models.find((model) => model.id === value)
 

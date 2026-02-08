@@ -128,16 +128,24 @@ export function transformToAIModel(apiModel: OpenRouterModel): AIModel {
 
 /**
  * Fetch available models from OpenRouter API
- * Falls back to FALLBACK_MODELS on error
+ * When an API key is provided, uses the authenticated /models/user endpoint
+ * which returns only models available based on the user's account settings.
+ * Falls back to FALLBACK_MODELS on error.
+ * @param apiKey - Optional OpenRouter API key for authenticated filtering
  * @returns Array of AIModel objects
  */
-export async function fetchModels(): Promise<AIModel[]> {
+export async function fetchModels(apiKey?: string): Promise<AIModel[]> {
   try {
-    const response = await fetch('https://openrouter.ai/api/v1/models', {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    const url = apiKey
+      ? 'https://openrouter.ai/api/v1/models/user'
+      : 'https://openrouter.ai/api/v1/models';
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (apiKey) {
+      headers['Authorization'] = `Bearer ${apiKey}`;
+    }
+    const response = await fetch(url, { headers });
 
     if (!response.ok) {
       console.warn('OpenRouter API returned non-OK status, using fallback models');

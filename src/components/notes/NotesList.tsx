@@ -268,7 +268,7 @@ export function NotesList({ dayId, highlightNoteId }: NotesListProps) {
   return (
     <div className="max-w-4xl mx-auto p-4">
       {/* Summary section - special handling */}
-      <div className="mb-8">
+      <div className="hidden mb-8">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
           Summary
         </h2>
@@ -352,9 +352,6 @@ export function NotesList({ dayId, highlightNoteId }: NotesListProps) {
         <div className="text-center py-12">
           <p className="text-gray-500 dark:text-gray-400 mb-4">
             No notes yet for this day
-          </p>
-          <p className="text-sm text-gray-400 dark:text-gray-500">
-            Generate a summary or add your own notes
           </p>
         </div>
       )}

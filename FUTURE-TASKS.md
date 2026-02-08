@@ -112,3 +112,27 @@ This requires:
 
 
 add vercel deployment
+
+
+
+
+
+
+
+
+------- Revision 7 feb
+- Content or title should not be mandatory, maybe title should not be mandatory or we should even remove it entirely
+- Notes should be faster to write
+
+- The summary should take into aaccount notes + messages
+
+
+
+
+- Reorganize notes, will pick up notes and messages and came up with notes from them, removing the other ones (do not remove entirely from the DB mark as deleted)
+
+- Entries is not taking into account notes just messages.
+
+- when searching it should go to the message / note, but now it goes to the day4
+
+the background of some modals is not dark

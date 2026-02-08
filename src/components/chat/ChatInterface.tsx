@@ -5,6 +5,7 @@ import { MessageInput } from './MessageInput';
 import { ApiKeySetup } from './ApiKeySetup';
 import { ChatHeader } from './ChatHeader';
 import { useDatabase } from '@/hooks/useDatabase';
+import { useSettings } from '@/hooks/useSettings';
 import { getChatModel, updateChatModel } from '@/services/settings/settings.service';
 
 interface ChatInterfaceProps {
@@ -13,6 +14,7 @@ interface ChatInterfaceProps {
 
 export function ChatInterface({ dayId }: ChatInterfaceProps) {
   const { db } = useDatabase();
+  const { apiKey } = useSettings();
   const [selectedModel, setSelectedModel] = useState<string>('openai/gpt-4o');
 
   // Load default chat model from settings
@@ -61,6 +63,7 @@ export function ChatInterface({ dayId }: ChatInterfaceProps) {
         selectedModel={selectedModel}
         onModelChange={handleModelChange}
         onNewChat={clearMessages}
+        apiKey={apiKey ?? undefined}
       />
       <MessageList messages={messages} isLoading={isLoading} />
 
