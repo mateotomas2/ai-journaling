@@ -28,9 +28,9 @@ export async function exportJournalData(): Promise<ExportData> {
 
   const [daysResult, messagesResult, summariesResult, notesResult] = await Promise.all([
     db.days.find().exec(),
-    db.messages.find().exec(),
-    db.summaries.find().exec(),
-    db.notes.find().exec(),
+    db.messages.find({ selector: { deletedAt: 0 } }).exec(),
+    db.summaries.find({ selector: { deletedAt: 0 } }).exec(),
+    db.notes.find({ selector: { deletedAt: 0 } }).exec(),
   ]);
 
   const days = daysResult.map((doc) => doc.toJSON() as Day);
@@ -87,9 +87,9 @@ export async function exportAllSyncData(): Promise<SyncData> {
 
   const [daysResult, messagesResult, summariesResult, notesResult] = await Promise.all([
     db.days.find().exec(),
-    db.messages.find().exec(),
-    db.summaries.find().exec(),
-    db.notes.find().exec(),
+    db.messages.find({ selector: { deletedAt: 0 } }).exec(),
+    db.summaries.find({ selector: { deletedAt: 0 } }).exec(),
+    db.notes.find({ selector: { deletedAt: 0 } }).exec(),
   ]);
 
   return {
@@ -111,9 +111,9 @@ export async function exportDateRange(startDate: string, endDate: string): Promi
 
   const [daysResult, messagesResult, summariesResult, notesResult] = await Promise.all([
     db.days.find({ selector: { id: { $gte: startDate, $lte: endDate } } }).exec(),
-    db.messages.find({ selector: { dayId: { $gte: startDate, $lte: endDate } } }).exec(),
-    db.summaries.find({ selector: { dayId: { $gte: startDate, $lte: endDate } } }).exec(),
-    db.notes.find({ selector: { dayId: { $gte: startDate, $lte: endDate } } }).exec(),
+    db.messages.find({ selector: { dayId: { $gte: startDate, $lte: endDate }, deletedAt: 0 } }).exec(),
+    db.summaries.find({ selector: { dayId: { $gte: startDate, $lte: endDate }, deletedAt: 0 } }).exec(),
+    db.notes.find({ selector: { dayId: { $gte: startDate, $lte: endDate }, deletedAt: 0 } }).exec(),
   ]);
 
   const days = daysResult.map((doc) => doc.toJSON() as Day);

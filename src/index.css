@@ -125,7 +125,7 @@ body {
   color: hsl(var(--foreground));
 }
 
-.dark .mdxeditor [contenteditable="true"] {
+.dark .mdxeditor {
   color: hsl(var(--foreground));
 }
 
@@ -148,61 +148,88 @@ body {
 }
 
 /* List styles inside editor */
-.mdxeditor [contenteditable="true"] ul {
+.mdxeditor ul {
   list-style-type: disc;
   padding-left: 1.5em;
 }
 
-.mdxeditor [contenteditable="true"] ol {
+.mdxeditor ol {
   list-style-type: decimal;
   padding-left: 1.5em;
 }
 
-.mdxeditor [contenteditable="true"] li {
+.mdxeditor li {
   display: list-item;
 }
 
-.mdxeditor [contenteditable="true"] p {
-  font-size: 1rem;
+.mdxeditor p {
+  font-size: 1em;
+  padding-bottom: 0.5em;
 }
 
-.mdxeditor [contenteditable="true"] h1,
-.mdxeditor [contenteditable="true"] h2,
-.mdxeditor [contenteditable="true"] h3,
-.mdxeditor [contenteditable="true"] h4,
-.mdxeditor [contenteditable="true"] h5,
-.mdxeditor [contenteditable="true"] h6 {
+.mdxeditor hr {
+  padding-bottom: 0.5em;
+}
+
+.mdxeditor h1,
+.mdxeditor h2,
+.mdxeditor h3,
+.mdxeditor h4,
+.mdxeditor h5,
+.mdxeditor h6 {
   font-weight: bold;
-  padding-bottom: 0.5rem;
+  padding-bottom: 0.5em;
 }
 
-.mdxeditor [contenteditable="true"] h1 {
-  font-size: 2rem;
+.mdxeditor h1 {
+  font-size: 2em;
 }
 
-.mdxeditor [contenteditable="true"] h2 {
-  font-size: 1.5rem;
+.mdxeditor h2 {
+  font-size: 1.5em;
 }
 
-.mdxeditor [contenteditable="true"] h3 {
-  font-size: 1.25rem;
+.mdxeditor h3 {
+  font-size: 1.25em;
 }
 
-.mdxeditor [contenteditable="true"] h4 {
-  font-size: 1rem;
+.mdxeditor h4 {
+  font-size: 1em;
 }
 
-.mdxeditor [contenteditable="true"] h5 {
-  font-size: 0.875rem;
+.mdxeditor h5 {
+  font-size: 0.875em;
 }
 
-.mdxeditor [contenteditable="true"] h6 {
-  font-size: 0.75rem;
+.mdxeditor h6 {
+  font-size: 0.75em;
 }
 
-.dark .mdxeditor [contenteditable="true"] ul li::marker,
-.dark .mdxeditor [contenteditable="true"] ol li::marker {
+.dark .mdxeditor ul li::marker,
+.dark .mdxeditor ol li::marker {
   color: hsl(var(--muted-foreground));
+}
+
+/* ===== MDXEditor Read-Only (Chat Bubbles) ===== */
+.mdxeditor[contenteditable="false"],
+.mdxeditor:has([contenteditable="false"]) {
+  --accentColor: transparent;
+}
+
+.message-bubble-markdown .mdxeditor {
+  border: none !important;
+  background: transparent !important;
+}
+
+.message-bubble-markdown .mdxeditor [class*="_rootContentEditableWrapper"] {
+  border: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+.message-bubble-markdown .mdxeditor [class*="_contentEditable"] {
+  padding: 0 !important;
+  min-height: unset !important;
 }
 
 /* ===== Prose/Typography Dark Mode ===== */

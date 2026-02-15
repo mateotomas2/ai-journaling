@@ -317,7 +317,7 @@ export function NotesList({ dayId, highlightNoteId }: NotesListProps) {
               disabled={isRegenerating}
               className="px-3 py-1.5 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 disabled:text-gray-400"
             >
-              {isRegenerating ? 'Regenerating...' : 'Regenerate Notes'}
+              {isRegenerating ? 'Generating...' : 'Generate Notes with AI'}
             </button>
           </div>
           {nonSummaryNotes.map((note) => (
@@ -338,14 +338,15 @@ export function NotesList({ dayId, highlightNoteId }: NotesListProps) {
       <div ref={bottomRef} />
 
       {/* Add Note button */}
-      <div className="mt-8">
-        <button
-          onClick={handleAddNote}
-          className="w-full px-4 py-3 text-sm font-medium text-blue-600 dark:text-blue-400 border-2 border-dashed border-blue-300 dark:border-blue-700 hover:border-blue-400 dark:hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg"
-        >
-          + Add Note
-        </button>
-      </div>
+      {/* Floating Add Note button */}
+      <button
+        onClick={handleAddNote}
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-6 py-3 text-sm font-medium 
+          +text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-full shadow-lg hover:shadow
+          +-xl transition-all"
+      >
+        + Add Note
+      </button>
 
       {/* Empty state */}
       {notes.length === 0 && (

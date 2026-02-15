@@ -60,6 +60,19 @@ export async function initDatabase(encryptionKey: string): Promise<ReflektDataba
     },
     messages: {
       schema: messageSchema,
+      migrationStrategies: {
+        1: (doc: Record<string, unknown>) => doc,
+        2: (doc: Record<string, unknown>) => {
+          const toolCalls = doc.toolCalls as string | undefined;
+          const content = doc.content as string;
+          const parts = JSON.stringify([
+            ...(toolCalls ? JSON.parse(toolCalls) : []),
+            { type: 'text', content },
+          ]);
+          const { toolCalls: _, ...rest } = doc;
+          return { ...rest, parts };
+        },
+      },
     },
     summaries: {
       schema: summarySchema,

@@ -46,7 +46,9 @@ describe('MemorySearch Component', () => {
     dayId: '2026-01-15',
     role: 'user',
     content: 'I had a great day today feeling accomplished and proud of my work.',
+    parts: JSON.stringify([{ type: 'text', content: 'I had a great day today feeling accomplished and proud of my work.' }]),
     timestamp: Date.now(),
+    deletedAt: 0,
   };
 
   const mockResults: MessageSearchResult[] = [

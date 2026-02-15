@@ -21,6 +21,7 @@ export async function importData(file: File): Promise<ImportResult> {
 }
 
 /**
+ * @deprecated
  * Clear all data from the database
  * Removes all days, messages, summaries, and resets settings
  */

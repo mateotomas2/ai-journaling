@@ -348,8 +348,8 @@ class MemoryIndexer implements IMemoryIndexer {
 
     // Fetch all embeddings, messages, and notes
     const allEmbeddings = await db.embeddings.find().exec();
-    const allMessages = await db.messages.find().exec();
-    const allNotes = await db.notes.find().exec();
+    const allMessages = await db.messages.find({ selector: { deletedAt: 0 } }).exec();
+    const allNotes = await db.notes.find({ selector: { deletedAt: 0 } }).exec();
 
     // Create sets of valid IDs
     const validMessageIds = new Set(allMessages.map((m) => m.id));
@@ -510,8 +510,8 @@ class MemoryIndexer implements IMemoryIndexer {
       throw new Error('Database not initialized');
     }
 
-    const allMessages = await db.messages.find().exec();
-    const allNotes = await db.notes.find().exec();
+    const allMessages = await db.messages.find({ selector: { deletedAt: 0 } }).exec();
+    const allNotes = await db.notes.find({ selector: { deletedAt: 0 } }).exec();
     const allEmbeddings = await db.embeddings.find().exec();
 
     // Separate embeddings by entity type

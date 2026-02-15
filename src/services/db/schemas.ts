@@ -70,7 +70,7 @@ export const daySchema: RxJsonSchema<Day> = {
 };
 
 export const messageSchema: RxJsonSchema<Message> = {
-  version: 0,
+  version: 2,
   primaryKey: 'id',
   type: 'object',
   properties: {
@@ -89,7 +89,13 @@ export const messageSchema: RxJsonSchema<Message> = {
     content: {
       type: 'string',
     },
+    parts: {
+      type: 'string',
+    },
     timestamp: {
+      type: 'number',
+    },
+    deletedAt: {
       type: 'number',
     },
     categories: {
@@ -100,9 +106,9 @@ export const messageSchema: RxJsonSchema<Message> = {
       },
     },
   },
-  required: ['id', 'dayId', 'role', 'content', 'timestamp'],
-  indexes: ['dayId', 'timestamp'],
-  encrypted: ['content'],
+  required: ['id', 'dayId', 'role', 'content', 'parts', 'timestamp', 'deletedAt'],
+  indexes: ['dayId', 'timestamp', 'deletedAt'],
+  encrypted: ['content', 'parts'],
   additionalProperties: false,
 };
 
@@ -122,6 +128,9 @@ export const summarySchema: RxJsonSchema<Summary> = {
     generatedAt: {
       type: 'number',
     },
+    deletedAt: {
+      type: 'number',
+    },
     sections: {
       type: 'object',
       properties: {
@@ -137,8 +146,8 @@ export const summarySchema: RxJsonSchema<Summary> = {
       type: 'string',
     },
   },
-  required: ['id', 'dayId', 'generatedAt', 'sections', 'rawContent'],
-  indexes: ['dayId', 'generatedAt'],
+  required: ['id', 'dayId', 'generatedAt', 'deletedAt', 'sections', 'rawContent'],
+  indexes: ['dayId', 'generatedAt', 'deletedAt'],
   encrypted: ['sections', 'rawContent'],
   additionalProperties: false,
 };

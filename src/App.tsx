@@ -9,7 +9,7 @@ import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { Setup } from './pages/Setup';
 import { useDatabase } from './hooks/useDatabase';
 import { useEmbeddingService } from './hooks/useEmbeddingService';
-import { useGoogleDriveSync } from './hooks/useGoogleDriveSync';
+import { SyncProvider } from './contexts/SyncContext';
 import { Loading } from './components/common/Loading';
 import { getSelectedDay } from './utils/session.utils';
 import { getTodayId } from './utils/date.utils';
@@ -31,9 +31,6 @@ function AppRoutes() {
   const { isInitializing: embeddingInitializing, error: embeddingError } = useEmbeddingService({
     autoInitialize: isUnlocked && !isFirstTime,
   });
-
-  // Initialize Google Drive sync when unlocked
-  useGoogleDriveSync();
 
   if (isLoading) {
     return <Loading message="Loading..." />;
@@ -89,9 +86,11 @@ export function App() {
     <ThemeProvider attribute="class" defaultTheme="system" storageKey="vite-ui-theme">
       <BrowserRouter basename={import.meta.env.BASE_URL}>
         <DatabaseProvider>
-          <AppRoutes />
-          <Toaster />
-          <UpdatePrompt />
+          <SyncProvider>
+            <AppRoutes />
+            <Toaster />
+            <UpdatePrompt />
+          </SyncProvider>
         </DatabaseProvider>
       </BrowserRouter>
     </ThemeProvider>

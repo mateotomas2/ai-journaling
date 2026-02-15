@@ -16,6 +16,7 @@ export async function saveSummary(
     id: dayId, // Same as dayId for 1:1 relationship
     dayId,
     generatedAt: Date.now(),
+    deletedAt: 0,
     sections,
     rawContent,
   };
@@ -33,7 +34,7 @@ export async function saveSummary(
  */
 export async function getSummaryForDay(dayId: string): Promise<Summary | null> {
   const db = getDatabase();
-  const doc = await db.summaries.findOne(dayId).exec();
+  const doc = await db.summaries.findOne({ selector: { id: dayId, deletedAt: 0 } }).exec();
   return doc ? doc.toJSON() : null;
 }
 
@@ -52,6 +53,7 @@ export async function getSummariesInRange(
           $gte: startDate,
           $lte: endDate,
         },
+        deletedAt: 0,
       },
     })
     .sort({ dayId: 'desc' })
@@ -65,7 +67,7 @@ export async function getSummariesInRange(
 export async function getRecentSummaries(limit: number): Promise<Summary[]> {
   const db = getDatabase();
   const docs = await db.summaries
-    .find()
+    .find({ selector: { deletedAt: 0 } })
     .sort({ generatedAt: 'desc' })
     .limit(limit)
     .exec();
@@ -87,7 +89,7 @@ export async function deleteSummary(dayId: string): Promise<boolean> {
   const db = getDatabase();
   const doc = await db.summaries.findOne(dayId).exec();
   if (doc) {
-    await doc.remove();
+    await doc.patch({ deletedAt: Date.now() });
     return true;
   }
   return false;

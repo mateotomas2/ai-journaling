@@ -69,12 +69,38 @@ User: What did I dream today?
 Tool call: query=dream limit=5 daterange.startDate=today daterange.endDate=today
 `;
 
+import type { Note } from '@/types';
+
+const MAX_NOTES_CHARS = 3000;
+
+function formatNotesSection(notes: Note[]): string {
+  if (!notes || notes.length === 0) return '';
+
+  let section = '\n\n## Current Day\'s Notes\nThe user has the following notes for this journal day:\n';
+  let totalChars = 0;
+
+  for (const note of notes) {
+    const title = note.title ? ` ${note.title}` : '';
+    const entry = `\n### [${note.category}]${title}\n${note.content}\n`;
+
+    if (totalChars + entry.length > MAX_NOTES_CHARS) {
+      section += '\n\n*(Notes truncated for brevity)*';
+      break;
+    }
+
+    section += entry;
+    totalChars += entry.length;
+  }
+
+  return section;
+}
+
 /**
  * Combine a system prompt with tool instructions and date context
  */
 export function buildSystemPromptWithTools(
   basePrompt: string,
-  options?: { currentDate?: string; journalDate?: string }
+  options?: { currentDate?: string; journalDate?: string; notes?: Note[] }
 ): string {
   let prompt = basePrompt;
 
@@ -86,6 +112,10 @@ export function buildSystemPromptWithTools(
     if (options.journalDate) {
       prompt += `Journal entry date: ${options.journalDate}\n`;
     }
+  }
+
+  if (options?.notes && options.notes.length > 0) {
+    prompt += formatNotesSection(options.notes);
   }
 
   prompt += TOOL_INSTRUCTIONS;

@@ -1,0 +1,6 @@
+name = "reflekt-auth-worker"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+# Set these via: npx wrangler secret put GOOGLE_CLIENT_ID
+#                npx wrangler secret put GOOGLE_CLIENT_SECRET

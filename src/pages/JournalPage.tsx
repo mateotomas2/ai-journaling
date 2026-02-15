@@ -82,9 +82,9 @@ export function JournalPage() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8rem)]">
+    <div className="flex flex-col h-[calc(100vh-5.25rem)]">
       {/* Date Navigation Header */}
-      <div className="flex items-center justify-between pb-4">
+      <div className="flex items-center justify-between pb-2">
         <div className="flex items-center gap-1">
           <Button
             variant="outline"

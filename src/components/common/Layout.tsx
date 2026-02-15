@@ -3,13 +3,13 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { OfflineIndicator } from './OfflineIndicator';
 import { useKeyboardNavigation } from '../../hooks/useKeyboardNavigation';
-import { useApiUsage } from '../../hooks/useApiUsage';
 import { MemorySearch } from '../search/MemorySearch';
 import { cn } from '@/lib/utils';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { ModeToggle } from '@/components/mode-toggle';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
-import { Search, DollarSign, BookOpen, List, Settings } from 'lucide-react';
+import { Search, BookOpen, List, Settings } from 'lucide-react';
+import { SyncStatusIndicator } from './SyncStatusIndicator';
 
 interface LayoutProps {
   children: ReactNode;
@@ -19,7 +19,6 @@ export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const { usage } = useApiUsage();
 
   // Cmd+K / Ctrl+K to open search
   useEffect(() => {
@@ -97,22 +96,7 @@ export function Layout({ children }: LayoutProps) {
                   <span className="text-xs">⌘</span>K
                 </kbd>
               </Button>
-              {usage && (
-                <Link
-                  to="/settings"
-                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md hover:bg-muted"
-                  title={usage.limit != null
-                    ? `Used $${usage.usage.toFixed(2)} of $${usage.limit.toFixed(2)}`
-                    : `Used $${usage.usage.toFixed(2)}`
-                  }
-                >
-                  <DollarSign className="w-3 h-3 mr-[-5px]" />
-                  <span>{usage.usage.toFixed(2)}{usage.limit != null && (
-                    <span className="text-muted-foreground/60">/{usage.limit.toFixed(2)}</span>
-                  )}</span>
-
-                </Link>
-              )}
+              <SyncStatusIndicator />
               <div className="w-px h-6 bg-border mx-2" />
               <ModeToggle />
               <InstallPrompt />
@@ -121,7 +105,7 @@ export function Layout({ children }: LayoutProps) {
         </div>
       </header>
       <main className="flex-1">
-        <div className="max-w-5xl mx-auto px-4 sm:px-4 lg:px-8 py-4">
+        <div className="max-w-5xl mx-auto p-2">
           {children}
         </div>
       </main>

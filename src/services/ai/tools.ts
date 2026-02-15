@@ -4,6 +4,8 @@
  */
 
 import type { Tool, ToolCall, ToolResult } from '@/types';
+import { toolDefinition } from '@tanstack/ai';
+import { z } from 'zod';
 import { memoryService } from '@/services/memory/search';
 import { getTodayId } from '@/utils/date.utils';
 import { format, subDays, parseISO } from 'date-fns';
@@ -62,12 +64,12 @@ export const JOURNAL_TOOLS: Tool[] = [MEMORY_SEARCH_TOOL];
  */
 interface MemorySearchArgs {
   query: string;
-  limit?: number;
-  minScore?: number;
+  limit?: number | undefined;
+  minScore?: number | undefined;
   dateRange?: {
-    startDate?: string;
-    endDate?: string;
-  };
+    startDate?: string | undefined;
+    endDate?: string | undefined;
+  } | undefined;
 }
 
 /**
@@ -124,12 +126,18 @@ async function executeMemorySearch(
 
   // Execute the search - pass date range as dayId strings directly
   const excludeCount = conversationMessageIds.length;
-  const results = await memoryService.search({
+  const searchQuery: Parameters<typeof memoryService.search>[0] = {
     query,
     limit: limit + excludeCount,
     minScore,
-    ...(dateRange && { dateRange }),
-  });
+  };
+  if (dateRange) {
+    searchQuery.dateRange = {
+      ...(dateRange.startDate !== undefined && { startDate: dateRange.startDate }),
+      ...(dateRange.endDate !== undefined && { endDate: dateRange.endDate }),
+    };
+  }
+  const results = await memoryService.search(searchQuery);
 
   // Filter out messages already in the current conversation context
   const excludeSet = new Set(conversationMessageIds);
@@ -186,3 +194,50 @@ async function executeMemorySearch(
     }),
   };
 }
+
+/**
+ * TanStack AI tool definition for memory search (used with useChat streaming)
+ */
+const memorySearchToolDef = toolDefinition({
+  name: 'search_journal_memory' as const,
+  description:
+    'Search journal entries and notes using semantic similarity. Use this when you need context from their journal history. Use this when the user asks for anything that you have no information about.',
+  inputSchema: z.object({
+    query: z.string().describe('The search query to find relevant past entries'),
+    limit: z.number().optional().describe('Maximum number of results to return (default: 5)'),
+    minScore: z.number().optional().describe('Minimum similarity score from 0 to 1 (default: 0.3)'),
+    dateRange: z.object({
+      startDate: z.string().optional().describe('Earliest date to include (YYYY-MM-DD)'),
+      endDate: z.string().optional().describe('Latest date to include (YYYY-MM-DD)'),
+    }).optional().describe('Optional date range filter using YYYY-MM-DD format'),
+  }),
+});
+
+/**
+ * Create a TanStack AI client tool for memory search.
+ * Takes a ref to conversationMessageIds so the tool always reads fresh IDs
+ * without needing to be recreated (which would destabilize the ChatClient).
+ */
+export function createMemorySearchClientTool(messageIdsRef: { current: string[] }) {
+  return memorySearchToolDef.client(async (args) => {
+    let searchArgs: MemorySearchArgs = { ...args };
+
+    if (searchArgs.dateRange?.startDate === undefined && searchArgs.dateRange?.endDate === undefined) {
+      const today = getTodayId();
+      const weekAgo = format(subDays(parseISO(today), 7), 'yyyy-MM-dd');
+      searchArgs.dateRange = {
+        startDate: weekAgo,
+        endDate: today,
+      };
+    }
+
+    const result = await executeMemorySearch('client-tool', searchArgs, messageIdsRef.current);
+    return JSON.parse(result.content);
+  });
+}
+
+/**
+ * OpenRouter-format tool definitions for the streaming connection.
+ * These are sent to the API so the model knows what tools are available.
+ */
+export const OPENROUTER_TOOL_DEFINITIONS = JOURNAL_TOOLS;

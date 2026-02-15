@@ -16,7 +16,7 @@ export function useMessages(dayId: string) {
 
     const subscription = db.messages
       .find({
-        selector: { dayId },
+        selector: { dayId, deletedAt: 0 },
         sort: [{ timestamp: 'asc' }],
       })
       .$.subscribe((docs) => {
@@ -37,7 +37,8 @@ export function useMessages(dayId: string) {
     async (
       role: MessageRole,
       content: string,
-      categories?: Category[]
+      categories?: Category[],
+      parts?: string
     ): Promise<Message> => {
       if (!db) {
         throw new Error('Database not initialized');
@@ -48,7 +49,9 @@ export function useMessages(dayId: string) {
         dayId,
         role,
         content,
+        parts: parts ?? JSON.stringify([{ type: 'text', content }]),
         timestamp: Date.now(),
+        deletedAt: 0,
         categories: categories ?? [],
       };
 
@@ -60,11 +63,13 @@ export function useMessages(dayId: string) {
         await dayDoc.patch({ updatedAt: message.timestamp });
       }
 
-      // Automatically index message for semantic search
+      // Automatically index message for semantic search (skip placeholders)
       // This happens asynchronously to avoid blocking message creation
-      memoryService.indexMessage(message).catch((error) => {
-        console.error('[useMessages] Failed to index message for search:', error);
-      });
+      if (content && content !== '...') {
+        memoryService.indexMessage(message).catch((error) => {
+          console.error('[useMessages] Failed to index message for search:', error);
+        });
+      }
 
       return message;
     },
@@ -72,7 +77,7 @@ export function useMessages(dayId: string) {
   );
 
   const updateMessage = useCallback(
-    async (messageId: string, content: string) => {
+    async (messageId: string, content: string, parts?: string) => {
       if (!db) {
         throw new Error('Database not initialized');
       }
@@ -82,13 +87,23 @@ export function useMessages(dayId: string) {
         .exec();
 
       if (messageDoc) {
-        await messageDoc.patch({ content });
+        await messageDoc.patch({
+          content,
+          ...(parts ? { parts } : {}),
+        });
 
         // Re-index the message with updated content
         // This happens asynchronously to avoid blocking the update
-        memoryService.reindexMessage(messageId).catch((error) => {
-          console.error('[useMessages] Failed to re-index updated message:', error);
-        });
+        if (content && content !== '...') {
+          memoryService.reindexMessage(messageId).catch((error) => {
+            // If reindex fails (e.g., placeholder was never indexed), index fresh
+            console.warn('[useMessages] Re-index failed, attempting fresh index:', error.message);
+            const msg = messageDoc.toJSON() as Message;
+            memoryService.indexMessage({ ...msg, content }).catch((err) => {
+              console.error('[useMessages] Failed to index updated message:', err);
+            });
+          });
+        }
       }
     },
     [db]
@@ -101,10 +116,11 @@ export function useMessages(dayId: string) {
       }
 
       const docs = await db.messages
-        .find({ selector: { dayId } })
+        .find({ selector: { dayId, deletedAt: 0 } })
         .exec();
 
-      await Promise.all(docs.map((doc) => doc.remove()));
+      const now = Date.now();
+      await Promise.all(docs.map((doc) => doc.patch({ deletedAt: now })));
     },
     [db, dayId]
   );

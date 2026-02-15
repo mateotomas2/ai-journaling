@@ -1,10 +1,10 @@
 import { useEffect, useRef } from 'react';
-import type { Message } from '../../types/entities';
+import type { UIMessage } from '@tanstack/ai';
 import { MessageBubble } from './MessageBubble';
 import { Loading } from '@/components/common/Loading';
 
 interface MessageListProps {
-  messages: Message[];
+  messages: UIMessage[];
   isLoading?: boolean;
 }
 
@@ -17,7 +17,7 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
 
   if (isLoading) {
     return (
-      <div className="flex-1 flex flex-col justify-center items-center p-4">
+      <div className="h-full flex flex-col justify-center items-center p-4">
         <Loading message="Loading messages..." />
       </div>
     );
@@ -33,7 +33,7 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 flex flex-col">
+    <div className="h-full overflow-y-auto p-4 flex flex-col">
       {messages.map((message) => (
         <MessageBubble key={message.id} message={message} />
       ))}

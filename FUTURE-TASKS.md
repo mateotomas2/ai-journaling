@@ -136,3 +136,76 @@ add vercel deployment
 - when searching it should go to the message / note, but now it goes to the day4
 
 the background of some modals is not dark
+
+
+
+
+---
+
+
+
+fix rxdb dev errors: 
+- [] Error message: Fields of type number/integer that are used in an index, must have set the multipleOf attribute in the schema Error code: SC35 Find out more about this error here: https://rxdb.info/errors.html?console=errors#SC35 -------------------- Parameters: index: "createdAt" field: "createdAt" schema: { "version": 0, "primaryKey": "id", "type": "object", "properties": { "id": { "type": "string", "maxLength": 10 }, "createdAt": { "type": "number" }, "updatedAt": { "type": "number" }, "timezone": { "type": "string", "maxLength": 50 }, "hasSummary": { "type": "boolean" } }, "required": [ "id", "createdAt", "updatedAt", "timezone", "hasSummary" ], "indexes": [ "createdAt", "hasSummary" ] }
+- [] The other error
+
+- Button to Nuke current salt, if forgotten password
+- Welcome message
+  - Set password
+  - Confirm the password is saved
+  - Set open router api-key and explain about this
+
+- Settings 
+  - modify open router api key
+  - Modify initial chat prompt
+  - Nuke session
+  - import/export all data
+  - Summariser settings 
+    - Prompt of the summariser
+
+- Monthly summary?
+  - 
+
+- What if you close the app while something is running you will lost the data right?
+
+
+
+
+
+
+DONE? /speckit.clarify When the user enters the app with the password either in the first login or after closing the app, if the openrouter apikey is not added or is expired, show a message to Set open router api-key and explain how it works like it is 
+
+/speckit.specify Add model selection to settings, you can modify the model of the summariser 
+/speckit.specify In the chat there will be a selector to select the model of the chat. It will persist for every chat session so we will have to save it somewhere.
+
+
+/speckit.specify On the password screen if the user forgot the password he should have an option to nuke the current salt
+/speckit.specify On the password screen if the user forgot the password he should have an option to nuke the current salt
+
+- The summary page has a problem of inifinte re-rendering
+/speckit.clarify The summary response and saved should be plain text. The groups (journal,insights,helath and dreams) should be liquid and not specified as hardcoded or even data types. So the summariser prompt should look any group of data as those examples and return a markdown code without the object. That way the summariser is more flexible and can adapt to any group of data. 
+
+
+/speckit.clarify I should be able to move to the previous/next day using arrow buttons when in the today chat. We could join together the past days vs today page so we also have the summary and chat tabs and move between days with the arrows. Also want to add that when you click in the date on that top bar the calendar is shown. 
+
+
+
+
+
+- Modo notes?
+- Guardar texto introducido
+- Chat writing first to engage the user or follow journaling approaches.
+
+
+
+
+
+---
+add search by keyword, so the search also look database keywords.
+
+add note list filtering and search in the entries menu
+
+
+THE ERRORS DONT SHOW PROPERLY 
+streaming-connection.ts:179  POST https://openrouter.ai/api/v1/chat/completions 429 (Too Many Requests)
+
+

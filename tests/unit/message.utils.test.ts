@@ -3,14 +3,19 @@ import { messagesToChatMessages, sortMessagesByTimestamp } from '../../src/utils
 import type { Message } from '../../src/types/entities';
 
 describe('message.utils', () => {
-  const createMessage = (overrides: Partial<Message> = {}): Message => ({
-    id: '1',
-    dayId: '2026-01-16',
-    role: 'user',
-    content: 'Test message',
-    timestamp: Date.now(),
-    ...overrides,
-  });
+  const createMessage = (overrides: Partial<Message> = {}): Message => {
+    const content = overrides.content ?? 'Test message';
+    return {
+      id: '1',
+      dayId: '2026-01-16',
+      role: 'user',
+      content,
+      parts: JSON.stringify([{ type: 'text', content }]),
+      timestamp: Date.now(),
+      deletedAt: 0,
+      ...overrides,
+    };
+  };
 
   describe('messagesToChatMessages', () => {
     it('converts messages to chat format', () => {

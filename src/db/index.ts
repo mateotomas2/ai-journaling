@@ -34,15 +34,12 @@ export type JournalCollections = {
 export type JournalDatabase = RxDatabase<JournalCollections>;
 
 let dbInstance: JournalDatabase | null = null;
-let storedPassphrase: string | null = null;
+let storedSyncKey: CryptoKey | null = null;
 
 export async function createDatabase(passphrase: string): Promise<JournalDatabase> {
   if (dbInstance) {
     return dbInstance;
   }
-
-  // Store passphrase for sync encryption
-  storedPassphrase = passphrase;
 
   // Build storage chain: Dexie → Validator (for dev mode) → Encryption
   const baseStorage = getRxStorageDexie();
@@ -69,12 +66,21 @@ export async function createDatabase(passphrase: string): Promise<JournalDatabas
     },
     messages: {
       schema: messageSchema,
+      migrationStrategies: {
+        1: (oldDoc: Record<string, unknown>) => ({ ...oldDoc, deletedAt: 0 }),
+      },
     },
     summaries: {
       schema: summarySchema,
+      migrationStrategies: {
+        1: (oldDoc: Record<string, unknown>) => ({ ...oldDoc, deletedAt: 0 }),
+      },
     },
     notes: {
       schema: noteSchema,
+      migrationStrategies: {
+        1: (oldDoc: Record<string, unknown>) => ({ ...oldDoc, deletedAt: 0 }),
+      },
     },
     embeddings: {
       schema: embeddingSchema,
@@ -134,26 +140,20 @@ export async function closeDatabase(): Promise<void> {
     await dbInstance.close();
     dbInstance = null;
   }
+  storedSyncKey = null;
 }
 
 export function isDatabaseInitialized(): boolean {
   return dbInstance !== null;
 }
 
-export async function getSyncEncryptionKey(): Promise<CryptoKey> {
-  if (!storedPassphrase) {
-    throw new Error('Database not initialized - no encryption key available');
+export function setSyncKey(key: CryptoKey): void {
+  storedSyncKey = key;
+}
+
+export function getSyncEncryptionKey(): CryptoKey {
+  if (!storedSyncKey) {
+    throw new Error('Sync key not available. Unlock with your password to enable sync.');
   }
-
-  const hexBytes = new Uint8Array(
-    storedPassphrase.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16))
-  );
-
-  return crypto.subtle.importKey(
-    'raw',
-    hexBytes.buffer as ArrayBuffer,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt']
-  );
+  return storedSyncKey;
 }

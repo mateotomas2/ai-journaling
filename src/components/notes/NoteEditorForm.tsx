@@ -55,8 +55,17 @@ export function NoteEditorForm({
   highlight = false,
 }: NoteEditorFormProps) {
   const editorRef = useRef<MDXEditorMethods>(null);
+  const lastEditorContentRef = useRef(content);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [localDeleteConfirm, setLocalDeleteConfirm] = useState(showDeleteConfirm);
+
+  // Imperatively update MDXEditor when content changes externally (e.g. from sync)
+  useEffect(() => {
+    if (editorRef.current && content !== lastEditorContentRef.current) {
+      editorRef.current.setMarkdown(content);
+    }
+    lastEditorContentRef.current = content;
+  }, [content]);
 
   // Sync external delete confirm state
   useEffect(() => {
@@ -138,7 +147,10 @@ export function NoteEditorForm({
         <MDXEditor
           ref={editorRef}
           markdown={content}
-          onChange={onContentChange}
+          onChange={(markdown) => {
+            lastEditorContentRef.current = markdown;
+            onContentChange(markdown);
+          }}
           contentEditableClassName="prose prose-sm max-w-none min-h-[200px] focus:outline-none"
           plugins={[
             headingsPlugin(),

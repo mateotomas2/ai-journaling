@@ -14,7 +14,7 @@ export function useSummary(dayId: string) {
     }
 
     const subscription = db.summaries
-      .findOne({ selector: { dayId } })
+      .findOne({ selector: { dayId, deletedAt: 0 } })
       .$.subscribe((doc) => {
         setSummary(doc ? doc.toJSON() : null);
         setIsLoading(false);
@@ -30,7 +30,7 @@ export function useSummary(dayId: string) {
       }
 
       const existingSummary = await db.summaries
-        .findOne({ selector: { dayId } })
+        .findOne({ selector: { dayId, deletedAt: 0 } })
         .exec();
 
       if (existingSummary) {
@@ -46,6 +46,7 @@ export function useSummary(dayId: string) {
         id: dayId,
         dayId,
         generatedAt: Date.now(),
+        deletedAt: 0,
         sections,
         rawContent,
       };
@@ -81,7 +82,7 @@ export function useSummaries(startDate?: string, endDate?: string) {
       return;
     }
 
-    const selector: Record<string, unknown> = {};
+    const selector: Record<string, unknown> = { deletedAt: 0 };
 
     if (startDate && endDate) {
       selector.dayId = {

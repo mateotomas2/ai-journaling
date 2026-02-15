@@ -2,7 +2,7 @@ import type { RxJsonSchema } from 'rxdb';
 import type { Message } from '../../types/entities';
 
 export const messageSchema: RxJsonSchema<Message> = {
-  version: 0,
+  version: 1,
   primaryKey: 'id',
   type: 'object',
   properties: {
@@ -21,11 +21,20 @@ export const messageSchema: RxJsonSchema<Message> = {
     content: {
       type: 'string',
     },
+    parts: {
+      type: 'string',
+    },
     timestamp: {
       type: 'number',
       multipleOf: 1,
       minimum: 0,
       maximum: 4102444799999, // December 31, 2099
+    },
+    deletedAt: {
+      type: 'number',
+      multipleOf: 1,
+      minimum: 0,
+      maximum: 4102444799999,
     },
     categories: {
       type: 'array',
@@ -35,8 +44,8 @@ export const messageSchema: RxJsonSchema<Message> = {
       },
     },
   },
-  required: ['id', 'dayId', 'role', 'content', 'timestamp'],
-  indexes: ['dayId', 'timestamp'],
-  encrypted: ['content'],
+  required: ['id', 'dayId', 'role', 'content', 'parts', 'timestamp', 'deletedAt'],
+  indexes: ['dayId', 'timestamp', 'deletedAt'],
+  encrypted: ['content', 'parts'],
   additionalProperties: false,
 };
