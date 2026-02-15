@@ -211,6 +211,88 @@ export function useNoteCategories() {
 }
 
 /**
+ * Hook to subscribe to all non-summary, non-deleted notes sorted by createdAt desc
+ */
+export function useAllNotes() {
+  const { db } = useDatabase();
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!db) {
+      setIsLoading(false);
+      return;
+    }
+
+    const subscription = db.notes
+      .find({
+        selector: {
+          deletedAt: 0,
+          category: { $ne: 'summary' },
+        },
+        sort: [{ createdAt: 'desc' }],
+      })
+      .$.subscribe({
+        next: (docs) => {
+          setNotes(docs.map((doc) => doc.toJSON()));
+          setIsLoading(false);
+        },
+        error: (err) => {
+          console.error('Error fetching all notes:', err);
+          setIsLoading(false);
+        },
+      });
+
+    return () => subscription.unsubscribe();
+  }, [db]);
+
+  return { notes, isLoading };
+}
+
+/**
+ * Hook to get note counts per day (excluding summary notes)
+ */
+export function useNoteCountsByDay() {
+  const { db } = useDatabase();
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!db) {
+      setIsLoading(false);
+      return;
+    }
+
+    const subscription = db.notes
+      .find({
+        selector: {
+          deletedAt: 0,
+          category: { $ne: 'summary' },
+        },
+      })
+      .$.subscribe({
+        next: (docs) => {
+          const countMap: Record<string, number> = {};
+          for (const doc of docs) {
+            const dayId = doc.dayId;
+            countMap[dayId] = (countMap[dayId] || 0) + 1;
+          }
+          setCounts(countMap);
+          setIsLoading(false);
+        },
+        error: (err) => {
+          console.error('Error fetching note counts:', err);
+          setIsLoading(false);
+        },
+      });
+
+    return () => subscription.unsubscribe();
+  }, [db]);
+
+  return { counts, isLoading };
+}
+
+/**
  * Convenience hook for managing the summary note specifically
  */
 export function useSummaryNote(dayId: string) {

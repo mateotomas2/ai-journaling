@@ -7,9 +7,10 @@ import { Badge } from '@/components/ui/badge';
 interface DayListProps {
   days: Day[];
   isLoading?: boolean;
+  noteCounts?: Record<string, number>;
 }
 
-export function DayList({ days, isLoading }: DayListProps) {
+export function DayList({ days, isLoading, noteCounts }: DayListProps) {
   if (isLoading) {
     return <div className="flex flex-col items-center justify-center p-12 text-muted-foreground gap-4">Loading days...</div>;
   }
@@ -43,6 +44,9 @@ export function DayList({ days, isLoading }: DayListProps) {
               {isToday && <Badge>Today</Badge>}
             </div>
             <div className="flex gap-2">
+              {noteCounts && (noteCounts[day.id] ?? 0) > 0 && (
+                <Badge variant="secondary">{noteCounts[day.id]} {noteCounts[day.id] === 1 ? 'note' : 'notes'}</Badge>
+              )}
               {day.hasSummary && <Badge variant="outline" className="text-primary border-primary/20 bg-primary/5">Summary</Badge>}
             </div>
           </Link>

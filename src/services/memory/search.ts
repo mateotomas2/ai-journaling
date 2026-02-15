@@ -255,6 +255,147 @@ class MemoryService implements IMemoryService {
   }
 
   /**
+   * Search journal messages and notes using keyword (substring) matching
+   */
+  async keywordSearch(query: MemorySearchQuery): Promise<MemorySearchResult[]> {
+    const db = await getDatabase();
+    if (!db) {
+      throw new Error('Database not initialized');
+    }
+
+    const searchTerm = query.query.toLowerCase();
+    const limit = query.limit || 10;
+
+    // Build selectors for filtering
+    const baseMessageSelector: Record<string, unknown> = { deletedAt: 0 };
+    const baseNoteSelector: Record<string, unknown> = { deletedAt: 0 };
+
+    if (query.dayId) {
+      baseMessageSelector.dayId = query.dayId;
+      baseNoteSelector.dayId = query.dayId;
+    }
+
+    if (query.dateRange) {
+      const dayIdRange: Record<string, string> = {};
+      if (query.dateRange.startDate) dayIdRange.$gte = query.dateRange.startDate;
+      if (query.dateRange.endDate) dayIdRange.$lte = query.dateRange.endDate;
+      if (Object.keys(dayIdRange).length > 0) {
+        baseMessageSelector.dayId = dayIdRange;
+        baseNoteSelector.dayId = dayIdRange;
+      }
+    }
+
+    // Fetch messages and notes matching filters
+    const [messages, notes] = await Promise.all([
+      db.messages.find({ selector: baseMessageSelector }).exec(),
+      db.notes.find({ selector: baseNoteSelector }).exec(),
+    ]);
+
+    const results: MemorySearchResult[] = [];
+
+    // Search messages by content
+    for (const message of messages) {
+      if (message.content.toLowerCase().includes(searchTerm)) {
+        results.push({
+          entityType: 'message',
+          entityId: message.id,
+          message: message.toJSON() as Message,
+          score: 1.0,
+          excerpt: extractExcerpt(message.content),
+          dayId: message.dayId,
+          rank: 0,
+        });
+      }
+    }
+
+    // Search notes by content, title, and category
+    for (const note of notes) {
+      const matchesContent = note.content.toLowerCase().includes(searchTerm);
+      const matchesTitle = note.title?.toLowerCase().includes(searchTerm) ?? false;
+      const matchesCategory = note.category.toLowerCase().includes(searchTerm);
+
+      if (matchesContent || matchesTitle || matchesCategory) {
+        results.push({
+          entityType: 'note',
+          entityId: note.id,
+          note: note.toJSON() as Note,
+          score: 1.0,
+          excerpt: extractExcerpt(note.title ? `${note.title}: ${note.content}` : note.content),
+          dayId: note.dayId,
+          rank: 0,
+        });
+      }
+    }
+
+    // Assign ranks and limit
+    const limited = results.slice(0, limit);
+    limited.forEach((r, i) => { r.rank = i + 1; });
+    return limited;
+  }
+
+  /**
+   * Hybrid search: runs keyword and vector search in parallel, merges results
+   * Keyword matches are boosted to appear first
+   */
+  async hybridSearch(query: MemorySearchQuery): Promise<MemorySearchResult[]> {
+    const limit = query.limit || 10;
+
+    // If keywordOnly flag is set, skip vector search
+    if (query.keywordOnly) {
+      return this.keywordSearch(query);
+    }
+
+    // Check if embedding service is ready for vector search
+    const status = embeddingService.getStatus();
+    const canDoVectorSearch = status.isReady || status.isLoading;
+
+    if (!canDoVectorSearch) {
+      // Fall back to keyword-only if embeddings aren't available
+      return this.keywordSearch(query);
+    }
+
+    // Run both searches in parallel
+    const [keywordResults, vectorResults] = await Promise.all([
+      this.keywordSearch({ ...query, limit: limit * 2 }),
+      this.search(query).catch((err) => {
+        console.warn('[MemoryService] Vector search failed, using keyword results only:', err);
+        return [] as MemorySearchResult[];
+      }),
+    ]);
+
+    // Merge results, deduplicating by entityId
+    const mergedMap = new Map<string, MemorySearchResult>();
+
+    // Add keyword results with boosted score
+    for (const result of keywordResults) {
+      mergedMap.set(result.entityId, { ...result, score: 0.95 });
+    }
+
+    // Add vector results, keeping higher score if duplicate
+    for (const result of vectorResults) {
+      const existing = mergedMap.get(result.entityId);
+      if (existing) {
+        // Found by both — use max score (keyword match stays boosted)
+        if (result.score > existing.score) {
+          mergedMap.set(result.entityId, { ...result, score: Math.max(result.score, existing.score) });
+        }
+      } else {
+        mergedMap.set(result.entityId, result);
+      }
+    }
+
+    // Sort by score descending and limit
+    const merged = Array.from(mergedMap.values())
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit);
+
+    // Reassign ranks
+    merged.forEach((r, i) => { r.rank = i + 1; });
+
+    return merged;
+  }
+
+  /**
    * Index a new message for search
    * Queues the message for embedding generation
    */

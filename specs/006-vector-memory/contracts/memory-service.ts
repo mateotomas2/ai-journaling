@@ -20,6 +20,8 @@ export interface MemorySearchQuery {
   };
   /** Optional day ID filter (search within specific day) */
   dayId?: string;
+  /** If true, skip vector search and only use keyword matching */
+  keywordOnly?: boolean;
 }
 
 /** Base interface for search results */

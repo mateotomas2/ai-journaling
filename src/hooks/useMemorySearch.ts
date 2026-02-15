@@ -81,7 +81,7 @@ export function useMemorySearch(): UseMemorySearchReturn {
         queryObject.dateRange = options.dateRange;
       }
 
-      const searchResults = await memoryService.search(queryObject);
+      const searchResults = await memoryService.hybridSearch(queryObject);
 
       setResults(searchResults);
     } catch (err) {
