@@ -69,7 +69,7 @@ export function RegenerateNotesModal({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>Regenerate Notes</DialogTitle>
+          <DialogTitle>Generate Notes with AI</DialogTitle>
           <DialogDescription>
             {isGenerating
               ? 'Analyzing your journal content...'

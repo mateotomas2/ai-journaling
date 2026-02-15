@@ -1,6 +1,7 @@
 export {
   generateSalt,
   deriveKey,
+  deriveSyncKey,
   exportKeyAsHex,
   saltToBase64,
   base64ToSalt,

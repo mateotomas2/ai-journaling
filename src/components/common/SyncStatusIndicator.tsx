@@ -4,7 +4,7 @@ import { useGoogleDriveSync } from '@/hooks/useGoogleDriveSync';
 import { formatDistanceToNow } from 'date-fns';
 
 export function SyncStatusIndicator() {
-  const { isConnected, syncState, lastSyncTime, syncError } = useGoogleDriveSync();
+  const { isConnected, syncState, lastSyncTime, syncError, syncNow } = useGoogleDriveSync();
 
   if (!isConnected) return null;
 
@@ -33,12 +33,12 @@ export function SyncStatusIndicator() {
   }
 
   return (
-    <Link
-      to="/settings"
+    <button
+      onClick={syncNow}
       className="flex items-center text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted"
       title={tooltip}
     >
       {icon}
-    </Link>
+    </button>
   );
 }

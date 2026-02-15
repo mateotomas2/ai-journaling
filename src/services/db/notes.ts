@@ -27,6 +27,7 @@ export async function createNote(
     content,
     createdAt: now,
     updatedAt: now,
+    deletedAt: 0,
   };
 
   const note: Note = title
@@ -72,7 +73,7 @@ export async function getNotesForDay(
   category?: string
 ): Promise<Note[]> {
 
-  const selector: { dayId: string; category?: string } = { dayId };
+  const selector: { dayId: string; category?: string; deletedAt: number } = { dayId, deletedAt: 0 };
   if (category) {
     selector.category = category;
   }
@@ -102,7 +103,7 @@ export async function deleteNote(db: JournalDatabase, noteId: string): Promise<b
   const doc = await db.notes.findOne(noteId).exec();
 
   if (doc) {
-    await doc.remove();
+    await doc.patch({ deletedAt: Date.now() });
     return true;
   }
 
@@ -122,11 +123,13 @@ export async function getNotesInRange(
   const selector: {
     dayId: { $gte: string; $lte: string };
     category?: string;
+    deletedAt: number;
   } = {
     dayId: {
       $gte: startDate,
       $lte: endDate,
     },
+    deletedAt: 0,
   };
 
   if (category) {
@@ -152,7 +155,7 @@ export async function getRecentNotes(
   category?: string
 ): Promise<Note[]> {
 
-  const selector = category ? { category } : {};
+  const selector = category ? { category, deletedAt: 0 } : { deletedAt: 0 };
 
   const docs = await db.notes
     .find({
@@ -177,7 +180,7 @@ export async function hasSummaryNote(db: JournalDatabase, dayId: string): Promis
  * Get all unique categories used across all notes
  */
 export async function getAllCategories(db: JournalDatabase): Promise<string[]> {
-  const docs = await db.notes.find().exec();
+  const docs = await db.notes.find({ selector: { deletedAt: 0 } }).exec();
   const categories = new Set<string>();
 
   docs.forEach((doc) => {

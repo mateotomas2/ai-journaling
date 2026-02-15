@@ -66,6 +66,7 @@ describe('Memory Indexer', () => {
         content: 'Test message for indexing',
         parts: JSON.stringify([{ type: 'text', content: 'Test message for indexing' }]),
         timestamp: Date.now(),
+        deletedAt: 0,
       };
 
       await db.messages.insert(message);
@@ -108,6 +109,7 @@ describe('Memory Indexer', () => {
         content: `Test message ${i} for batch processing`,
         parts: JSON.stringify([{ type: 'text', content: `Test message ${i} for batch processing` }]),
         timestamp: Date.now() + i,
+        deletedAt: 0,
       }));
 
       for (const message of messages) {
@@ -150,6 +152,7 @@ describe('Memory Indexer', () => {
         content: 'Message with embedding',
         parts: JSON.stringify([{ type: 'text', content: 'Message with embedding' }]),
         timestamp: Date.now(),
+        deletedAt: 0,
       };
 
       const messageWithoutEmbedding = {
@@ -159,6 +162,7 @@ describe('Memory Indexer', () => {
         content: 'Message without embedding',
         parts: JSON.stringify([{ type: 'text', content: 'Message without embedding' }]),
         timestamp: Date.now(),
+        deletedAt: 0,
       };
 
       await db.messages.insert(messageWithEmbedding);
@@ -202,6 +206,7 @@ describe('Memory Indexer', () => {
         content: 'Message that will be deleted',
         parts: JSON.stringify([{ type: 'text', content: 'Message that will be deleted' }]),
         timestamp: Date.now(),
+        deletedAt: 0,
       };
 
       await db.messages.insert(message);
@@ -311,6 +316,7 @@ describe('Memory Indexer', () => {
         content: 'Original content',
         parts: JSON.stringify([{ type: 'text', content: 'Original content' }]),
         timestamp: Date.now(),
+        deletedAt: 0,
       };
 
       await db.messages.insert(message);
@@ -384,6 +390,7 @@ describe('Memory Indexer', () => {
         content: `Performance test message ${i}`,
         parts: JSON.stringify([{ type: 'text', content: `Performance test message ${i}` }]),
         timestamp: Date.now() + i,
+        deletedAt: 0,
       }));
 
       for (const message of messages) {

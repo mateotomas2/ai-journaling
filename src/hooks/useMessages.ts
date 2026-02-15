@@ -16,7 +16,7 @@ export function useMessages(dayId: string) {
 
     const subscription = db.messages
       .find({
-        selector: { dayId },
+        selector: { dayId, deletedAt: 0 },
         sort: [{ timestamp: 'asc' }],
       })
       .$.subscribe((docs) => {
@@ -51,6 +51,7 @@ export function useMessages(dayId: string) {
         content,
         parts: parts ?? JSON.stringify([{ type: 'text', content }]),
         timestamp: Date.now(),
+        deletedAt: 0,
         categories: categories ?? [],
       };
 
@@ -115,10 +116,11 @@ export function useMessages(dayId: string) {
       }
 
       const docs = await db.messages
-        .find({ selector: { dayId } })
+        .find({ selector: { dayId, deletedAt: 0 } })
         .exec();
 
-      await Promise.all(docs.map((doc) => doc.remove()));
+      const now = Date.now();
+      await Promise.all(docs.map((doc) => doc.patch({ deletedAt: now })));
     },
     [db, dayId]
   );

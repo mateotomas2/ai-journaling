@@ -2,7 +2,7 @@ import type { RxJsonSchema } from 'rxdb';
 import type { Note } from '../../types/entities';
 
 export const noteSchema: RxJsonSchema<Note> = {
-  version: 0,
+  version: 1,
   primaryKey: 'id',
   type: 'object',
   properties: {
@@ -37,9 +37,15 @@ export const noteSchema: RxJsonSchema<Note> = {
       minimum: 0,
       maximum: 4102444799999, // December 31, 2099
     },
+    deletedAt: {
+      type: 'number',
+      multipleOf: 1,
+      minimum: 0,
+      maximum: 4102444799999,
+    },
   },
-  required: ['id', 'dayId', 'category', 'content', 'createdAt', 'updatedAt'],
-  indexes: ['dayId', 'category', 'createdAt'],
+  required: ['id', 'dayId', 'category', 'content', 'createdAt', 'updatedAt', 'deletedAt'],
+  indexes: ['dayId', 'category', 'createdAt', 'deletedAt'],
   encrypted: ['category', 'title', 'content'],
   additionalProperties: false,
 };

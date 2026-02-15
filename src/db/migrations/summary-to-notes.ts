@@ -79,6 +79,7 @@ export async function migrateSummariesToNotes(
           content: summary.rawContent,
           createdAt: summary.generatedAt,
           updatedAt: summary.generatedAt,
+          deletedAt: 0,
         };
 
         await db.notes.insert(note);

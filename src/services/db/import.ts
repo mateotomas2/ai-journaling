@@ -35,6 +35,7 @@ const ImportDataSchema = z.object({
       role: z.enum(['user', 'assistant']),
       content: z.string(),
       timestamp: z.number(),
+      deletedAt: z.number().optional().default(0),
       categories: z.array(z.enum(['journal', 'insight', 'health', 'dream'])).optional(),
     })
   ),
@@ -43,6 +44,7 @@ const ImportDataSchema = z.object({
       id: z.string(),
       dayId: z.string(),
       generatedAt: z.number(),
+      deletedAt: z.number().optional().default(0),
       sections: SummarySectionsSchema,
       rawContent: z.string(),
     })
@@ -56,6 +58,7 @@ const ImportDataSchema = z.object({
       content: z.string(),
       createdAt: z.number(),
       updatedAt: z.number(),
+      deletedAt: z.number().optional().default(0),
     })
   ).optional().default([]),
 });

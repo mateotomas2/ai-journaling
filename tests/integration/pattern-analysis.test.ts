@@ -127,6 +127,7 @@ describe('Pattern Analysis Integration', () => {
         content: 'I had a really productive work session today, finished the project ahead of schedule.',
         parts: JSON.stringify([{ type: 'text', content: 'I had a really productive work session today, finished the project ahead of schedule.' }]),
         timestamp: Date.now(),
+        deletedAt: 0,
       },
       {
         id: 'msg-6',
@@ -135,6 +136,7 @@ describe('Pattern Analysis Integration', () => {
         content: 'Went for a long run this morning, felt great and energized.',
         parts: JSON.stringify([{ type: 'text', content: 'Went for a long run this morning, felt great and energized.' }]),
         timestamp: Date.now(),
+        deletedAt: 0,
       },
     ];
 

@@ -93,3 +93,20 @@ export function base64ToSalt(base64: string): Uint8Array {
   }
   return bytes;
 }
+
+/**
+ * Fixed, app-specific salt for sync encryption.
+ * Using a fixed salt means same password = same key on any device,
+ * enabling cross-device sync without envelope/password-prompt complexity.
+ * Security: 310K PBKDF2 iterations + OAuth-gated Google Drive appDataFolder
+ * make rainbow table attacks prohibitively expensive.
+ */
+const SYNC_SALT = new TextEncoder().encode('reflekt-journal-sync-v1');
+
+/**
+ * Derive a deterministic sync encryption key from a password.
+ * Same password on any device produces the same key.
+ */
+export async function deriveSyncKey(password: string): Promise<CryptoKey> {
+  return deriveKey(password, SYNC_SALT, CURRENT_ITERATIONS);
+}

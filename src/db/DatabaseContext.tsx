@@ -5,10 +5,11 @@ import {
   useEffect,
   type ReactNode,
 } from 'react';
-import { createDatabase, closeDatabase, type JournalDatabase } from './index';
+import { createDatabase, closeDatabase, setSyncKey, type JournalDatabase } from './index';
 import {
   generateSalt,
   deriveKey,
+  deriveSyncKey,
   exportKeyAsHex,
   saltToBase64,
   base64ToSalt,
@@ -131,6 +132,10 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
         const key = await deriveKey(password, salt, CURRENT_ITERATIONS);
         const keyHex = await exportKeyAsHex(key);
 
+        // Derive and store sync key (deterministic, for cross-device sync)
+        const syncKey = await deriveSyncKey(password);
+        setSyncKey(syncKey);
+
         // Initialize database with derived key
         const database = await createDatabase(keyHex);
         setDb(database);
@@ -169,6 +174,10 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
       // Derive key from password with appropriate iteration count
       const key = await deriveKey(password, salt, iterations);
       const keyHex = await exportKeyAsHex(key);
+
+      // Derive and store sync key (deterministic, for cross-device sync)
+      const syncKey = await deriveSyncKey(password);
+      setSyncKey(syncKey);
 
       // Try to initialize database - will fail if password is wrong
       const database = await createDatabase(keyHex);

@@ -1,0 +1,210 @@
+openapi: 3.1.0
+info:
+  title: Reflekt Cloud Sync API
+  description: |
+    Zero-knowledge encrypted blob storage API for Reflekt journal app.
+    The server stores only opaque encrypted data and has no ability to
+    read, inspect, or process user journal content.
+  version: 1.0.0
+
+servers:
+  - url: https://sync.reflekt.app/api/v1
+    description: Production
+
+security:
+  - googleIdToken: []
+
+paths:
+  /sync:
+    get:
+      summary: Download encrypted blob
+      description: |
+        Downloads the user's encrypted journal blob. Returns raw encrypted
+        binary data with ETag header for conflict detection. 404 if no
+        blob exists yet (first-time sync).
+      operationId: downloadBlob
+      responses:
+        "200":
+          description: Encrypted blob retrieved successfully
+          headers:
+            ETag:
+              description: SHA-256 hash of the blob data
+              schema:
+                type: string
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: No blob exists for this user (first sync)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Invalid or expired Google ID token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    put:
+      summary: Upload encrypted blob
+      description: |
+        Uploads or replaces the user's encrypted journal blob. Uses
+        optimistic concurrency via If-Match header. On first upload,
+        omit If-Match. On subsequent uploads, include the ETag from
+        the last GET response.
+      operationId: uploadBlob
+      parameters:
+        - name: If-Match
+          in: header
+          required: false
+          description: ETag from last GET. Required for updates, omit for first upload.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "200":
+          description: Blob uploaded successfully
+          headers:
+            ETag:
+              description: SHA-256 hash of the uploaded blob
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadResponse"
+        "409":
+          description: |
+            Conflict - server blob updated since last download. Client
+            should GET latest, merge locally, and retry PUT.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "413":
+          description: Blob exceeds maximum allowed size (10 MB)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Invalid or expired Google ID token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    delete:
+      summary: Delete encrypted blob
+      description: |
+        Deletes the user's encrypted blob from the server. Does not
+        delete the user record.
+      operationId: deleteBlob
+      responses:
+        "204":
+          description: Blob deleted successfully (or did not exist)
+        "401":
+          description: Invalid or expired Google ID token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /sync/status:
+    get:
+      summary: Get sync status
+      description: |
+        Returns metadata about the user's sync state without downloading
+        the full blob. Useful for checking if remote data exists before
+        starting a restore flow.
+      operationId: getSyncStatus
+      responses:
+        "200":
+          description: Sync status retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncStatus"
+        "401":
+          description: Invalid or expired Google ID token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+components:
+  securitySchemes:
+    googleIdToken:
+      type: http
+      scheme: bearer
+      description: |
+        Google OAuth2 ID token (JWT). The server verifies the token
+        using Google's public keys and extracts the sub claim as
+        the unique user identifier.
+
+  schemas:
+    UploadResponse:
+      type: object
+      required:
+        - etag
+        - size_bytes
+        - updated_at
+      properties:
+        etag:
+          type: string
+          description: SHA-256 hash of the uploaded blob
+        size_bytes:
+          type: integer
+          description: Size of the stored blob in bytes
+        updated_at:
+          type: string
+          format: date-time
+          description: Server timestamp of the upload
+
+    SyncStatus:
+      type: object
+      required:
+        - exists
+      properties:
+        exists:
+          type: boolean
+          description: Whether a blob exists for this user
+        etag:
+          type: string
+          description: Current ETag (only if exists is true)
+        size_bytes:
+          type: integer
+          description: Blob size in bytes (only if exists is true)
+        updated_at:
+          type: string
+          format: date-time
+          description: Last upload timestamp (only if exists is true)
+
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error code
+          enum:
+            - unauthorized
+            - not_found
+            - conflict
+            - payload_too_large
+            - internal_error
+        message:
+          type: string
+          description: Human-readable error message

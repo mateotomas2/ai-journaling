@@ -172,10 +172,10 @@ class MemoryService implements IMemoryService {
     // Fetch corresponding messages and notes
     const [messages, notes] = await Promise.all([
       messageIds.length > 0
-        ? db.messages.find({ selector: { id: { $in: messageIds } } }).exec()
+        ? db.messages.find({ selector: { id: { $in: messageIds }, deletedAt: 0 } }).exec()
         : Promise.resolve([]),
       noteIds.length > 0
-        ? db.notes.find({ selector: { id: { $in: noteIds } } }).exec()
+        ? db.notes.find({ selector: { id: { $in: noteIds }, deletedAt: 0 } }).exec()
         : Promise.resolve([]),
     ]);
 
@@ -351,8 +351,8 @@ class MemoryService implements IMemoryService {
       throw new Error('Database not initialized');
     }
 
-    const allMessages = await db.messages.find().exec();
-    const allNotes = await db.notes.find().exec();
+    const allMessages = await db.messages.find({ selector: { deletedAt: 0 } }).exec();
+    const allNotes = await db.notes.find({ selector: { deletedAt: 0 } }).exec();
     const allEmbeddings = await db.embeddings.find().exec();
 
     // Separate embeddings by entity type
@@ -408,8 +408,8 @@ class MemoryService implements IMemoryService {
     }
 
     // Get all messages and notes
-    const allMessages = await db.messages.find().exec();
-    const allNotes = await db.notes.find().exec();
+    const allMessages = await db.messages.find({ selector: { deletedAt: 0 } }).exec();
+    const allNotes = await db.notes.find({ selector: { deletedAt: 0 } }).exec();
     const total = allMessages.length + allNotes.length;
 
     console.log(`[MemoryService] Rebuilding index for ${allMessages.length} messages and ${allNotes.length} notes...`);

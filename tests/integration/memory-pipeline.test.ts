@@ -49,6 +49,7 @@ describe('Memory Pipeline Integration', () => {
       content: 'I am feeling stressed about work deadlines',
       parts: JSON.stringify([{ type: 'text', content: 'I am feeling stressed about work deadlines' }]),
       timestamp: Date.now(),
+      deletedAt: 0,
     };
 
     await db.messages.insert(message);
@@ -90,6 +91,7 @@ describe('Memory Pipeline Integration', () => {
         content: 'Old work stress entry',
         parts: JSON.stringify([{ type: 'text', content: 'Old work stress entry' }]),
         timestamp: threeDaysAgo,
+        deletedAt: 0,
       },
       {
         id: crypto.randomUUID(),
@@ -98,6 +100,7 @@ describe('Memory Pipeline Integration', () => {
         content: 'Recent work stress entry',
         parts: JSON.stringify([{ type: 'text', content: 'Recent work stress entry' }]),
         timestamp: oneDayAgo,
+        deletedAt: 0,
       },
     ];
 

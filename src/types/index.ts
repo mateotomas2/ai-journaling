@@ -30,6 +30,7 @@ export interface Message {
   content: string;          // plain text extraction (for search/embedding only)
   parts: string;            // JSON-serialized UIMessage.parts array (source of truth for rendering)
   timestamp: number;
+  deletedAt: number;        // 0 = not deleted, positive timestamp = soft-deleted
   categories?: Category[];
 }
 
@@ -38,6 +39,7 @@ export interface Summary {
   id: string; // Same as dayId
   dayId: string;
   generatedAt: number;
+  deletedAt: number;        // 0 = not deleted, positive timestamp = soft-deleted
   sections: SummarySections;
   rawContent: string;
 }
@@ -58,6 +60,7 @@ export interface Note {
   content: string; // Markdown content
   createdAt: number;
   updatedAt: number;
+  deletedAt: number; // 0 = not deleted, positive timestamp = soft-deleted
 }
 
 // API Request/Response types

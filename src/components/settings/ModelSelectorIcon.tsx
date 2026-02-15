@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { fetchModels, FALLBACK_MODELS } from '@/services/ai/models.service';
 import type { AIModel } from '@/types/entities';
-import { Check, Cpu } from "lucide-react"
+import { ArrowDown, Check, ChevronDown, Cpu } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -57,14 +57,14 @@ export function ModelSelectorIcon({ value, onChange, apiKey }: ModelSelectorIcon
       <PopoverTrigger asChild>
         <Button
           variant="ghost"
-          size="icon"
           role="combobox"
           aria-expanded={open}
           aria-label="Select AI Model"
+          className="!p-1 h-auto"
           disabled={isLoading}
-          className="h-9 w-9"
         >
-          <Cpu className="h-4 w-4" />
+          <p className="text-xs text-muted-foreground max-w-[100px] truncate">{selectedModel?.name}</p>
+          <ChevronDown size={1} className='text-muted-foreground' />
           <span className="sr-only">Select model</span>
         </Button>
       </PopoverTrigger>

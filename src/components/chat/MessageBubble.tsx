@@ -3,6 +3,15 @@ import { formatTime } from '../../utils/date.utils';
 import { cn } from '@/lib/utils';
 import { User, Bot } from 'lucide-react';
 import { ToolCallDisplay } from './ToolCallDisplay';
+import {
+  MDXEditor,
+  headingsPlugin,
+  listsPlugin,
+  quotePlugin,
+  thematicBreakPlugin,
+  linkPlugin,
+} from '@mdxeditor/editor';
+import '@mdxeditor/editor/style.css';
 
 interface MessageBubbleProps {
   message: UIMessage;
@@ -74,9 +83,27 @@ export function MessageBubble({ message }: MessageBubbleProps) {
 
         {/* Text content */}
         {(textContent || toolCallParts.length === 0) && (
-          <div className="whitespace-pre-wrap break-words text-sm leading-relaxed">
-            {textContent || '...'}
-          </div>
+          isUser ? (
+            <div className="whitespace-pre-wrap break-words text-sm leading-relaxed">
+              {textContent || '...'}
+            </div>
+          ) : (
+            <div className="message-bubble-markdown">
+              <MDXEditor
+                key={textContent}
+                markdown={textContent || '...'}
+                readOnly
+                contentEditableClassName="prose prose-sm max-w-none !p-0 !m-0 text-sm leading-relaxed"
+                plugins={[
+                  headingsPlugin(),
+                  listsPlugin(),
+                  quotePlugin(),
+                  thematicBreakPlugin(),
+                  linkPlugin(),
+                ]}
+              />
+            </div>
+          )
         )}
 
         <div

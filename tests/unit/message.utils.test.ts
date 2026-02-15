@@ -12,6 +12,7 @@ describe('message.utils', () => {
       content,
       parts: JSON.stringify([{ type: 'text', content }]),
       timestamp: Date.now(),
+      deletedAt: 0,
       ...overrides,
     };
   };

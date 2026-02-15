@@ -19,7 +19,7 @@ export function useNotes(dayId: string, category?: string) {
       return;
     }
 
-    const selector: { dayId: string; category?: string } = { dayId };
+    const selector: { dayId: string; category?: string; deletedAt: number } = { dayId, deletedAt: 0 };
     if (category) {
       selector.category = category;
     }
@@ -61,6 +61,7 @@ export function useNotes(dayId: string, category?: string) {
           content,
           createdAt: Date.now(),
           updatedAt: Date.now(),
+          deletedAt: 0,
         });
         const noteJson = note.toJSON();
 
@@ -139,7 +140,7 @@ export function useNotes(dayId: string, category?: string) {
       if (!doc) {
         throw new Error('Note not found');
       }
-      await doc.remove();
+      await doc.patch({ deletedAt: Date.now() });
 
       // Remove from vector search index
       memoryService.removeNoteFromIndex(noteId).catch((err) => {
@@ -178,7 +179,7 @@ export function useNoteCategories() {
     }
 
     // Subscribe to all notes to get categories
-    const subscription = db.notes.find().$.subscribe({
+    const subscription = db.notes.find({ selector: { deletedAt: 0 } }).$.subscribe({
       next: async (docs) => {
         // When notes change, refresh categories
         try {

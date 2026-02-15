@@ -66,8 +66,8 @@ export function NoteCard({
   useEffect(() => {
     setEditedContent(note.content);
     setEditedTitle(note.title || '');
-    // Update the editor content when the note changes externally
-    if (editorRef.current && note.content !== editedContent) {
+    // Imperatively update MDXEditor when the note changes externally
+    if (editorRef.current) {
       editorRef.current.setMarkdown(note.content);
     }
   }, [note.content, note.title]);

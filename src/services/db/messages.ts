@@ -27,6 +27,7 @@ export async function addMessage(
     content,
     parts: parts ?? JSON.stringify([{ type: 'text', content }]),
     timestamp: Date.now(),
+    deletedAt: 0,
     ...(categories && { categories }),
   };
 
@@ -45,7 +46,7 @@ export async function getMessagesForDay(dayId: string): Promise<Message[]> {
   const db = getDatabase();
   const docs = await db.messages
     .find({
-      selector: { dayId },
+      selector: { dayId, deletedAt: 0 },
     })
     .sort({ timestamp: 'asc' })
     .exec();
@@ -62,7 +63,7 @@ export async function getRecentMessages(
   const db = getDatabase();
   const docs = await db.messages
     .find({
-      selector: { dayId },
+      selector: { dayId, deletedAt: 0 },
     })
     .sort({ timestamp: 'desc' })
     .limit(limit)
@@ -78,7 +79,7 @@ export async function countMessagesForDay(dayId: string): Promise<number> {
   const db = getDatabase();
   const docs = await db.messages
     .find({
-      selector: { dayId },
+      selector: { dayId, deletedAt: 0 },
     })
     .exec();
   return docs.length;
@@ -91,7 +92,7 @@ export async function deleteMessage(messageId: string): Promise<boolean> {
   const db = getDatabase();
   const doc = await db.messages.findOne(messageId).exec();
   if (doc) {
-    await doc.remove();
+    await doc.patch({ deletedAt: Date.now() });
     return true;
   }
   return false;
