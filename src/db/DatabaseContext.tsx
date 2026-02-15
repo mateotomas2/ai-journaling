@@ -5,6 +5,7 @@ import {
   useEffect,
   type ReactNode,
 } from 'react';
+import { useVisibilityChange } from '@/hooks/useVisibilityChange';
 import { createDatabase, closeDatabase, setSyncKey, type JournalDatabase } from './index';
 import {
   generateSalt,
@@ -93,6 +94,13 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
   const [biometricSupport, setBiometricSupport] =
     useState<BiometricSupport | null>(null);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
+
+  // Auto-lock database when app is backgrounded (privacy: hides content on resume)
+  useVisibilityChange({
+    onHidden: () => {
+      if (db) lock();
+    },
+  });
 
   // Single initialization effect - ensures biometric support is checked before showing UI
   // This prevents a race condition where isLoading=false was set before biometricSupport was populated
