@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { getBiometricName } from '@/services/biometric';
+import { ChangePasswordSection } from './ChangePasswordSection';
 
 export function SecuritySection() {
   const {
@@ -138,6 +139,14 @@ export function SecuritySection() {
               you lose it, your journal data will be permanently inaccessible.
             </AlertDescription>
           </Alert>
+        </div>
+
+        {/* Change Password */}
+        <div className="space-y-3 pt-4">
+          <h3 className="text-lg font-semibold border-b pb-2">
+            Change Password
+          </h3>
+          <ChangePasswordSection />
         </div>
 
         {/* Biometric Unlock */}

@@ -32,6 +32,8 @@ import {
   BiometricErrorCode,
   type BiometricSupport,
 } from '@/services/biometric';
+import type { Settings } from '@/types';
+import type { Day, Message, Summary, Note, Embedding } from '@/types/entities';
 
 const SALT_STORAGE_KEY = 'reflekt_salt';
 const ITERATIONS_STORAGE_KEY = 'reflekt_iterations';
@@ -74,6 +76,7 @@ interface DatabaseContextValue {
   setupBiometric: (password: string) => Promise<true | string>;
   unlockWithBiometric: () => Promise<boolean>;
   disableBiometric: (password: string) => Promise<boolean>;
+  changePassword: (oldPassword: string, newPassword: string) => Promise<true | string>;
 }
 
 export const DatabaseContext = createContext<DatabaseContextValue | null>(null);
@@ -236,6 +239,11 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
         const iv = generateIV();
         const wrappedKey = await wrapKey(encryptionKey, wrappingKey, iv);
 
+        // Derive and wrap the sync key too, so biometric unlock can restore it
+        const syncKey = await deriveSyncKey(password);
+        const syncIv = generateIV();
+        const wrappedSyncKey = await wrapKey(syncKey, wrappingKey, syncIv);
+
         // Export wrapping key to store it
         const exportedWrappingKey = await crypto.subtle.exportKey(
           'raw',
@@ -250,7 +258,9 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
           bytesToBase64(wrappedKey),
           bytesToBase64(new Uint8Array(exportedWrappingKey)),
           bytesToBase64(wrappingSalt),
-          bytesToBase64(iv)
+          bytesToBase64(iv),
+          bytesToBase64(wrappedSyncKey),
+          bytesToBase64(syncIv)
         );
 
         // Save flags
@@ -333,6 +343,18 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
         iv
       );
 
+      // Unwrap sync key if available (not present for legacy biometric setups)
+      if (storedKey.wrappedSyncKey && storedKey.syncIv) {
+        const wrappedSyncKeyBytes = base64ToBytes(storedKey.wrappedSyncKey);
+        const syncIv = base64ToBytes(storedKey.syncIv);
+        const syncKey = await unwrapKey(
+          wrappedSyncKeyBytes.buffer as ArrayBuffer,
+          wrappingKey,
+          syncIv
+        );
+        setSyncKey(syncKey);
+      }
+
       // Export key as hex for RxDB
       const keyHex = await exportKeyAsHex(encryptionKey);
 
@@ -407,6 +429,164 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
     []
   );
 
+  // Change password: export all data, delete DB, recreate with new key, re-import
+  const changePassword = useCallback(
+    async (oldPassword: string, newPassword: string): Promise<true | string> => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        // 1. Verify old password
+        const saltBase64 = localStorage.getItem(SALT_STORAGE_KEY);
+        if (!saltBase64) {
+          return 'No password has been set up';
+        }
+        const oldSalt = base64ToSalt(saltBase64);
+        const iterations = getIterations();
+
+        // Derive key to verify old password (will be used implicitly via existing db)
+        const oldKey = await deriveKey(oldPassword, oldSalt, iterations);
+        const oldKeyHex = await exportKeyAsHex(oldKey);
+
+        // 2. Verify old password is correct by trying to open db
+        // If db is already open, verify the key matches by re-deriving
+        if (!db) {
+          try {
+            const testDb = await createDatabase(oldKeyHex);
+            // If we got here, password is correct. Close it so we can proceed.
+            await testDb.close();
+          } catch {
+            return 'Current password is incorrect';
+          }
+        }
+
+        // 3. Export all data from all collections
+        const currentDb = db;
+        if (!currentDb) {
+          return 'Database is not unlocked';
+        }
+
+        const [settingsResult, daysResult, messagesResult, summariesResult, notesResult, embeddingsResult] =
+          await Promise.all([
+            currentDb.settings.find().exec(),
+            currentDb.days.find().exec(),
+            currentDb.messages.find().exec(),
+            currentDb.summaries.find().exec(),
+            currentDb.notes.find().exec(),
+            currentDb.embeddings.find().exec(),
+          ]);
+
+        const exportedData = {
+          settings: settingsResult.map((doc) => doc.toJSON() as Settings),
+          days: daysResult.map((doc) => doc.toJSON() as Day),
+          messages: messagesResult.map((doc) => doc.toJSON() as Message),
+          summaries: summariesResult.map((doc) => doc.toJSON() as Summary),
+          notes: notesResult.map((doc) => doc.toJSON() as Note),
+          embeddings: embeddingsResult.map((doc) => doc.toJSON() as Embedding),
+        };
+
+        // 4. Close database
+        await closeDatabase();
+        setDb(null);
+
+        // 5. Delete all IndexedDB databases
+        const databasesToDelete = new Set([
+          'journaldb',
+          'rxdb-dexie-journaldb-settings',
+          'rxdb-dexie-journaldb-days',
+          'rxdb-dexie-journaldb-messages',
+          'rxdb-dexie-journaldb-summaries',
+          'rxdb-dexie-journaldb-notes',
+          'rxdb-dexie-journaldb-embeddings',
+        ]);
+
+        if ('databases' in indexedDB) {
+          try {
+            const databases = await indexedDB.databases();
+            for (const idb of databases) {
+              if (idb.name && (idb.name.includes('journaldb') || idb.name.includes('rxdb'))) {
+                databasesToDelete.add(idb.name);
+              }
+            }
+          } catch {
+            // databases() may not be supported in all browsers
+          }
+        }
+
+        await Promise.all(
+          [...databasesToDelete].map(
+            (dbName) =>
+              new Promise<void>((resolve) => {
+                const request = indexedDB.deleteDatabase(dbName);
+                request.onsuccess = () => resolve();
+                request.onerror = () => resolve();
+                request.onblocked = () => resolve();
+              })
+          )
+        );
+
+        // 6. Generate new salt and derive new key
+        const newSalt = generateSalt();
+        localStorage.setItem(SALT_STORAGE_KEY, saltToBase64(newSalt));
+        localStorage.setItem(ITERATIONS_STORAGE_KEY, String(CURRENT_ITERATIONS));
+
+        const newKey = await deriveKey(newPassword, newSalt, CURRENT_ITERATIONS);
+        const newKeyHex = await exportKeyAsHex(newKey);
+
+        // 7. Derive and store new sync key
+        const syncKey = await deriveSyncKey(newPassword);
+        setSyncKey(syncKey);
+
+        // 8. Create new database with new key
+        const newDb = await createDatabase(newKeyHex);
+
+        // 9. Re-import all data
+        // Settings: upsert (createDatabase already creates a default settings doc)
+        for (const setting of exportedData.settings) {
+          await newDb.settings.upsert(setting);
+        }
+        if (exportedData.days.length > 0) {
+          await newDb.days.bulkInsert(exportedData.days);
+        }
+        if (exportedData.messages.length > 0) {
+          await newDb.messages.bulkInsert(exportedData.messages);
+        }
+        if (exportedData.summaries.length > 0) {
+          await newDb.summaries.bulkInsert(exportedData.summaries);
+        }
+        if (exportedData.notes.length > 0) {
+          await newDb.notes.bulkInsert(exportedData.notes);
+        }
+        if (exportedData.embeddings.length > 0) {
+          await newDb.embeddings.bulkInsert(exportedData.embeddings);
+        }
+
+        // 10. Disable biometric (user must re-enable with new password)
+        if (biometricEnabled) {
+          try {
+            await deleteEncryptedKey();
+          } catch {
+            // Ignore - key may not exist
+          }
+          localStorage.removeItem(BIOMETRIC_ENABLED_KEY);
+          localStorage.removeItem(BIOMETRIC_CREDENTIAL_ID_KEY);
+          setBiometricEnabled(false);
+        }
+
+        setDb(newDb);
+        return true;
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : 'Failed to change password';
+        setError(message);
+        return message;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [db, biometricEnabled]
+  );
+
   const value: DatabaseContextValue = {
     db,
     isUnlocked: db !== null,
@@ -422,6 +602,7 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
     setupBiometric,
     unlockWithBiometric,
     disableBiometric,
+    changePassword,
   };
 
   return (

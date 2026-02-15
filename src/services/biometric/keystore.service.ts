@@ -50,7 +50,9 @@ export async function storeEncryptedKey(
   wrappedKey: string,
   wrappingKey: string,
   salt: string,
-  iv: string
+  iv: string,
+  wrappedSyncKey?: string,
+  syncIv?: string
 ): Promise<void> {
   try {
     const db = await openDatabase();
@@ -62,6 +64,7 @@ export async function storeEncryptedKey(
       wrappingKey,
       salt,
       iv,
+      ...(wrappedSyncKey && syncIv ? { wrappedSyncKey, syncIv } : {}),
       enrolledAt: Date.now(),
     };
 

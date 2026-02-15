@@ -29,6 +29,8 @@ export interface StoredBiometricKey {
   wrappingKey: string; // base64-encoded wrapping key (stored, not derived from PRF)
   salt: string; // base64-encoded salt for HKDF if needed
   iv: string; // base64-encoded IV for AES-GCM
+  wrappedSyncKey?: string; // base64-encoded encrypted sync key (added later, optional for migration)
+  syncIv?: string; // base64-encoded IV for sync key AES-GCM wrapping
   enrolledAt: number; // timestamp
 }
 
