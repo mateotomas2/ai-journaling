@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom';
 import { RefreshCw, Cloud, CloudOff, AlertCircle } from 'lucide-react';
 import { useGoogleDriveSync } from '@/hooks/useGoogleDriveSync';
 import { formatDistanceToNow } from 'date-fns';

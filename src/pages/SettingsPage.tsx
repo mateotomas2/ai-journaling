@@ -5,7 +5,7 @@ import { SecuritySection } from '@/components/settings/SecuritySection';
 import { DataManagement } from '@/components/settings/DataManagement';
 import { PWASection } from '@/components/settings/PWASection';
 import { GoogleDriveSync } from '@/components/settings/GoogleDriveSync';
-import { exportAllData, importData, clearAllData, forceDeleteAllData } from '@/services/settings/data-management.service';
+import { exportAllData, importData, forceDeleteAllData } from '@/services/settings/data-management.service';
 import { Settings } from 'lucide-react';
 
 export function SettingsPage() {

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { fetchModels, FALLBACK_MODELS } from '@/services/ai/models.service';
 import type { AIModel } from '@/types/entities';
-import { ArrowDown, Check, ChevronDown, Cpu } from "lucide-react"
+import { Check, ChevronDown } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
