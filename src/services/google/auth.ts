@@ -1,15 +1,13 @@
 const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
 
-interface TokenClient {
-  requestAccessToken(config?: { prompt?: string }): void;
-  callback: (response: TokenResponse) => void;
-}
-
-interface TokenResponse {
-  access_token: string;
-  expires_in: number;
+interface CodeResponse {
+  code: string;
   error?: string;
   error_description?: string;
+}
+
+interface CodeClient {
+  requestCode(): void;
 }
 
 declare global {
@@ -17,12 +15,13 @@ declare global {
     google?: {
       accounts: {
         oauth2: {
-          initTokenClient(config: {
+          initCodeClient(config: {
             client_id: string;
             scope: string;
-            callback: (response: TokenResponse) => void;
+            ux_mode: string;
+            callback: (response: CodeResponse) => void;
             error_callback?: (error: { type: string }) => void;
-          }): TokenClient;
+          }): CodeClient;
           revoke(token: string, callback?: () => void): void;
         };
       };
@@ -32,8 +31,8 @@ declare global {
 
 const LS_TOKEN = 'reflekt_gdrive_token';
 const LS_TOKEN_EXPIRES = 'reflekt_gdrive_token_expires';
+const LS_REFRESH_TOKEN = 'reflekt_gdrive_refresh_token';
 
-let tokenClient: TokenClient | null = null;
 let accessToken: string | null = null;
 let tokenExpiresAt = 0;
 
@@ -47,7 +46,7 @@ let tokenExpiresAt = 0;
       accessToken = stored;
       tokenExpiresAt = expiresAt;
     } else {
-      // Expired — clean up
+      // Expired — clean up access token (keep refresh token)
       localStorage.removeItem(LS_TOKEN);
       localStorage.removeItem(LS_TOKEN_EXPIRES);
     }
@@ -62,6 +61,7 @@ function persistToken(token: string, expiresAt: number): void {
 function clearPersistedToken(): void {
   localStorage.removeItem(LS_TOKEN);
   localStorage.removeItem(LS_TOKEN_EXPIRES);
+  localStorage.removeItem(LS_REFRESH_TOKEN);
 }
 
 function getClientId(): string {
@@ -70,6 +70,14 @@ function getClientId(): string {
     throw new Error('VITE_GOOGLE_CLIENT_ID environment variable is not set');
   }
   return clientId;
+}
+
+function getWorkerUrl(): string {
+  const url = import.meta.env.VITE_AUTH_WORKER_URL;
+  if (!url) {
+    throw new Error('VITE_AUTH_WORKER_URL environment variable is not set');
+  }
+  return url;
 }
 
 function ensureGisLoaded(): Promise<void> {
@@ -96,42 +104,74 @@ function ensureGisLoaded(): Promise<void> {
   });
 }
 
-function initTokenClient(): TokenClient {
-  if (tokenClient) return tokenClient;
+async function exchangeCode(code: string): Promise<{ access_token: string; refresh_token?: string; expires_in: number }> {
+  const workerUrl = getWorkerUrl();
+  const response = await fetch(`${workerUrl}/auth/exchange`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, redirect_uri: window.location.origin }),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error_description || data.error || 'Token exchange failed');
+  }
+  return data;
+}
+
+async function refreshAccessToken(refreshToken: string): Promise<{ access_token: string; expires_in: number }> {
+  const workerUrl = getWorkerUrl();
+  const response = await fetch(`${workerUrl}/auth/refresh`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error_description || data.error || 'Token refresh failed');
+  }
+  return data;
+}
+
+export async function signIn(): Promise<string> {
+  await ensureGisLoaded();
 
   if (!window.google?.accounts?.oauth2) {
     throw new Error('Google Identity Services not loaded');
   }
 
-  tokenClient = window.google.accounts.oauth2.initTokenClient({
-    client_id: getClientId(),
-    scope: SCOPES,
-    callback: () => {
-      // Overridden per-call in signIn/getAccessToken
-    },
+  const code = await new Promise<string>((resolve, reject) => {
+    const client = window.google!.accounts.oauth2.initCodeClient({
+      client_id: getClientId(),
+      scope: SCOPES,
+      ux_mode: 'popup',
+      callback: (response: CodeResponse) => {
+        if (response.error) {
+          reject(new Error(response.error_description || response.error));
+          return;
+        }
+        resolve(response.code);
+      },
+      error_callback: (error) => {
+        reject(new Error(`Google sign-in error: ${error.type}`));
+      },
+    });
+
+    client.requestCode();
   });
 
-  return tokenClient;
-}
+  const tokens = await exchangeCode(code);
 
-export async function signIn(): Promise<string> {
-  await ensureGisLoaded();
-  const client = initTokenClient();
+  accessToken = tokens.access_token;
+  tokenExpiresAt = Date.now() + tokens.expires_in * 1000;
+  persistToken(accessToken, tokenExpiresAt);
 
-  return new Promise((resolve, reject) => {
-    client.callback = (response: TokenResponse) => {
-      if (response.error) {
-        reject(new Error(response.error_description || response.error));
-        return;
-      }
-      accessToken = response.access_token;
-      tokenExpiresAt = Date.now() + response.expires_in * 1000;
-      persistToken(accessToken, tokenExpiresAt);
-      resolve(response.access_token);
-    };
+  if (tokens.refresh_token) {
+    localStorage.setItem(LS_REFRESH_TOKEN, tokens.refresh_token);
+  }
 
-    client.requestAccessToken();
-  });
+  return accessToken;
 }
 
 export async function getAccessToken(): Promise<string | null> {
@@ -140,28 +180,21 @@ export async function getAccessToken(): Promise<string | null> {
     return accessToken;
   }
 
-  // Try silent refresh
+  // Try silent refresh using refresh token
+  const refreshToken = localStorage.getItem(LS_REFRESH_TOKEN);
+  if (!refreshToken) {
+    accessToken = null;
+    tokenExpiresAt = 0;
+    clearPersistedToken();
+    return null;
+  }
+
   try {
-    await ensureGisLoaded();
-    const client = initTokenClient();
-
-    return await new Promise<string | null>((resolve) => {
-      client.callback = (response: TokenResponse) => {
-        if (response.error) {
-          accessToken = null;
-          tokenExpiresAt = 0;
-          clearPersistedToken();
-          resolve(null);
-          return;
-        }
-        accessToken = response.access_token;
-        tokenExpiresAt = Date.now() + response.expires_in * 1000;
-        persistToken(accessToken, tokenExpiresAt);
-        resolve(response.access_token);
-      };
-
-      client.requestAccessToken({ prompt: '' });
-    });
+    const tokens = await refreshAccessToken(refreshToken);
+    accessToken = tokens.access_token;
+    tokenExpiresAt = Date.now() + tokens.expires_in * 1000;
+    persistToken(accessToken, tokenExpiresAt);
+    return accessToken;
   } catch {
     accessToken = null;
     tokenExpiresAt = 0;
@@ -176,10 +209,10 @@ export function signOut(): void {
   }
   accessToken = null;
   tokenExpiresAt = 0;
-  tokenClient = null;
   clearPersistedToken();
 }
 
 export function isSignedIn(): boolean {
-  return accessToken !== null && Date.now() < tokenExpiresAt - 60_000;
+  return (accessToken !== null && Date.now() < tokenExpiresAt - 60_000) ||
+    localStorage.getItem(LS_REFRESH_TOKEN) !== null;
 }

@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { useMessages } from './useMessages';
+import { useNotes } from './useNotes';
 import { useDay } from './useDay';
 import { useSettings } from './useSettings';
 import { getLocalTimezone, getTodayId } from '../utils/date.utils';
@@ -22,6 +23,7 @@ interface UseJournalChatOptions {
 
 export function useJournalChat({ dayId, model }: UseJournalChatOptions) {
   const { messages, isLoading: messagesLoading, addMessage, updateMessage, deleteAllMessages } = useMessages(dayId);
+  const { notes } = useNotes(dayId);
   const { createOrUpdateDay } = useDay(dayId);
   const { apiKey, systemPrompt } = useSettings();
   const [isSending, setIsSending] = useState(false);
@@ -65,6 +67,7 @@ export function useJournalChat({ dayId, model }: UseJournalChatOptions) {
         const activePrompt = buildSystemPromptWithTools(basePrompt, {
           currentDate: getTodayId(),
           journalDate: dayId,
+          notes,
         });
         const chatMessages: ChatMessageWithTools[] = buildChatMessagesWithTools(
           activePrompt,
@@ -150,7 +153,7 @@ export function useJournalChat({ dayId, model }: UseJournalChatOptions) {
         abortControllerRef.current = null;
       }
     },
-    [messages, addMessage, updateMessage, createOrUpdateDay, isSending, apiKey, systemPrompt, model, dayId]
+    [messages, addMessage, updateMessage, createOrUpdateDay, isSending, apiKey, systemPrompt, model, dayId, notes]
   );
 
   const stopSending = useCallback(() => {
