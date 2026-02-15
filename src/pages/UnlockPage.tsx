@@ -13,6 +13,7 @@ import {
 import { Lock, BookOpen } from 'lucide-react';
 import { AuthMethodSelector } from '@/components/auth/AuthMethodSelector';
 import { BiometricUnlock } from '@/components/auth/BiometricUnlock';
+import { ModeToggle } from '@/components/mode-toggle';
 
 const BIOMETRIC_SESSION_KEY = 'reflekt_biometric_attempted';
 
@@ -76,6 +77,9 @@ export function UnlockPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted/50 to-background p-4">
+      <div className="fixed top-4 right-4 z-50">
+        <ModeToggle />
+      </div>
       <div className="w-full max-w-md">
         {/* Branding */}
         <div className="flex flex-col items-center mb-8">

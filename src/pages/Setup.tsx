@@ -3,6 +3,7 @@ import { useDatabase } from '@/hooks/useDatabase';
 import { PasswordSetup } from '@/components/auth';
 import { BiometricSetup } from '@/components/auth/BiometricSetup';
 import { BookOpen } from 'lucide-react';
+import { ModeToggle } from '@/components/mode-toggle';
 
 export function Setup() {
   const {
@@ -45,6 +46,9 @@ export function Setup() {
   if (passwordSetupComplete && showBiometric && biometricAvailable) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted/50 to-background p-4">
+        <div className="fixed top-4 right-4 z-50">
+          <ModeToggle />
+        </div>
         <div className="w-full max-w-md">
           {/* Branding */}
           <div className="flex flex-col items-center mb-8">
@@ -71,6 +75,9 @@ export function Setup() {
 
   return (
     <div className="h-screen flex items-center justify-center bg-background p-4">
+      <div className="fixed top-4 right-4 z-50">
+        <ModeToggle />
+      </div>
       <div className="w-full max-w-md">
         <PasswordSetup
           onSetup={handlePasswordSetup}

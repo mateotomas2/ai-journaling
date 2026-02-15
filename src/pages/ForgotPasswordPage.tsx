@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, ShieldX, Trash2 } from 'lucide-react';
 import { ClearDataConfirmation } from '@/components/settings/ClearDataConfirmation';
 import { forceDeleteAllData } from '@/services/settings/data-management.service';
+import { ModeToggle } from '@/components/mode-toggle';
 
 export function ForgotPasswordPage() {
   const [showClearConfirmation, setShowClearConfirmation] = useState(false);
@@ -29,6 +30,9 @@ export function ForgotPasswordPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted/50 to-background p-4">
+      <div className="fixed top-4 right-4 z-50">
+        <ModeToggle />
+      </div>
       <div className="w-full max-w-md">
         <Card className="shadow-xl border-border/50">
           <CardHeader className="text-center pb-2">
