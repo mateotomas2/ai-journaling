@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useJournalChat } from '../../hooks/useJournalChat';
+import { useStreamingChat } from '../../hooks/useStreamingChat';
 import { MessageList } from './MessageList';
 import { MessageInput } from './MessageInput';
 import { ApiKeySetup } from './ApiKeySetup';
@@ -51,7 +51,7 @@ export function ChatInterface({ dayId }: ChatInterfaceProps) {
     stopSending,
     clearMessages,
     needsApiKey,
-  } = useJournalChat({ dayId, model: selectedModel });
+  } = useStreamingChat({ dayId, model: selectedModel });
 
   if (needsApiKey) {
     return <ApiKeySetup />;

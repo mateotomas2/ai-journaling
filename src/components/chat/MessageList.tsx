@@ -1,10 +1,10 @@
 import { useEffect, useRef } from 'react';
-import type { Message } from '../../types/entities';
+import type { UIMessage } from '@tanstack/ai';
 import { MessageBubble } from './MessageBubble';
 import { Loading } from '@/components/common/Loading';
 
 interface MessageListProps {
-  messages: Message[];
+  messages: UIMessage[];
   isLoading?: boolean;
 }
 

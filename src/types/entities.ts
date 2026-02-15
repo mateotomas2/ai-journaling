@@ -13,7 +13,8 @@ export interface Message {
   id: string;
   dayId: string;
   role: MessageRole;
-  content: string;
+  content: string;          // plain text extraction (for search/embedding only)
+  parts: string;            // JSON-serialized UIMessage.parts array (source of truth for rendering)
   timestamp: number;
   categories?: Category[];
 }

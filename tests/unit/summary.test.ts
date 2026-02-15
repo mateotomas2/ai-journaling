@@ -39,8 +39,8 @@ describe('Summary Service', () => {
       const { generateSummary } = await import('@/services/summary/generate');
 
       const messages = [
-        { id: '1', dayId: '2026-01-17', role: 'user' as const, content: 'I had a productive day', timestamp: Date.now() },
-        { id: '2', dayId: '2026-01-17', role: 'assistant' as const, content: 'That sounds great!', timestamp: Date.now() },
+        { id: '1', dayId: '2026-01-17', role: 'user' as const, content: 'I had a productive day', parts: JSON.stringify([{ type: 'text', content: 'I had a productive day' }]), timestamp: Date.now() },
+        { id: '2', dayId: '2026-01-17', role: 'assistant' as const, content: 'That sounds great!', parts: JSON.stringify([{ type: 'text', content: 'That sounds great!' }]), timestamp: Date.now() },
       ];
 
       const result = await generateSummary(messages, '2026-01-17', 'test-api-key', mockDb);
@@ -69,7 +69,7 @@ describe('Summary Service', () => {
       const { generateSummary } = await import('@/services/summary/generate');
 
       const messages = [
-        { id: '1', dayId: '2026-01-17', role: 'user' as const, content: 'Test message', timestamp: Date.now() },
+        { id: '1', dayId: '2026-01-17', role: 'user' as const, content: 'Test message', parts: JSON.stringify([{ type: 'text', content: 'Test message' }]), timestamp: Date.now() },
       ];
 
       await generateSummary(messages, '2026-01-17', 'test-api-key', mockDb, 'anthropic/claude-sonnet-4.5');
@@ -108,7 +108,7 @@ describe('Summary Service', () => {
       const { generateSummary } = await import('@/services/summary/generate');
 
       const messages = [
-        { id: '1', dayId: '2026-01-17', role: 'user' as const, content: 'Test message', timestamp: Date.now() },
+        { id: '1', dayId: '2026-01-17', role: 'user' as const, content: 'Test message', parts: JSON.stringify([{ type: 'text', content: 'Test message' }]), timestamp: Date.now() },
       ];
 
       await generateSummary(messages, '2026-01-17', 'test-api-key', mockDb);
@@ -128,7 +128,7 @@ describe('Summary Service', () => {
       const { generateSummary } = await import('@/services/summary/generate');
 
       const messages = [
-        { id: '1', dayId: '2026-01-17', role: 'user' as const, content: 'Test message', timestamp: Date.now() },
+        { id: '1', dayId: '2026-01-17', role: 'user' as const, content: 'Test message', parts: JSON.stringify([{ type: 'text', content: 'Test message' }]), timestamp: Date.now() },
       ];
 
       await expect(

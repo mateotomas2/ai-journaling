@@ -47,6 +47,7 @@ describe('Memory Pipeline Integration', () => {
       dayId: '2026-01-19',
       role: 'user',
       content: 'I am feeling stressed about work deadlines',
+      parts: JSON.stringify([{ type: 'text', content: 'I am feeling stressed about work deadlines' }]),
       timestamp: Date.now(),
     };
 
@@ -87,6 +88,7 @@ describe('Memory Pipeline Integration', () => {
         dayId: '2026-01-16',
         role: 'user' as const,
         content: 'Old work stress entry',
+        parts: JSON.stringify([{ type: 'text', content: 'Old work stress entry' }]),
         timestamp: threeDaysAgo,
       },
       {
@@ -94,6 +96,7 @@ describe('Memory Pipeline Integration', () => {
         dayId: '2026-01-18',
         role: 'user' as const,
         content: 'Recent work stress entry',
+        parts: JSON.stringify([{ type: 'text', content: 'Recent work stress entry' }]),
         timestamp: oneDayAgo,
       },
     ];

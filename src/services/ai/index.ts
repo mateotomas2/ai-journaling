@@ -15,4 +15,6 @@ export {
 } from './prompts';
 export { regenerateNotes } from './regenerate-notes.service';
 export type { GeneratedNote, RegenerateNotesResponse } from './regenerate-notes.service';
-export { MEMORY_SEARCH_TOOL, JOURNAL_TOOLS, executeToolCall } from './tools';
+export { MEMORY_SEARCH_TOOL, JOURNAL_TOOLS, executeToolCall, createMemorySearchClientTool, OPENROUTER_TOOL_DEFINITIONS } from './tools';
+export { createRefBasedConnection } from './streaming-connection';
+export type { StreamingConnectionConfig } from './streaming-connection';

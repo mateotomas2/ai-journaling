@@ -21,6 +21,9 @@ export const messageSchema: RxJsonSchema<Message> = {
     content: {
       type: 'string',
     },
+    parts: {
+      type: 'string',
+    },
     timestamp: {
       type: 'number',
       multipleOf: 1,
@@ -35,8 +38,8 @@ export const messageSchema: RxJsonSchema<Message> = {
       },
     },
   },
-  required: ['id', 'dayId', 'role', 'content', 'timestamp'],
+  required: ['id', 'dayId', 'role', 'content', 'parts', 'timestamp'],
   indexes: ['dayId', 'timestamp'],
-  encrypted: ['content'],
+  encrypted: ['content', 'parts'],
   additionalProperties: false,
 };

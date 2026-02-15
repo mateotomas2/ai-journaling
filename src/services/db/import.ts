@@ -127,7 +127,11 @@ export async function importJournalData(data: ImportData): Promise<ImportResult>
         result.skipped.messages++;
         continue;
       }
-      await db.messages.insert(message as Message);
+      const msg = message as Message;
+      if (!msg.parts) {
+        msg.parts = JSON.stringify([{ type: 'text', content: msg.content }]);
+      }
+      await db.messages.insert(msg);
       result.imported.messages++;
     } catch (err) {
       result.errors.push(

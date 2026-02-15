@@ -27,7 +27,8 @@ export interface Message {
   id: string; // UUID
   dayId: string;
   role: 'user' | 'assistant';
-  content: string;
+  content: string;          // plain text extraction (for search/embedding only)
+  parts: string;            // JSON-serialized UIMessage.parts array (source of truth for rendering)
   timestamp: number;
   categories?: Category[];
 }

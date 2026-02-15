@@ -10,7 +10,8 @@ export async function addMessage(
   role: 'user' | 'assistant',
   content: string,
   categories?: Category[],
-  timezone?: string
+  timezone?: string,
+  parts?: string
 ): Promise<Message> {
   const db = getDatabase();
 
@@ -24,6 +25,7 @@ export async function addMessage(
     dayId,
     role,
     content,
+    parts: parts ?? JSON.stringify([{ type: 'text', content }]),
     timestamp: Date.now(),
     ...(categories && { categories }),
   };

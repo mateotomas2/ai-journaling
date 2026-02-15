@@ -10,6 +10,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { ModeToggle } from '@/components/mode-toggle';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import { Search, DollarSign, BookOpen, List, Settings } from 'lucide-react';
+import { SyncStatusIndicator } from './SyncStatusIndicator';
 
 interface LayoutProps {
   children: ReactNode;
@@ -113,6 +114,7 @@ export function Layout({ children }: LayoutProps) {
 
                 </Link>
               )}
+              <SyncStatusIndicator />
               <div className="w-px h-6 bg-border mx-2" />
               <ModeToggle />
               <InstallPrompt />

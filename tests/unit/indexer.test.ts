@@ -64,6 +64,7 @@ describe('Memory Indexer', () => {
         dayId: '2026-01-19',
         role: 'user' as const,
         content: 'Test message for indexing',
+        parts: JSON.stringify([{ type: 'text', content: 'Test message for indexing' }]),
         timestamp: Date.now(),
       };
 
@@ -105,6 +106,7 @@ describe('Memory Indexer', () => {
         dayId: '2026-01-19',
         role: 'user' as const,
         content: `Test message ${i} for batch processing`,
+        parts: JSON.stringify([{ type: 'text', content: `Test message ${i} for batch processing` }]),
         timestamp: Date.now() + i,
       }));
 
@@ -146,6 +148,7 @@ describe('Memory Indexer', () => {
         dayId: '2026-01-19',
         role: 'user' as const,
         content: 'Message with embedding',
+        parts: JSON.stringify([{ type: 'text', content: 'Message with embedding' }]),
         timestamp: Date.now(),
       };
 
@@ -154,6 +157,7 @@ describe('Memory Indexer', () => {
         dayId: '2026-01-19',
         role: 'user' as const,
         content: 'Message without embedding',
+        parts: JSON.stringify([{ type: 'text', content: 'Message without embedding' }]),
         timestamp: Date.now(),
       };
 
@@ -196,6 +200,7 @@ describe('Memory Indexer', () => {
         dayId: '2026-01-19',
         role: 'user' as const,
         content: 'Message that will be deleted',
+        parts: JSON.stringify([{ type: 'text', content: 'Message that will be deleted' }]),
         timestamp: Date.now(),
       };
 
@@ -304,6 +309,7 @@ describe('Memory Indexer', () => {
         dayId: '2026-01-19',
         role: 'user' as const,
         content: 'Original content',
+        parts: JSON.stringify([{ type: 'text', content: 'Original content' }]),
         timestamp: Date.now(),
       };
 
@@ -376,6 +382,7 @@ describe('Memory Indexer', () => {
         dayId: '2026-01-19',
         role: 'user' as const,
         content: `Performance test message ${i}`,
+        parts: JSON.stringify([{ type: 'text', content: `Performance test message ${i}` }]),
         timestamp: Date.now() + i,
       }));
 
