@@ -49,7 +49,7 @@ export function Layout({ children }: LayoutProps) {
   ];
 
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-b from-muted/30 to-background text-foreground">
+    <div className="flex flex-col h-dvh overflow-hidden bg-gradient-to-b from-muted/30 to-background text-foreground">
       <header className="sticky top-0 z-50 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm">
         <div className="max-w-5xl mx-auto px-4 sm:px-4 lg:px-8">
           <div className="flex justify-end items-center h-16">
