@@ -188,8 +188,14 @@ async function* streamSingleCall(
   });
 
   if (!response.ok) {
-    const errorData = (await response.json().catch(() => ({}))) as { error?: string };
-    throw new Error(errorData.error || `OpenRouter API error: ${response.status}`);
+    const errorData = (await response.json().catch(() => ({}))) as {
+      error?: { message?: string; code?: number } | string;
+    };
+    const errorMsg =
+      typeof errorData.error === 'string'
+        ? errorData.error
+        : errorData.error?.message ?? `OpenRouter API error: ${response.status}`;
+    throw new Error(errorMsg);
   }
 
   if (!response.body) {

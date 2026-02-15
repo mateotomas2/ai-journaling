@@ -208,4 +208,4 @@ add note list filtering and search in the entries menu
 THE ERRORS DONT SHOW PROPERLY 
 streaming-connection.ts:179  POST https://openrouter.ai/api/v1/chat/completions 429 (Too Many Requests)
 
-
+add light/dark toggle to all the pages

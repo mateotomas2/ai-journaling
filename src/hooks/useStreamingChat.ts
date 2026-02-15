@@ -120,7 +120,7 @@ export function useStreamingChat({ dayId, model }: UseStreamingChatOptions) {
     },
     onError: (err) => {
       isStreamingRef.current = false;
-      setError(JSON.stringify(err));
+      setError(err instanceof Error ? err.message : String(err));
     },
   });
 
