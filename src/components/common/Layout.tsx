@@ -104,7 +104,7 @@ export function Layout({ children }: LayoutProps) {
           </div>
         </div>
       </header>
-      <main className="flex-1">
+      <main className="flex-1 overflow-y-auto">
         <div className="max-w-5xl mx-auto p-2">
           {children}
         </div>
