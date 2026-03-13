@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import type { Note } from '@/types/entities';
-import { NoteListItem } from './NoteListItem';
+import { NotesMasonryCard } from './NotesMasonryCard';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -30,6 +30,13 @@ export function NotesListView({
   searchQuery,
   onSearchChange,
 }: NotesListViewProps) {
+  const [cols, setCols] = useState(() => (window.innerWidth >= 500 ? 2 : 1));
+  useEffect(() => {
+    const handler = () => setCols(window.innerWidth >= 500 ? 2 : 1);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+
   const filteredNotes = useMemo(() => {
     let result = notes;
 
@@ -60,6 +67,10 @@ export function NotesListView({
       </div>
     );
   }
+
+  const mid = Math.ceil(filteredNotes.length / 2);
+  const leftCol = cols === 2 ? filteredNotes.slice(0, mid) : filteredNotes;
+  const rightCol = cols === 2 ? filteredNotes.slice(mid) : [];
 
   return (
     <div className="flex flex-col">
@@ -99,9 +110,20 @@ export function NotesListView({
           </p>
         </div>
       ) : (
-        filteredNotes.map((note) => (
-          <NoteListItem key={note.id} note={note} />
-        ))
+        <div className="flex gap-3 p-4">
+          <div className="flex flex-col gap-3 flex-1 min-w-0">
+            {leftCol.map((note) => (
+              <NotesMasonryCard key={note.id} note={note} />
+            ))}
+          </div>
+          {cols === 2 && (
+            <div className="flex flex-col gap-3 flex-1 min-w-0">
+              {rightCol.map((note) => (
+                <NotesMasonryCard key={note.id} note={note} />
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

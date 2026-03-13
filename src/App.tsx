@@ -4,6 +4,7 @@ import { Layout } from './components/common/Layout';
 import { JournalPage } from './pages/JournalPage';
 import { EntriesPage } from './pages/EntriesPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { NoteDetailPage } from './pages/NoteDetailPage';
 import { UnlockPage } from './pages/UnlockPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { Setup } from './pages/Setup';
@@ -71,6 +72,7 @@ function AppRoutes() {
         <Route path="/journal/:date" element={<JournalPage />} />
         <Route path="/day/:date" element={<DayRedirect />} />
         <Route path="/entries" element={<EntriesPage />} />
+        <Route path="/notes/:noteId" element={<NoteDetailPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Routes>
     </Layout>

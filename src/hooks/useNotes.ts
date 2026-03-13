@@ -293,6 +293,77 @@ export function useNoteCountsByDay() {
 }
 
 /**
+ * Hook to subscribe to a single note by ID
+ */
+export function useNoteById(noteId: string) {
+  const { db } = useDatabase();
+  const [note, setNote] = useState<Note | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!db) {
+      setIsLoading(false);
+      return;
+    }
+
+    const subscription = db.notes.findOne(noteId).$.subscribe({
+      next: (doc) => {
+        setNote(doc ? doc.toJSON() : null);
+        setIsLoading(false);
+      },
+      error: (err) => {
+        console.error('Error fetching note by id:', err);
+        setIsLoading(false);
+      },
+    });
+
+    return () => subscription.unsubscribe();
+  }, [db, noteId]);
+
+  const updateNote = useCallback(
+    async (content: string, title?: string): Promise<void> => {
+      if (!db) throw new Error('Database not initialized');
+      const doc = await db.notes.findOne(noteId).exec();
+      if (!doc) throw new Error('Note not found');
+      await doc.patch({
+        content,
+        ...(title !== undefined && { title }),
+        updatedAt: Date.now(),
+      });
+      memoryService.reindexNote(noteId).catch((err) => {
+        console.error('Failed to reindex note:', err);
+      });
+    },
+    [db, noteId]
+  );
+
+  const updateNoteCategory = useCallback(
+    async (category: string): Promise<void> => {
+      if (!db) throw new Error('Database not initialized');
+      const doc = await db.notes.findOne(noteId).exec();
+      if (!doc) throw new Error('Note not found');
+      await doc.patch({ category, updatedAt: Date.now() });
+      memoryService.reindexNote(noteId).catch((err) => {
+        console.error('Failed to reindex note after category change:', err);
+      });
+    },
+    [db, noteId]
+  );
+
+  const deleteNote = useCallback(async (): Promise<void> => {
+    if (!db) throw new Error('Database not initialized');
+    const doc = await db.notes.findOne(noteId).exec();
+    if (!doc) throw new Error('Note not found');
+    await doc.patch({ deletedAt: Date.now() });
+    memoryService.removeNoteFromIndex(noteId).catch((err) => {
+      console.error('Failed to remove note from index:', err);
+    });
+  }, [db, noteId]);
+
+  return { note, isLoading, updateNote, updateNoteCategory, deleteNote };
+}
+
+/**
  * Convenience hook for managing the summary note specifically
  */
 export function useSummaryNote(dayId: string) {

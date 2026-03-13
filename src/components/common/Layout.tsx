@@ -37,7 +37,7 @@ export function Layout({ children }: LayoutProps) {
     shortcuts: [
       { key: 'j', action: () => navigate('/journal'), description: 'Go to journal' },
       { key: 'e', action: () => navigate('/entries'), description: 'Go to entries' },
-      { key: 's', action: () => navigate('/settings'), description: 'Go to settings' },
+{ key: 's', action: () => navigate('/settings'), description: 'Go to settings' },
     ],
   });
 

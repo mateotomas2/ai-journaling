@@ -1,6 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
+import Masonry, { ResponsiveMasonry } from 'react-responsive-masonry';
+import { useNavigate } from 'react-router-dom';
 import { useNotes, useNoteCategories, useSummaryNote } from '@/hooks/useNotes';
-import { NoteCard } from './NoteCard';
+import { NotesMasonryCard } from './NotesMasonryCard';
 import { RegenerateNotesModal } from './RegenerateNotesModal';
 import { generateSummary } from '@/services/ai/summary.service';
 import { regenerateNotes, type GeneratedNote } from '@/services/ai';
@@ -16,8 +18,9 @@ interface NotesListProps {
   highlightNoteId?: string | undefined;
 }
 
-export function NotesList({ dayId, highlightNoteId }: NotesListProps) {
-  const { notes, isLoading, error, createNote, updateNote, updateNoteCategory, deleteNote } =
+export function NotesList({ dayId }: NotesListProps) {
+  const navigate = useNavigate();
+  const { notes, isLoading, error, createNote, updateNote, deleteNote } =
     useNotes(dayId);
   const { categories } = useNoteCategories();
   const { note: summaryNote } = useSummaryNote(dayId);
@@ -25,28 +28,17 @@ export function NotesList({ dayId, highlightNoteId }: NotesListProps) {
   const { db } = useDatabase();
 
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
-  const [shouldScrollToBottom, setShouldScrollToBottom] = useState(false);
   const [showRegenerateModal, setShowRegenerateModal] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [generatedNotes, setGeneratedNotes] = useState<GeneratedNote[]>([]);
-  const bottomRef = useRef<HTMLDivElement>(null);
-
-  // Scroll to bottom when a note is added
-  useEffect(() => {
-    if (shouldScrollToBottom && bottomRef.current) {
-      bottomRef.current.scrollIntoView({ behavior: 'smooth' });
-      setShouldScrollToBottom(false);
-    }
-  }, [shouldScrollToBottom, notes]);
 
   // Filter out summary notes (handled separately)
   const nonSummaryNotes = notes.filter((note) => note.category !== 'summary');
 
   const handleAddNote = async () => {
     try {
-      // Create an empty note immediately - category will be added via modal
-      await createNote('', '', undefined);
-      setShouldScrollToBottom(true);
+      const newNote = await createNote('', '', undefined);
+      navigate(`/notes/${newNote.id}`);
     } catch (err) {
       logger.error('Error creating note:', err);
       toast.error('Failed to create note. Please try again.');
@@ -274,13 +266,7 @@ export function NotesList({ dayId, highlightNoteId }: NotesListProps) {
         </h2>
         {summaryNote ? (
           <>
-            <NoteCard
-              note={summaryNote}
-              onUpdate={updateNote}
-              onDelete={deleteNote}
-              isSpecialCategory={true}
-              highlight={highlightNoteId === summaryNote.id}
-            />
+            <NotesMasonryCard note={summaryNote} />
             <button
               onClick={handleRegenerateSummary}
               disabled={isGeneratingSummary}
@@ -320,22 +306,16 @@ export function NotesList({ dayId, highlightNoteId }: NotesListProps) {
               {isRegenerating ? 'Generating...' : 'Generate Notes with AI'}
             </button>
           </div>
-          {nonSummaryNotes.map((note) => (
-            <NoteCard
-              key={note.id}
-              note={note}
-              onUpdate={updateNote}
-              onUpdateCategory={updateNoteCategory}
-              onDelete={deleteNote}
-              suggestedCategories={categories}
-              highlight={highlightNoteId === note.id}
-            />
-          ))}
+          <ResponsiveMasonry columnsCountBreakPoints={{ 350: 1, 640: 2 }}>
+            <Masonry gutter="0.75rem">
+              {nonSummaryNotes.map((note) => (
+                <NotesMasonryCard key={note.id} note={note} />
+              ))}
+            </Masonry>
+          </ResponsiveMasonry>
         </div>
       )}
 
-      {/* Scroll target for new notes */}
-      <div ref={bottomRef} />
 
       {/* Add Note button */}
       {/* Floating Add Note button */}

@@ -130,11 +130,10 @@ export function NoteCard({
     return (
       <div
         ref={cardRef}
-        className={`bg-card text-card-foreground rounded-lg shadow-sm border p-4 mb-4 transition-all duration-500 ${
-          isHighlighted
+        className={`bg-card text-card-foreground rounded-lg shadow-sm border p-4 mb-4 transition-all duration-500 ${isHighlighted
             ? 'border-primary ring-2 ring-primary/30 bg-primary/5'
             : 'border-border'
-        }`}
+          }`}
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-3">

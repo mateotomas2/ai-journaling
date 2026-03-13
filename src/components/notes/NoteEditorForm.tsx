@@ -38,6 +38,7 @@ interface NoteEditorFormProps {
   onDeleteConfirmChange?: (show: boolean) => void;
   isSaving?: boolean;
   highlight?: boolean;
+  onBlur?: () => void;
 }
 
 export function NoteEditorForm({
@@ -47,17 +48,13 @@ export function NoteEditorForm({
   onTitleChange,
   onCategoryChange,
   onContentChange,
-  onDelete,
   suggestedCategories = [],
-  showDeleteConfirm = false,
-  onDeleteConfirmChange,
   isSaving = false,
-  highlight = false,
+  onBlur,
 }: NoteEditorFormProps) {
   const editorRef = useRef<MDXEditorMethods>(null);
   const lastEditorContentRef = useRef(content);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [localDeleteConfirm, setLocalDeleteConfirm] = useState(showDeleteConfirm);
 
   // Imperatively update MDXEditor when content changes externally (e.g. from sync)
   useEffect(() => {
@@ -67,19 +64,7 @@ export function NoteEditorForm({
     lastEditorContentRef.current = content;
   }, [content]);
 
-  // Sync external delete confirm state
-  useEffect(() => {
-    setLocalDeleteConfirm(showDeleteConfirm);
-  }, [showDeleteConfirm]);
 
-  const handleDelete = () => {
-    if (!localDeleteConfirm) {
-      setLocalDeleteConfirm(true);
-      onDeleteConfirmChange?.(true);
-      return;
-    }
-    onDelete();
-  };
 
   const handleCategorySelect = (newCategory: string) => {
     setShowCategoryModal(false);
@@ -90,14 +75,19 @@ export function NoteEditorForm({
 
   return (
     <div
-      className={`bg-card text-card-foreground rounded-lg shadow-sm border p-4 transition-all duration-500 ${
-        highlight
-          ? 'border-primary ring-2 ring-primary/30 bg-primary/5'
-          : 'border-border'
-      }`}
+      className={`bg-card text-card-foreground p-4 transition-all duration-500`}
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-3 space-x-2">
+        {/* Title input */}
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => onTitleChange(e.target.value)}
+          onBlur={() => onBlur?.()}
+          placeholder="Untitled"
+          className="w-full px-3 py-1 text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background text-foreground"
+        />
         <div className="flex items-center gap-2 flex-1">
           {category ? (
             <button
@@ -120,59 +110,47 @@ export function NoteEditorForm({
             </span>
           )}
         </div>
-        <button
-          onClick={handleDelete}
-          className={`px-3 py-1 text-sm font-medium rounded-md ${
-            localDeleteConfirm
-              ? 'text-white bg-red-600 hover:bg-red-700'
-              : 'text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300'
-          }`}
-        >
-          {localDeleteConfirm ? 'Confirm Delete' : 'Delete'}
-        </button>
       </div>
 
       {/* Content */}
       <div className="space-y-3">
-        {/* Title input */}
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => onTitleChange(e.target.value)}
-          placeholder="Untitled"
-          className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background text-foreground"
-        />
 
         {/* Markdown editor */}
-        <MDXEditor
-          ref={editorRef}
-          markdown={content}
-          onChange={(markdown) => {
-            lastEditorContentRef.current = markdown;
-            onContentChange(markdown);
-          }}
-          contentEditableClassName="prose prose-sm max-w-none min-h-[200px] focus:outline-none"
-          plugins={[
-            headingsPlugin(),
-            listsPlugin(),
-            quotePlugin(),
-            thematicBreakPlugin(),
-            linkPlugin(),
-            linkDialogPlugin(),
-            markdownShortcutPlugin(),
-            toolbarPlugin({
-              toolbarContents: () => (
-                <>
-                  <UndoRedo />
-                  <BlockTypeSelect />
-                  <BoldItalicUnderlineToggles />
-                  <ListsToggle />
-                  <CreateLink />
-                </>
-              ),
-            }),
-          ]}
-        />
+        <div onBlur={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+            onBlur?.();
+          }
+        }}>
+          <MDXEditor
+            ref={editorRef}
+            markdown={content}
+            onChange={(markdown) => {
+              lastEditorContentRef.current = markdown;
+              onContentChange(markdown);
+            }}
+            contentEditableClassName="prose prose-sm max-w-none min-h-[200px] focus:outline-none"
+            plugins={[
+              headingsPlugin(),
+              listsPlugin(),
+              quotePlugin(),
+              thematicBreakPlugin(),
+              linkPlugin(),
+              linkDialogPlugin(),
+              markdownShortcutPlugin(),
+              toolbarPlugin({
+                toolbarContents: () => (
+                  <>
+                    <UndoRedo />
+                    <BlockTypeSelect />
+                    <BoldItalicUnderlineToggles />
+                    <ListsToggle />
+                    <CreateLink />
+                  </>
+                ),
+              }),
+            ]}
+          />
+        </div>
       </div>
 
       {/* Category Modal */}
