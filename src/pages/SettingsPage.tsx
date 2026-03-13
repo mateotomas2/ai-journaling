@@ -1,3 +1,4 @@
+import { AppearanceSection } from '@/components/settings/AppearanceSection';
 import { ApiKeySection } from '@/components/settings/ApiKeySection';
 import { ModelSelectionSection } from '@/components/settings/ModelSelectionSection';
 import { PromptCustomization } from '@/components/settings/PromptCustomization';
@@ -24,6 +25,7 @@ export function SettingsPage() {
 
       {/* Settings Sections */}
       <div className="space-y-6">
+        <AppearanceSection />
         <ApiKeySection />
         <ModelSelectionSection />
         <PromptCustomization />

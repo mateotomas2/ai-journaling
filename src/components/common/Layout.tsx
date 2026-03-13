@@ -6,7 +6,6 @@ import { useKeyboardNavigation } from '../../hooks/useKeyboardNavigation';
 import { MemorySearch } from '../search/MemorySearch';
 import { cn } from '@/lib/utils';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { ModeToggle } from '@/components/mode-toggle';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import { Search, BookOpen, List, Settings } from 'lucide-react';
 import { SyncStatusIndicator } from './SyncStatusIndicator';
@@ -97,8 +96,6 @@ export function Layout({ children }: LayoutProps) {
                 </kbd>
               </Button>
               <SyncStatusIndicator />
-              <div className="w-px h-6 bg-border mx-2" />
-              <ModeToggle />
               <InstallPrompt />
             </div>
           </div>
