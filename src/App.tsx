@@ -81,8 +81,6 @@ function AppRoutes() {
 
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
-import { UpdatePrompt } from "@/components/pwa/UpdatePrompt"
-
 export function App() {
   return (
     <ThemeProvider attribute="class" defaultTheme="system" storageKey="vite-ui-theme">
@@ -91,7 +89,6 @@ export function App() {
           <SyncProvider>
             <AppRoutes />
             <Toaster />
-            <UpdatePrompt />
           </SyncProvider>
         </DatabaseProvider>
       </BrowserRouter>

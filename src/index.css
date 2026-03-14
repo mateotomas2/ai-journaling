@@ -18,7 +18,7 @@ body {
   justify-content: center;
   flex-direction: column;
   gap: 1rem;
-  background-color: hsl(var(--background));
+  background-color: #000;
   color: hsl(var(--foreground));
 }
 
@@ -198,6 +198,7 @@ body {
 }
 
 .mdxeditor hr {
+  margin-top: 0.5em;
   padding-bottom: 0.5em;
 }
 

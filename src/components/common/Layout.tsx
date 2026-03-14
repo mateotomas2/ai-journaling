@@ -37,7 +37,7 @@ export function Layout({ children }: LayoutProps) {
     shortcuts: [
       { key: 'j', action: () => navigate('/journal'), description: 'Go to journal' },
       { key: 'e', action: () => navigate('/entries'), description: 'Go to entries' },
-{ key: 's', action: () => navigate('/settings'), description: 'Go to settings' },
+      { key: 's', action: () => navigate('/settings'), description: 'Go to settings' },
     ],
   });
 
@@ -51,8 +51,8 @@ export function Layout({ children }: LayoutProps) {
     <div className="flex flex-col h-dvh overflow-hidden bg-gradient-to-b from-muted/30 to-background text-foreground">
       <header className="sticky top-0 z-50 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm">
         <div className="max-w-5xl mx-auto px-4 sm:px-4 lg:px-8">
-          <div className="flex justify-end items-center h-16">
-            <Link to="/journal" className="hidden sm:flex flex items-center gap-2 hover:opacity-80 transition-opacity">
+          <div className="flex justify-end sm:justify-between items-center h-16">
+            <Link to="/journal" className="hidden sm:flex flex items-center gap-2 hover:opacity-80 transition-opacity mr-4">
               <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
                 <span className="text-primary-foreground font-bold text-sm">DJ</span>
               </div>

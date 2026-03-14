@@ -126,7 +126,7 @@ export function NoteEditorForm({
             lastEditorContentRef.current = markdown;
             onContentChange(markdown);
           }}
-          contentEditableClassName="prose prose-sm max-w-none min-h-[200px] focus:outline-none"
+          contentEditableClassName="prose prose-sm max-w-none min-h-[200px] focus:outline-none text-sm"
           plugins={[
             headingsPlugin(),
             listsPlugin(),
