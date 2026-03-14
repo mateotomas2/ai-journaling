@@ -6,16 +6,18 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PromptBuilderModal } from '@/components/common/PromptBuilderModal';
 
 const MAX_PROMPT_LENGTH = 5000;
 
 export function PromptCustomization() {
-  const { systemPrompt, isLoading, saveSystemPrompt: updateSystemPrompt, resetPrompt: resetSystemPrompt } = useSettings();
+  const { systemPrompt, isLoading, saveSystemPrompt: updateSystemPrompt, resetPrompt: resetSystemPrompt, apiKey } = useSettings();
   const { showToast } = useToast();
 
   const [editValue, setEditValue] = useState('');
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isBuilderOpen, setIsBuilderOpen] = useState(false);
 
   useEffect(() => {
     if (systemPrompt) {
@@ -62,7 +64,8 @@ export function PromptCustomization() {
   const handleReset = async () => {
     setIsSaving(true);
     try {
-      await resetSystemPrompt();
+      const defaultPrompt = await resetSystemPrompt();
+      setEditValue(defaultPrompt);
       showToast('System prompt reset to default', 'success');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
@@ -116,7 +119,7 @@ export function PromptCustomization() {
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button
             type="button"
             onClick={handleSave}
@@ -134,7 +137,27 @@ export function PromptCustomization() {
           >
             Reset to Default
           </Button>
+          {apiKey && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsBuilderOpen(true)}
+              disabled={isSaving}
+              aria-label="Use AI Assistant to build prompt"
+            >
+              Use AI Assistant ✨
+            </Button>
+          )}
         </div>
+
+        <PromptBuilderModal
+          isOpen={isBuilderOpen}
+          onClose={() => setIsBuilderOpen(false)}
+          onApply={(prompt) => setEditValue(prompt)}
+          initialPrompt=""
+          apiKey={apiKey ?? ''}
+          description="Chat with the AI to craft your perfect system prompt"
+        />
 
         <div className="pt-4 border-t text-sm text-muted-foreground italic">
           <p>

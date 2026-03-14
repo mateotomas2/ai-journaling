@@ -15,7 +15,7 @@ interface UseSettingsReturn {
   saveApiKey: (key: string) => Promise<void>;
   loadSystemPrompt: () => Promise<string>;
   saveSystemPrompt: (prompt: string) => Promise<void>;
-  resetPrompt: () => Promise<void>;
+  resetPrompt: () => Promise<string>;
 }
 
 export function useSettings(): UseSettingsReturn {
@@ -103,11 +103,12 @@ export function useSettings(): UseSettingsReturn {
     [db]
   );
 
-  const resetPrompt = useCallback(async () => {
+  const resetPrompt = useCallback(async (): Promise<string> => {
     if (!db) throw new Error('Database not initialized');
     await resetSystemPrompt(db);
     const prompt = await getSystemPrompt(db);
     setSystemPrompt(prompt);
+    return prompt;
   }, [db]);
 
   return {

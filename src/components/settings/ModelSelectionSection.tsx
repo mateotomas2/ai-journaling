@@ -4,6 +4,7 @@ import { useDatabase } from '@/hooks/useDatabase';
 import { useSettings } from '@/hooks/useSettings';
 import { getSummarizerModel, updateSummarizerModel, getChatModel, updateChatModel } from '@/services/settings/settings.service';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { OpenRouterPrivacyButton } from '@/components/common/OpenRouterPrivacyModal';
 
 export function ModelSelectionSection() {
   const { db } = useDatabase();
@@ -77,10 +78,13 @@ export function ModelSelectionSection() {
   return (
     <Card className="mb-6">
       <CardHeader>
-        <CardTitle>AI Model Selection</CardTitle>
-        <CardDescription>
-          Choose which AI models to use for chat and summaries.
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>AI Model Selection</CardTitle>
+            <CardDescription>Choose which AI models to use for chat and summaries.</CardDescription>
+          </div>
+          <OpenRouterPrivacyButton />
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Chat Model Selector */}

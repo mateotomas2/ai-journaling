@@ -1,5 +1,53 @@
 import type { AIModel } from '@/types/entities';
 
+// Curated top picks (quality/popularity)
+export const FEATURED_MODEL_IDS = new Set([
+  'openai/gpt-4o',
+  'openai/gpt-4o-mini',
+  'anthropic/claude-sonnet-4-5',
+  'anthropic/claude-opus-4-5',
+  'google/gemini-2.5-flash',
+  'google/gemini-2.5-pro',
+  'deepseek/deepseek-chat',
+  'deepseek/deepseek-r1',
+  'meta-llama/llama-3.1-70b-instruct',
+  'x-ai/grok-2',
+]);
+
+
+export function isFreeModel(model: AIModel): boolean {
+  return parseFloat(model.pricing.prompt) === 0 && parseFloat(model.pricing.completion) === 0;
+}
+
+/** Formats price as $/1M tokens, e.g. "$2.50/M" or "Free" */
+export function formatPrice(pricePerToken: string): string {
+  const n = parseFloat(pricePerToken);
+  if (n === 0) return 'Free';
+  const perMillion = n * 1_000_000;
+  return `$${perMillion < 1 ? perMillion.toFixed(3) : perMillion.toFixed(2)}/M`;
+}
+
+export type SortOption = 'default' | 'price-asc' | 'price-desc';
+
+export function sortModels(models: AIModel[], sort: SortOption): AIModel[] {
+  if (sort === 'default') return models;
+  return [...models].sort((a, b) => {
+    const pa = parseFloat(a.pricing.prompt);
+    const pb = parseFloat(b.pricing.prompt);
+    return sort === 'price-asc' ? pa - pb : pb - pa;
+  });
+}
+
+export type FilterOption = 'all' | 'top' | 'free';
+
+export function filterModels(models: AIModel[], filter: FilterOption): AIModel[] {
+  switch (filter) {
+    case 'top': return models.filter(m => FEATURED_MODEL_IDS.has(m.id));
+    case 'free': return models.filter(isFreeModel);
+    default: return models;
+  }
+}
+
 /**
  * Fallback list of curated AI models used when OpenRouter API is unavailable
  * These models represent a good mix of providers and pricing tiers

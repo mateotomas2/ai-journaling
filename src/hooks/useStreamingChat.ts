@@ -5,6 +5,8 @@ import { useMessages } from './useMessages';
 import { useNotes } from './useNotes';
 import { useDay } from './useDay';
 import { useSettings } from './useSettings';
+import { useDatabase } from './useDatabase';
+import type { JournalDatabase } from '@/db';
 import { getLocalTimezone, getTodayId } from '../utils/date.utils';
 import {
   JOURNAL_SYSTEM_PROMPT,
@@ -42,6 +44,7 @@ export function useStreamingChat({ dayId, model }: UseStreamingChatOptions) {
   const { notes } = useNotes(dayId);
   const { createOrUpdateDay } = useDay(dayId);
   const { apiKey, systemPrompt } = useSettings();
+  const { db } = useDatabase();
   const [error, setError] = useState<string | null>(null);
 
   // === Ref-based connection config ===
@@ -79,10 +82,16 @@ export function useStreamingChat({ dayId, model }: UseStreamingChatOptions) {
     conversationMessageIdsRef.current = rxdbMessages.map((m) => m.id);
   }, [rxdbMessages]);
 
+  // DB and dayId refs for notes tools
+  const dbRef = useRef<JournalDatabase | null>(null);
+  useEffect(() => { dbRef.current = db; }, [db]);
+  const dayIdRef = useRef<string>(dayId);
+  useEffect(() => { dayIdRef.current = dayId; }, [dayId]);
+
   // Create the connection adapter ONCE (stable reference)
   // Tool calls are handled inside the adapter — no client tools needed.
   const connection = useMemo(
-    () => createRefBasedConnection(configRef, conversationMessageIdsRef),
+    () => createRefBasedConnection(configRef, conversationMessageIdsRef, dbRef, dayIdRef),
     [] // intentionally empty - connection reads from refs
   );
 

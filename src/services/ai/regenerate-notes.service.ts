@@ -44,13 +44,21 @@ export async function regenerateNotes(
   logger.debug('[regenerateNotes] Notes text length:', notesText.length, 'characters');
 
   // Build user prompt based on available content
-  let userPrompt: string;
-
   if (!conversationText && !notesText) {
     throw new Error('No content to regenerate notes from');
   }
 
-  userPrompt = `Please analyze and reorganize the following journal content from ${dayId} into well-organized notes grouped by topic:\n\n<Journal Conversation>\n${conversationText}\n\n<Notes>\n${notesText}\n</Notes>`;
+  const existingCategories = [...new Set(
+    existingNotes
+      .filter(n => n.category !== 'summary')
+      .map(n => n.category)
+  )];
+
+  const categoryLine = existingCategories.length > 0
+    ? `Existing categories: ${existingCategories.join(', ')}\n\n`
+    : '';
+
+  const userPrompt = `${categoryLine}Please analyze and reorganize the following journal content from ${dayId} into well-organized notes grouped by topic:\n\n<Journal Conversation>\n${conversationText}\n\n<Notes>\n${notesText}\n</Notes>`;
 
   console.log('[regenerateNotes] User prompt:', userPrompt);
 

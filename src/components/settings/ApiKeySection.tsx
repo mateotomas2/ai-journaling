@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { OpenRouterPrivacyButton } from '@/components/common/OpenRouterPrivacyModal';
 
 export function ApiKeySection() {
   const { apiKey, isLoading, saveApiKey } = useSettings();
@@ -124,9 +125,12 @@ export function ApiKeySection() {
               OpenRouter
             </a>
           </p>
-          <p className="italic text-xs opacity-80">
-            Note: Your API key is stored encrypted in your browser's local database and never sent to our servers.
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="italic text-xs opacity-80">
+              Your API key is stored encrypted locally and never sent to our servers.
+            </p>
+            <OpenRouterPrivacyButton />
+          </div>
         </div>
       </CardContent>
     </Card>

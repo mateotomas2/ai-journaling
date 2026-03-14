@@ -6,8 +6,8 @@ import { FALLBACK_MODELS } from '@/services/ai/models.service';
 import * as modelsService from '@/services/ai/models.service';
 
 // Mock the models service
-vi.mock('@/services/ai/models.service', () => ({
-  fetchModels: vi.fn().mockResolvedValue([
+vi.mock('@/services/ai/models.service', () => {
+  const fallback = [
     {
       id: 'openai/gpt-4o',
       name: 'GPT-4o',
@@ -22,24 +22,23 @@ vi.mock('@/services/ai/models.service', () => ({
       pricing: { prompt: '0.000003', completion: '0.000015' },
       contextLength: 200000,
     }
-  ]),
-  FALLBACK_MODELS: [
-    {
-      id: 'openai/gpt-4o',
-      name: 'GPT-4o',
-      provider: 'OpenAI',
-      pricing: { prompt: '0.0000025', completion: '0.000010' },
-      contextLength: 128000,
+  ];
+  return {
+    fetchModels: vi.fn().mockResolvedValue(fallback),
+    FALLBACK_MODELS: fallback,
+    FEATURED_MODEL_IDS: new Set(['openai/gpt-4o']),
+    isFreeModel: (model: { pricing: { prompt: string; completion: string } }) =>
+      parseFloat(model.pricing.prompt) === 0 && parseFloat(model.pricing.completion) === 0,
+    formatPrice: (pricePerToken: string) => {
+      const n = parseFloat(pricePerToken);
+      if (n === 0) return 'Free';
+      const perMillion = n * 1_000_000;
+      return `$${perMillion < 1 ? perMillion.toFixed(3) : perMillion.toFixed(2)}/M`;
     },
-    {
-      id: 'anthropic/claude-sonnet-4.5',
-      name: 'Claude Sonnet 4.5',
-      provider: 'Anthropic',
-      pricing: { prompt: '0.000003', completion: '0.000015' },
-      contextLength: 200000,
-    }
-  ]
-}));
+    sortModels: (models: unknown[], sort: string) => sort === 'default' ? models : [...models],
+    filterModels: (models: unknown[], filter: string) => filter === 'all' ? models : models,
+  };
+});
 
 // Mock ResizeObserver for Popover/Command
 globalThis.ResizeObserver = class ResizeObserver {

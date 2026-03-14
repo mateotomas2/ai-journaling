@@ -9,6 +9,8 @@ import { z } from 'zod';
 import { memoryService } from '@/services/memory/search';
 import { getTodayId } from '@/utils/date.utils';
 import { format, subDays, parseISO } from 'date-fns';
+import type { JournalDatabase } from '@/db';
+import { getNotesForDay, createNote, updateNote, deleteNote } from '@/services/db/notes';
 
 /**
  * Memory search tool - allows LLM to search past journal entries and notes
@@ -55,9 +57,88 @@ export const MEMORY_SEARCH_TOOL: Tool = {
 };
 
 /**
+ * Read notes tool - allows LLM to read notes for a journal day
+ */
+export const READ_NOTES_TOOL: Tool = {
+  type: 'function',
+  function: {
+    name: 'read_notes',
+    description: 'Read notes for a journal day. Use when the user asks to see their notes.',
+    parameters: {
+      type: 'object',
+      properties: {
+        dayId: {
+          type: 'string',
+          description: 'The journal day to read notes from (YYYY-MM-DD). Defaults to current journal day if omitted.',
+        },
+      },
+      required: [],
+    },
+  },
+};
+
+/**
+ * Write note tool - allows LLM to create or update a note for a journal day
+ */
+export const WRITE_NOTE_TOOL: Tool = {
+  type: 'function',
+  function: {
+    name: 'write_note',
+    description: 'Create or update a note for a journal day. Always call read_notes first to check what already exists.',
+    parameters: {
+      type: 'object',
+      properties: {
+        category: {
+          type: 'string',
+          description: 'The category of the note (e.g. health, work, dreams)',
+        },
+        content: {
+          type: 'string',
+          description: 'The content of the note',
+        },
+        title: {
+          type: 'string',
+          description: 'Optional title for the note',
+        },
+        noteId: {
+          type: 'string',
+          description: 'The ID of an existing note to update. Omit to create a new note.',
+        },
+        dayId: {
+          type: 'string',
+          description: 'The journal day to write the note for (YYYY-MM-DD). Defaults to current journal day if omitted.',
+        },
+      },
+      required: ['category', 'content'],
+    },
+  },
+};
+
+/**
+ * Delete note tool - allows LLM to delete a note by ID
+ */
+export const DELETE_NOTE_TOOL: Tool = {
+  type: 'function',
+  function: {
+    name: 'delete_note',
+    description: 'Delete a note by its ID. Always call read_notes first to get the noteId.',
+    parameters: {
+      type: 'object',
+      properties: {
+        noteId: {
+          type: 'string',
+          description: 'The ID of the note to delete',
+        },
+      },
+      required: ['noteId'],
+    },
+  },
+};
+
+/**
  * All available tools for journal chat
  */
-export const JOURNAL_TOOLS: Tool[] = [MEMORY_SEARCH_TOOL];
+export const JOURNAL_TOOLS: Tool[] = [MEMORY_SEARCH_TOOL, READ_NOTES_TOOL, WRITE_NOTE_TOOL, DELETE_NOTE_TOOL];
 
 /**
  * Arguments for the memory search tool
@@ -73,11 +154,31 @@ interface MemorySearchArgs {
 }
 
 /**
+ * Arguments for the read_notes tool
+ */
+interface ReadNotesArgs {
+  dayId?: string | undefined;
+}
+
+/**
+ * Arguments for the write_note tool
+ */
+interface WriteNoteArgs {
+  category: string;
+  content: string;
+  title?: string | undefined;
+  noteId?: string | undefined;
+  dayId?: string | undefined;
+}
+
+/**
  * Execute a tool call and return the result
  */
 export async function executeToolCall(
   toolCall: ToolCall,
-  conversationMessageIds: string[]
+  conversationMessageIds: string[],
+  db: JournalDatabase | null,
+  currentDayId: string,
 ): Promise<ToolResult> {
   const { name, arguments: argsString } = toolCall.function;
 
@@ -97,6 +198,21 @@ export async function executeToolCall(
       return await executeMemorySearch(toolCall.id, args, conversationMessageIds);
     }
 
+    if (name === 'read_notes') {
+      const args = JSON.parse(argsString) as ReadNotesArgs;
+      return await executeReadNotes(toolCall.id, args, db, currentDayId);
+    }
+
+    if (name === 'write_note') {
+      const args = JSON.parse(argsString) as WriteNoteArgs;
+      return await executeWriteNote(toolCall.id, args, db, currentDayId);
+    }
+
+    if (name === 'delete_note') {
+      const args = JSON.parse(argsString) as { noteId: string };
+      return await executeDeleteNote(toolCall.id, args, db);
+    }
+
     return {
       tool_call_id: toolCall.id,
       content: JSON.stringify({
@@ -112,6 +228,109 @@ export async function executeToolCall(
       }),
     };
   }
+}
+
+/**
+ * Execute the read_notes tool
+ */
+async function executeReadNotes(
+  toolCallId: string,
+  args: ReadNotesArgs,
+  db: JournalDatabase | null,
+  currentDayId: string,
+): Promise<ToolResult> {
+  if (!db) {
+    return {
+      tool_call_id: toolCallId,
+      content: JSON.stringify({ error: 'Database not available' }),
+    };
+  }
+
+  const dayId = args.dayId ?? currentDayId;
+  const notes = await getNotesForDay(db, dayId);
+
+  return {
+    tool_call_id: toolCallId,
+    content: JSON.stringify({
+      status: 'success',
+      dayId,
+      noteCount: notes.length,
+      notes: notes.map((n) => ({ id: n.id, category: n.category, title: n.title ?? null, content: n.content })),
+    }),
+  };
+}
+
+/**
+ * Execute the write_note tool
+ */
+async function executeWriteNote(
+  toolCallId: string,
+  args: WriteNoteArgs,
+  db: JournalDatabase | null,
+  currentDayId: string,
+): Promise<ToolResult> {
+  if (!db) {
+    return {
+      tool_call_id: toolCallId,
+      content: JSON.stringify({ error: 'Database not available' }),
+    };
+  }
+
+  const dayId = args.dayId ?? currentDayId;
+  let status: 'created' | 'updated';
+  let note;
+
+  if (args.noteId) {
+    const updated = await updateNote(db, args.noteId, args.content, args.title);
+    if (!updated) {
+      return {
+        tool_call_id: toolCallId,
+        content: JSON.stringify({ error: `Note not found: ${args.noteId}` }),
+      };
+    }
+    note = updated;
+    status = 'updated';
+  } else {
+    note = await createNote(db, dayId, args.category, args.content, args.title);
+    status = 'created';
+  }
+
+  const currentNotes = await getNotesForDay(db, dayId);
+
+  return {
+    tool_call_id: toolCallId,
+    content: JSON.stringify({
+      status,
+      note: { id: note.id, category: note.category, title: note.title ?? null, content: note.content },
+      currentNotes: currentNotes.map((n) => ({ id: n.id, category: n.category, title: n.title ?? null, content: n.content })),
+    }),
+  };
+}
+
+/**
+ * Execute the delete_note tool
+ */
+async function executeDeleteNote(
+  toolCallId: string,
+  args: { noteId: string },
+  db: JournalDatabase | null,
+): Promise<ToolResult> {
+  if (!db) {
+    return {
+      tool_call_id: toolCallId,
+      content: JSON.stringify({ error: 'Database not available' }),
+    };
+  }
+
+  const deleted = await deleteNote(db, args.noteId);
+  return {
+    tool_call_id: toolCallId,
+    content: JSON.stringify(
+      deleted
+        ? { status: 'deleted', noteId: args.noteId }
+        : { error: `Note not found: ${args.noteId}` }
+    ),
+  };
 }
 
 /**

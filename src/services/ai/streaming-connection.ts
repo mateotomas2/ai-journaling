@@ -15,6 +15,7 @@ import type { StreamChunk, UIMessage, ModelMessage, ToolCallStartEvent, ToolCall
 import type { ConnectionAdapter } from '@tanstack/ai-client';
 import { aiRateLimiter, RateLimitError } from '@/utils/rate-limiter';
 import { executeToolCall } from './tools';
+import type { JournalDatabase } from '@/db';
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const MAX_TOOL_ROUNDS = 5;
@@ -301,6 +302,8 @@ async function* streamSingleCall(
 export function createRefBasedConnection(
   configRef: { current: StreamingConnectionConfig | null },
   messageIdsRef: { current: string[] },
+  dbRef: { current: JournalDatabase | null },
+  dayIdRef: { current: string },
 ): ConnectionAdapter {
   return stream(async function* (messages): AsyncGenerator<StreamChunk> {
     const config = configRef.current;
@@ -373,6 +376,8 @@ export function createRefBasedConnection(
             function: { name: tracked.name, arguments: tracked.args },
           },
           messageIdsRef.current,
+          dbRef.current,
+          dayIdRef.current,
         );
 
         yield {
