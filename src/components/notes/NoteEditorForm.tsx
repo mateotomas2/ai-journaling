@@ -19,6 +19,23 @@ import {
 import '@mdxeditor/editor/style.css';
 import { CategoryModal } from './CategoryModal';
 
+// MDXEditor collapses 3+ consecutive newlines to a single paragraph break.
+// Encode extra blank lines as <br /> placeholders before passing to the editor,
+// then decode them back from onChange output.
+function encodeBlankLines(markdown: string): string {
+  return markdown.replace(/\n{3,}/g, (match) => {
+    const extras = Math.floor((match.length - 2) / 2);
+    return '\n\n' + '<br />\n\n'.repeat(extras);
+  });
+}
+
+function decodeBlankLines(markdown: string): string {
+  return markdown.replace(/(<br \/>(\r?\n)+)+/g, (match) => {
+    const count = (match.match(/<br \/>/g) || []).length;
+    return '\n\n'.repeat(count);
+  });
+}
+
 export interface NoteFormData {
   title: string;
   category: string;
@@ -59,7 +76,7 @@ export function NoteEditorForm({
   // Imperatively update MDXEditor when content changes externally (e.g. from sync)
   useEffect(() => {
     if (editorRef.current && content !== lastEditorContentRef.current) {
-      editorRef.current.setMarkdown(content);
+      editorRef.current.setMarkdown(encodeBlankLines(content));
     }
     lastEditorContentRef.current = content;
   }, [content]);
@@ -121,10 +138,11 @@ export function NoteEditorForm({
       }} className="flex-1">
         <MDXEditor
           ref={editorRef}
-          markdown={content}
+          markdown={encodeBlankLines(content)}
           onChange={(markdown) => {
-            lastEditorContentRef.current = markdown;
-            onContentChange(markdown);
+            const decoded = decodeBlankLines(markdown);
+            lastEditorContentRef.current = decoded;
+            onContentChange(decoded);
           }}
           contentEditableClassName="prose prose-sm max-w-none min-h-[200px] focus:outline-none text-sm"
           plugins={[

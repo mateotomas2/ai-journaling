@@ -47,6 +47,7 @@ export function NoteCard({
   const saveTimeoutRef = useRef<number | null>(null);
   const editorRef = useRef<MDXEditorMethods>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+  const lastLocalContentRef = useRef(note.content);
 
   // Handle highlight and scroll
   useEffect(() => {
@@ -64,11 +65,16 @@ export function NoteCard({
   }, [highlight]);
 
   useEffect(() => {
-    setEditedContent(note.content);
-    setEditedTitle(note.title || '');
-    // Imperatively update MDXEditor when the note changes externally
-    if (editorRef.current) {
-      editorRef.current.setMarkdown(note.content);
+    if (note.content !== lastLocalContentRef.current) {
+      // Content changed externally (e.g. sync from another device), not our own auto-save
+      lastLocalContentRef.current = note.content;
+      setEditedContent(note.content);
+      setEditedTitle(note.title || '');
+      if (editorRef.current) {
+        editorRef.current.setMarkdown(note.content);
+      }
+    } else if (note.title !== editedTitle) {
+      setEditedTitle(note.title || '');
     }
   }, [note.content, note.title]);
 
@@ -96,6 +102,7 @@ export function NoteCard({
   };
 
   const handleContentChange = (markdown: string) => {
+    lastLocalContentRef.current = markdown;
     setEditedContent(markdown);
     triggerAutoSave(markdown, editedTitle);
   };
