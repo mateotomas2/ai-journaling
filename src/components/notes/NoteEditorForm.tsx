@@ -75,7 +75,7 @@ export function NoteEditorForm({
 
   return (
     <div
-      className={`bg-card text-card-foreground p-4 transition-all duration-500`}
+      className={`bg-card text-card-foreground p-4 transition-all duration-500 min-h-full flex flex-col`}
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-3 space-x-2">
@@ -92,14 +92,14 @@ export function NoteEditorForm({
           {category ? (
             <button
               onClick={() => setShowCategoryModal(true)}
-              className="inline-block px-2 py-1 text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors cursor-pointer"
+              className="inline-block px-2 py-1.5 text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors cursor-pointer"
             >
               {category}
             </button>
           ) : (
             <button
               onClick={() => setShowCategoryModal(true)}
-              className="inline-block px-2 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 border border-dashed border-gray-300 dark:border-gray-600 rounded hover:border-blue-400 dark:hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
+              className="min-w-30 inline-block px-2 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 border border-dashed border-gray-300 dark:border-gray-600 rounded hover:border-blue-400 dark:hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
             >
               + add category
             </button>
@@ -113,44 +113,41 @@ export function NoteEditorForm({
       </div>
 
       {/* Content */}
-      <div className="space-y-3">
-
-        {/* Markdown editor */}
-        <div onBlur={(e) => {
-          if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-            onBlur?.();
-          }
-        }}>
-          <MDXEditor
-            ref={editorRef}
-            markdown={content}
-            onChange={(markdown) => {
-              lastEditorContentRef.current = markdown;
-              onContentChange(markdown);
-            }}
-            contentEditableClassName="prose prose-sm max-w-none min-h-[200px] focus:outline-none"
-            plugins={[
-              headingsPlugin(),
-              listsPlugin(),
-              quotePlugin(),
-              thematicBreakPlugin(),
-              linkPlugin(),
-              linkDialogPlugin(),
-              markdownShortcutPlugin(),
-              toolbarPlugin({
-                toolbarContents: () => (
-                  <>
-                    <UndoRedo />
-                    <BlockTypeSelect />
-                    <BoldItalicUnderlineToggles />
-                    <ListsToggle />
-                    <CreateLink />
-                  </>
-                ),
-              }),
-            ]}
-          />
-        </div>
+      {/* Markdown editor */}
+      <div onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+          onBlur?.();
+        }
+      }} className="flex-1">
+        <MDXEditor
+          ref={editorRef}
+          markdown={content}
+          onChange={(markdown) => {
+            lastEditorContentRef.current = markdown;
+            onContentChange(markdown);
+          }}
+          contentEditableClassName="prose prose-sm max-w-none min-h-[200px] focus:outline-none"
+          plugins={[
+            headingsPlugin(),
+            listsPlugin(),
+            quotePlugin(),
+            thematicBreakPlugin(),
+            linkPlugin(),
+            linkDialogPlugin(),
+            markdownShortcutPlugin(),
+            toolbarPlugin({
+              toolbarContents: () => (
+                <>
+                  <UndoRedo />
+                  <BlockTypeSelect />
+                  <BoldItalicUnderlineToggles />
+                  <ListsToggle />
+                  <CreateLink />
+                </>
+              ),
+            }),
+          ]}
+        />
       </div>
 
       {/* Category Modal */}
