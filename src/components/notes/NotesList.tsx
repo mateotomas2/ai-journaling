@@ -38,7 +38,7 @@ export function NotesList({ dayId }: NotesListProps) {
   const handleAddNote = async () => {
     try {
       const newNote = await createNote('', '', undefined);
-      navigate(`/notes/${newNote.id}`);
+      navigate(`/notes/${newNote.id}?autoFocus=1`);
     } catch (err) {
       logger.error('Error creating note:', err);
       toast.error('Failed to create note. Please try again.');

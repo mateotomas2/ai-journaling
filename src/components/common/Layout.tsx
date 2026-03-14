@@ -9,6 +9,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import { Search, BookOpen, List, Settings } from 'lucide-react';
 import { SyncStatusIndicator } from './SyncStatusIndicator';
+import { HelpButton } from './TutorialModal';
 
 interface LayoutProps {
   children: ReactNode;
@@ -95,6 +96,7 @@ export function Layout({ children }: LayoutProps) {
                   <span className="text-xs">⌘</span>K
                 </kbd>
               </Button>
+              <HelpButton />
               <SyncStatusIndicator />
               <InstallPrompt />
             </div>

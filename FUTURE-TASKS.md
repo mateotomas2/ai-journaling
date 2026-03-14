@@ -209,3 +209,29 @@ THE ERRORS DONT SHOW PROPERLY
 streaming-connection.ts:179  POST https://openrouter.ai/api/v1/chat/completions 429 (Too Many Requests)
 
 add light/dark toggle to all the pages
+
+
+
+
+---
+## Revisited list of tasks
+- [x] You cannot scroll in settings page
+- [x] Remove dark/light toggle from the top bar, it should be in the settings page.
+- [?] (It works but stopped working after some days, keep an eye on it)Google drive Sync is not working
+- [...] Add notes in a different url, and a full screen modal. The modal will have a top bar (go back, save and delete icon buttons). The list of notes, will be cards in a masonry layout, 50% widht and variable height but truncated to 4 lines.
+- [...] Reload automatically when there is a new version instead of having to do it manually
+
+- [x] Notes has too many margins and the space is not properly used
+- [...] Markdown cannot have multiple lines, when saved they turn into one line
+- [x] The margin bottom of P tags in markdown are wrong, see how we should handle that and other margins like H2
+- [ ] Markdown I cannot remove a --- HR separator, when selected the keyboard of the mobile goes down and I have no backspace key
+- [ ] Do we really need the markdown toolbar?
+- [x] Privacy when going out of the app, so it doesn't appear on recently used apps.
+- [ ] Be able to change embedding model
+- [x] Cache openrouter models on open.
+- [ ] The redirection after deleting all data is wrong, it goes to / instead of /ai-journaling
+- [x] When you write a note, you loose the focus and the text is below the add note button.
+- [?] I almost never use title, removee
+- [?] When you write a note, the key changes and sometimes this means that there is a jump, the cursor goes to the begining of the textarea.
+
+- [x] Auto prompt creator for system prompt

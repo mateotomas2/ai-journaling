@@ -1,15 +1,27 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useNoteById } from '@/hooks/useNotes';
 import { NoteEditorForm } from '@/components/notes/NoteEditorForm';
 import { useNoteCategories } from '@/hooks/useNotes';
 import { ArrowLeft, Save, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export function NoteDetailPage() {
   const { noteId } = useParams<{ noteId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const autoFocus = searchParams.get('autoFocus') === '1';
   const { note, isLoading, updateNote, updateNoteCategory, deleteNote } = useNoteById(noteId!);
   const { categories } = useNoteCategories();
 
@@ -17,7 +29,7 @@ export function NoteDetailPage() {
   const [editedTitle, setEditedTitle] = useState('');
   const [editedCategory, setEditedCategory] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const saveTimeoutRef = useRef<number | null>(null);
   const lastSavedContent = useRef('');
   const lastSavedTitle = useRef('');
@@ -99,11 +111,11 @@ export function NoteDetailPage() {
     navigate(-1);
   };
 
-  const handleDelete = async () => {
-    if (!showDeleteConfirm) {
-      setShowDeleteConfirm(true);
-      return;
-    }
+  const handleDelete = () => {
+    setShowDeleteDialog(true);
+  };
+
+  const handleDeleteConfirm = async () => {
     try {
       await deleteNote();
       navigate(-1);
@@ -167,16 +179,33 @@ export function NoteDetailPage() {
           </button>
           <button
             onClick={handleDelete}
-            className={`p-1 rounded-md transition-colors ${showDeleteConfirm
-                ? 'text-destructive-foreground bg-destructive hover:bg-destructive/90'
-                : 'hover:bg-muted text-muted-foreground hover:text-destructive'
-              }`}
-            aria-label={showDeleteConfirm ? 'Confirm delete' : 'Delete note'}
+            className="p-1 rounded-md transition-colors hover:bg-muted text-muted-foreground hover:text-destructive"
+            aria-label="Delete note"
           >
             <Trash2 className="w-5 h-5" />
           </button>
         </div>
       </div>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete note?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Scrollable editor */}
       <div className="flex-1 overflow-y-auto">
@@ -190,9 +219,8 @@ export function NoteDetailPage() {
           onBlur={() => saveImmediately(editedContent, editedTitle)}
           onDelete={handleDelete}
           suggestedCategories={categories}
-          showDeleteConfirm={showDeleteConfirm}
-          onDeleteConfirmChange={setShowDeleteConfirm}
           isSaving={isSaving}
+          autoFocus={autoFocus}
         />
       </div>
     </div>

@@ -19,6 +19,16 @@ import {
 import '@mdxeditor/editor/style.css';
 import type { Note } from '@/types';
 import { NoteEditorForm } from './NoteEditorForm';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface NoteCardProps {
   note: Note;
@@ -42,7 +52,7 @@ export function NoteCard({
   const [editedContent, setEditedContent] = useState(note.content);
   const [editedTitle, setEditedTitle] = useState(note.title || '');
   const [isSaving, setIsSaving] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isHighlighted, setIsHighlighted] = useState(false);
   const saveTimeoutRef = useRef<number | null>(null);
   const editorRef = useRef<MDXEditorMethods>(null);
@@ -123,7 +133,11 @@ export function NoteCard({
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
+    setShowDeleteDialog(true);
+  };
+
+  const handleDeleteConfirm = async () => {
     try {
       await onDelete(note.id);
     } catch (error) {
@@ -197,29 +211,49 @@ export function NoteCard({
   }
 
   return (
-    <div ref={cardRef} className="mb-4">
-      <NoteEditorForm
-        title={editedTitle}
-        category={note.category}
-        content={editedContent}
-        onTitleChange={handleTitleChange}
-        onCategoryChange={handleCategoryChange}
-        onContentChange={handleContentChange}
-        onDelete={handleDelete}
-        suggestedCategories={suggestedCategories}
-        showDeleteConfirm={showDeleteConfirm}
-        onDeleteConfirmChange={setShowDeleteConfirm}
-        isSaving={isSaving}
-        highlight={isHighlighted}
-      />
-      {/* Metadata */}
-      <div className="mt-1 px-4 text-xs text-gray-500 dark:text-gray-400">
-        Last updated:{' '}
-        {new Date(note.updatedAt).toLocaleString(undefined, {
-          dateStyle: 'short',
-          timeStyle: 'short',
-        })}
+    <>
+      <div ref={cardRef} className="mb-4">
+        <NoteEditorForm
+          title={editedTitle}
+          category={note.category}
+          content={editedContent}
+          onTitleChange={handleTitleChange}
+          onCategoryChange={handleCategoryChange}
+          onContentChange={handleContentChange}
+          onDelete={handleDelete}
+          suggestedCategories={suggestedCategories}
+          isSaving={isSaving}
+          highlight={isHighlighted}
+        />
+        {/* Metadata */}
+        <div className="mt-1 px-4 text-xs text-gray-500 dark:text-gray-400">
+          Last updated:{' '}
+          {new Date(note.updatedAt).toLocaleString(undefined, {
+            dateStyle: 'short',
+            timeStyle: 'short',
+          })}
+        </div>
       </div>
-    </div>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete note?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

@@ -51,11 +51,10 @@ interface NoteEditorFormProps {
   onContentChange: (content: string) => void;
   onDelete: () => void;
   suggestedCategories?: string[];
-  showDeleteConfirm?: boolean;
-  onDeleteConfirmChange?: (show: boolean) => void;
   isSaving?: boolean;
   highlight?: boolean;
   onBlur?: () => void;
+  autoFocus?: boolean;
 }
 
 export function NoteEditorForm({
@@ -68,6 +67,7 @@ export function NoteEditorForm({
   suggestedCategories = [],
   isSaving = false,
   onBlur,
+  autoFocus = false,
 }: NoteEditorFormProps) {
   const editorRef = useRef<MDXEditorMethods>(null);
   const lastEditorContentRef = useRef(content);
@@ -80,6 +80,16 @@ export function NoteEditorForm({
     }
     lastEditorContentRef.current = content;
   }, [content]);
+
+  // Auto-focus the editor when opening a new note
+  useEffect(() => {
+    if (autoFocus) {
+      const timeout = setTimeout(() => {
+        editorRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timeout);
+    }
+  }, [autoFocus]);
 
 
 
