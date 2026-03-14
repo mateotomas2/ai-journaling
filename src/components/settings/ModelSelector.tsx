@@ -104,7 +104,7 @@ export function ModelSelector({ value, onChange, apiKey }: ModelSelectorProps) {
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[360px] p-0" align="start">
+        <PopoverContent className="w-[360px] min-w-[90%] p-0" align="start">
           <div className="flex items-center gap-1 p-2 border-b flex-wrap">
             {((['all', 'top', 'free'] as FilterOption[])).map(f => (
               <Button

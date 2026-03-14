@@ -137,7 +137,7 @@ export function ModelSelectorIcon({ value, onChange, apiKey }: ModelSelectorIcon
             </Button>
           </div>
         </div>
-        <div className="flex flex-wrap gap-1 p-2 border-b">
+        <div className="flex gap-1 p-2 border-b overflow-x-auto">
           <Button
             key="all-providers"
             variant="ghost"
