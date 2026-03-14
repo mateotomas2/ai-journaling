@@ -3,7 +3,8 @@
 @variant dark (&:where(.dark, .dark *));
 
 /* Disable pull-to-refresh gesture in standalone PWA mode */
-html, body {
+html,
+body {
   overscroll-behavior-y: contain;
 }
 
@@ -194,7 +195,6 @@ body {
 
 .mdxeditor p {
   font-size: 1em;
-  padding-bottom: 0.5em;
 }
 
 .mdxeditor hr {
@@ -208,7 +208,6 @@ body {
 .mdxeditor h5,
 .mdxeditor h6 {
   font-weight: bold;
-  padding-bottom: 0.5em;
 }
 
 .mdxeditor h1 {
@@ -276,4 +275,9 @@ body {
   --tw-prose-code: hsl(var(--foreground));
   --tw-prose-pre-code: hsl(var(--foreground));
   --tw-prose-pre-bg: hsl(var(--muted));
+}
+
+
+.mdxeditor-popup-container {
+  z-index: 9999;
 }
