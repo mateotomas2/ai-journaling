@@ -10,13 +10,14 @@
     "prebuild": "npm run compile:validators",
     "build": "npm run generate-icons && tsc && vite build",
     "generate-icons": "node scripts/generate-icons.js",
-    "preview": "vite preview",
+    "preview": "npm run build && wrangler dev",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "start": "concurrently -c \"cyan,magenta\" -n client,server \"npm run dev\" \"cd server && npm run dev\""
+    "start": "concurrently -c \"cyan,magenta\" -n client,server \"npm run dev\" \"cd server && npm run dev\"",
+    "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
     "@huggingface/transformers": "^3.3.1",
@@ -52,6 +53,7 @@
     "zod": "^4.3.5"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.28.0",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4.1.18",
     "@testing-library/jest-dom": "^6.9.1",
@@ -72,6 +74,7 @@
     "vite": "^7.3.1",
     "vite-plugin-pwa": "^1.2.0",
     "vitest": "^4.0.17",
-    "workbox-window": "^7.4.0"
+    "workbox-window": "^7.4.0",
+    "wrangler": "^4.73.0"
   }
 }
