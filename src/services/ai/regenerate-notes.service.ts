@@ -4,6 +4,14 @@ import { fetchWithRetry } from '@/utils/fetch';
 import { aiRateLimiter, RateLimitError } from '@/utils/rate-limiter';
 import { logger } from '@/utils/logger';
 
+function normalizeLineBreaks(content: string): string {
+  return content
+    .replace(/\r\n/g, '\n')           // normalize CRLF
+    .replace(/ +\n/g, '\n')           // strip trailing spaces (prevent Markdown hard-break confusion)
+    .replace(/\n{3,}/g, '\n\n')       // collapse excess blank lines
+    .replace(/([^\n])\n(?=[^\n])/g, '$1\n\n'); // single \n → \n\n between lines
+}
+
 export interface GeneratedNote {
   id: string;
   title: string;
@@ -139,7 +147,7 @@ export async function regenerateNotes(
     id: `generated-${Date.now()}-${index}`,
     title: note.title || '',
     category: note.category || 'general',
-    content: note.content || '',
+    content: normalizeLineBreaks(note.content || ''),
   }));
 
   logger.debug('[regenerateNotes] Generated', notes.length, 'notes');

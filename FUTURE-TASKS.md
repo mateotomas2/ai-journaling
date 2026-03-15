@@ -235,3 +235,8 @@ add light/dark toggle to all the pages
 - [?] When you write a note, the key changes and sometimes this means that there is a jump, the cursor goes to the begining of the textarea.
 
 - [x] Auto prompt creator for system prompt
+
+
+---
+
+- [] Boton demasiado largo y no entra en la pantalla del movil, I Understand, Create My Journal. Los colores dark mode de esta pantalla estan mal

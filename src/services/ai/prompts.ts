@@ -156,5 +156,6 @@ Rules:
 - Keep wording close to the original — reorganize, don't rewrite
 - Merge redundant content; split unrelated content into separate notes
 - Do not use "summary" as a category
-- Preserve all markdown formatting from the original content (headers, bold, italic, lists, code blocks, etc.)
+- Preserve all markdown formatting exactly (headers, bold, italic, bullet lists, code blocks, etc.)
+- Use double newlines (\n\n) to separate paragraphs and list items — never single newlines between distinct lines
 `;

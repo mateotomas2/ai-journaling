@@ -19,18 +19,19 @@ import {
 import '@mdxeditor/editor/style.css';
 import { CategoryModal } from './CategoryModal';
 
-// MDXEditor collapses 3+ consecutive newlines to a single paragraph break.
-// Encode extra blank lines as <br /> placeholders before passing to the editor,
-// then decode them back from onChange output.
+// MDXEditor renders \n\n (paragraph break) as CSS margin only — no visible blank line.
+// Encode every paragraph break with a <br /> placeholder so MDXEditor shows a real
+// blank line, then decode them back from onChange output.
 function encodeBlankLines(markdown: string): string {
-  return markdown.replace(/\n{3,}/g, (match) => {
-    const extras = Math.floor((match.length - 2) / 2);
+  return markdown.replace(/\n{2,}/g, (match) => {
+    const extras = Math.max(1, Math.floor((match.length - 2) / 2));
     return '\n\n' + '<br />\n\n'.repeat(extras);
   });
 }
 
 function decodeBlankLines(markdown: string): string {
-  return markdown.replace(/(<br \/>(\r?\n)+)+/g, (match) => {
+  // Regex includes the leading \n\n so count of <br /> maps 1:1 to \n\n pairs
+  return markdown.replace(/\n\n(<br \/>(\r?\n)+)+/g, (match) => {
     const count = (match.match(/<br \/>/g) || []).length;
     return '\n\n'.repeat(count);
   });
@@ -150,6 +151,7 @@ export function NoteEditorForm({
           ref={editorRef}
           markdown={encodeBlankLines(content)}
           onChange={(markdown) => {
+            console.log('MDXEditor onChange raw:', JSON.stringify(markdown));
             const decoded = decodeBlankLines(markdown);
             lastEditorContentRef.current = decoded;
             onContentChange(decoded);
