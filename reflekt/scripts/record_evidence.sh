@@ -35,6 +35,7 @@ GIF_WIDTH="${EVIDENCE_GIF_WIDTH:-360}"
 BIT_RATE="${EVIDENCE_BIT_RATE:-4000000}"
 FLUTTER="${FLUTTER_BIN:-flutter}"
 DEVICE_MP4=/sdcard/reflekt-evidence.mp4
+APP_ID="${EVIDENCE_APP_ID:-com.aijournaling.reflekt}"
 
 EMULATOR_PID=""
 STARTED_EMULATOR=0
@@ -107,23 +108,51 @@ record_one() {
 
   adb shell rm -f "$DEVICE_MP4" >/dev/null 2>&1 || true
 
-  log "recording $target"
-  adb shell screenrecord --bit-rate "$BIT_RATE" --time-limit 180 "$DEVICE_MP4" &
-  local rec_pid=$!
-  sleep 2
+  # Build and install first, unrecorded. Starting the recording before this
+  # would spend it on the Gradle build — which on a cold cache runs longer than
+  # screenrecord's limit, so the video would expire before the spec even began
+  # and capture nothing but an idle home screen.
+  log "driving $target (recording starts when the app launches)"
+  local drive_log status_file
+  drive_log="$(mktemp -t reflekt-drive-XXXXXX.log)"
+  status_file="$(mktemp -t reflekt-drive-XXXXXX.status)"
 
-  local status=0
-  "$FLUTTER" drive \
-    --driver=test_driver/integration_test.dart \
-    --target="$target" \
-    -d "$DEVICE_ID" \
-    --profile || status=$?
+  (
+    "$FLUTTER" drive \
+      --driver=test_driver/integration_test.dart \
+      --target="$target" \
+      -d "$DEVICE_ID" \
+      --profile >"$drive_log" 2>&1
+    echo $? >"$status_file"
+  ) &
+  local drive_pid=$!
+
+  local rec_pid=""
+  for _ in $(seq 1 900); do
+    if adb shell pidof "$APP_ID" >/dev/null 2>&1; then
+      adb shell screenrecord --bit-rate "$BIT_RATE" --time-limit 180 \
+        "$DEVICE_MP4" &
+      rec_pid=$!
+      log "app is up — recording"
+      break
+    fi
+    kill -0 "$drive_pid" 2>/dev/null || break
+    sleep 1
+  done
+
+  wait "$drive_pid" 2>/dev/null || true
+  local status
+  status="$(cat "$status_file" 2>/dev/null || echo 1)"
+  cat "$drive_log"
+  rm -f "$drive_log" "$status_file"
 
   # SIGINT so screenrecord finalises the container; killing it outright leaves
   # an unplayable file.
   adb shell pkill -INT screenrecord >/dev/null 2>&1 || true
-  wait "$rec_pid" 2>/dev/null || true
+  [[ -n "$rec_pid" ]] && { wait "$rec_pid" 2>/dev/null || true; }
   sleep 2
+
+  [[ -n "$rec_pid" ]] || fail "the app never started, so nothing was recorded — see the drive output above"
 
   if [[ $status -ne 0 ]]; then
     fail "spec FAILED: $target — no evidence produced. Read the REPORT_DATA line above; 'failedAt' names the clause that stopped holding."
