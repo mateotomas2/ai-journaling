@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'core/clock.dart';
+
 import 'features/journal/journal_home_page.dart';
 import 'features/lock/journal_session.dart';
 import 'features/lock/set_password_page.dart';
@@ -11,6 +13,7 @@ class ReflektApp extends StatefulWidget {
     super.key,
     this.lockAfter = const Duration(minutes: 3),
     this.storageDirectory,
+    this.clock = systemClock,
   });
 
   /// How long backgrounded before the journal re-locks (ADR-0006).
@@ -18,6 +21,10 @@ class ReflektApp extends StatefulWidget {
 
   /// Test seam so a spec can point at a scratch directory.
   final String? storageDirectory;
+
+  /// Where the app reads "now". Injected so a spec can roll the day over
+  /// instead of waiting until tomorrow.
+  final Clock clock;
 
   @override
   State<ReflektApp> createState() => _ReflektAppState();
@@ -61,7 +68,8 @@ class _ReflektAppState extends State<ReflektApp> {
           JournalLockState.needsPassword =>
             SetPasswordPage(onChosen: _session.createJournal),
           JournalLockState.locked => UnlockPage(onUnlock: _session.unlock),
-          JournalLockState.open => JournalHomePage(session: _session),
+          JournalLockState.open =>
+            JournalHomePage(session: _session, clock: widget.clock),
         },
       ),
     );

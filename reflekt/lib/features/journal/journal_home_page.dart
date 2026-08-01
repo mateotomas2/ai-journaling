@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 
+import '../../core/clock.dart';
 import '../../core/day_id.dart';
 import '../../db/journal_database.dart';
 import '../lock/journal_session.dart';
@@ -11,31 +12,51 @@ class JournalHomeKeys {
   static const emptyState = Key('journal_empty_state');
   static const addNote = Key('journal_add_note');
   static const noteList = Key('journal_note_list');
+  static const previousDay = Key('journal_previous_day');
+  static const nextDay = Key('journal_next_day');
 }
 
-/// Today's journal, read from the encrypted database.
+/// One day of the journal, read from the encrypted database.
 class JournalHomePage extends StatefulWidget {
-  const JournalHomePage({super.key, required this.session});
+  const JournalHomePage({
+    super.key,
+    required this.session,
+    this.clock = systemClock,
+  });
 
   final JournalSession session;
+  final Clock clock;
 
   @override
   State<JournalHomePage> createState() => _JournalHomePageState();
 }
 
 class _JournalHomePageState extends State<JournalHomePage> {
+  late DateTime _day;
   late Future<List<Note>> _notes;
-  final _today = DateTime.now();
 
   @override
   void initState() {
     super.initState();
+    _day = _dateOnly(widget.clock());
     _load();
   }
 
+  /// Days are compared by date, never by instant — two moments in the same day
+  /// are the same page of the journal.
+  DateTime _dateOnly(DateTime moment) =>
+      DateTime(moment.year, moment.month, moment.day);
+
+  bool get _isToday => _day == _dateOnly(widget.clock());
+
   void _load() {
-    _notes = widget.session.database.notesForDay(dayIdOf(_today));
+    _notes = widget.session.database.notesForDay(dayIdOf(_day));
   }
+
+  void _goToDay(DateTime day) => setState(() {
+        _day = day;
+        _load();
+      });
 
   Future<void> _composeNote() async {
     final text = await Navigator.of(context).push<String>(
@@ -43,7 +64,9 @@ class _JournalHomePageState extends State<JournalHomePage> {
     );
     if (text == null || text.isEmpty) return;
 
-    final now = DateTime.now();
+    // Written onto the day it is being written, which is not necessarily the
+    // day being read.
+    final now = widget.clock();
     await widget.session.database.addNote(
       NotesCompanion(
         id: Value(now.microsecondsSinceEpoch.toString()),
@@ -53,7 +76,7 @@ class _JournalHomePageState extends State<JournalHomePage> {
       ),
     );
     if (!mounted) return;
-    setState(_load);
+    _goToDay(_dateOnly(now));
   }
 
   @override
@@ -62,15 +85,36 @@ class _JournalHomePageState extends State<JournalHomePage> {
       appBar: AppBar(
         title: const Text('Reflekt'),
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(28),
+          preferredSize: const Size.fromHeight(44),
           child: Padding(
-            padding: const EdgeInsets.only(left: 16, bottom: 12),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                formatDayLabel(_today),
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
+            padding: const EdgeInsets.only(left: 8, right: 8, bottom: 8),
+            child: Row(
+              children: [
+                IconButton(
+                  key: JournalHomeKeys.previousDay,
+                  icon: const Icon(Icons.chevron_left),
+                  tooltip: 'Earlier day',
+                  onPressed: () =>
+                      _goToDay(_day.subtract(const Duration(days: 1))),
+                ),
+                Expanded(
+                  child: Text(
+                    formatDayLabel(_day),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
+                IconButton(
+                  key: JournalHomeKeys.nextDay,
+                  icon: const Icon(Icons.chevron_right),
+                  tooltip: 'Later day',
+                  // Days that have not happened cannot hold anything, so
+                  // offering them would only lead somewhere empty.
+                  onPressed: _isToday
+                      ? null
+                      : () => _goToDay(_day.add(const Duration(days: 1))),
+                ),
+              ],
             ),
           ),
         ),
@@ -88,7 +132,7 @@ class _JournalHomePageState extends State<JournalHomePage> {
             return const Center(child: CircularProgressIndicator());
           }
           final notes = snapshot.data!;
-          if (notes.isEmpty) return const _EmptyState();
+          if (notes.isEmpty) return _EmptyState(isToday: _isToday);
           return _NoteList(notes: notes.reversed.toList());
         },
       ),
@@ -97,14 +141,16 @@ class _JournalHomePageState extends State<JournalHomePage> {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  const _EmptyState({required this.isToday});
+
+  final bool isToday;
 
   @override
   Widget build(BuildContext context) {
     return Center(
       key: JournalHomeKeys.emptyState,
       child: Text(
-        'Nothing written today yet.',
+        isToday ? 'Nothing written today yet.' : 'Nothing was written this day.',
         style: Theme.of(context).textTheme.bodyLarge,
       ),
     );
