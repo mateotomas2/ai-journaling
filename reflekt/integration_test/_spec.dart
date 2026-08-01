@@ -100,6 +100,24 @@ class Spec {
     await _hold();
   }
 
+  /// Relaunches the app, discarding everything held in memory.
+  ///
+  /// Pumps an unrelated widget in between, and this is load-bearing: pumping
+  /// the same widget type again would *update* the existing element tree and
+  /// reuse its `State` objects, so in-memory state would survive and a
+  /// persistence spec would pass without anything being persisted. Clearing the
+  /// tree first forces fresh `State`.
+  ///
+  /// This is not a process restart — the isolate, and anything cached at module
+  /// scope, are untouched. It proves state was rebuilt from storage rather than
+  /// held in a widget.
+  Future<void> restart(Widget app) async {
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    await tester.pumpWidget(app);
+    await _hold();
+  }
+
   Future<void> tap(Finder finder) async {
     await tester.tap(finder);
     await _hold(2);
