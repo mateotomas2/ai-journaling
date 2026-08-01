@@ -7,9 +7,16 @@ architectural changes.
 
 ## Current state
 
-This is the foundation shell. Journal notes live **in memory only** and are lost
-on restart. Local persistence (Drift + SQLCipher, ADR-0002), on-device
-embeddings (ADR-0003), and Google Drive backup (ADR-0004) are not built yet.
+Notes persist to an encrypted SQLite database (Drift + SQLCipher, ADR-0002).
+The key is derived from a user-chosen password with Argon2id and held in memory
+only; the journal locks on cold start and after 3 minutes backgrounded
+(ADR-0006). On-device embeddings (ADR-0003), Google Drive backup (ADR-0004) and
+biometric unlock are not built yet.
+
+**SQLCipher is selected by a `hooks:` user-define in `pubspec.yaml`, not by a
+package.** Stock SQLite accepts `PRAGMA key` and ignores it, so losing that
+entry would not fail anything — it would silently write journals in the clear.
+`test/encryption_test.dart` is what guards it.
 
 Target platform is **Android** (ADR-0001). The web build exists only as a dev and
 test surface — it is never shipped.

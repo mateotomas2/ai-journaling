@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:reflekt/app.dart';
 import 'package:reflekt/features/journal/journal_home_page.dart';
 import 'package:reflekt/features/journal/note_composer_page.dart';
+import 'package:reflekt/features/lock/set_password_page.dart';
 
 import '_spec.dart';
 
@@ -38,9 +39,17 @@ void main() {
   runSpec(
     'Journal a note',
     body: (spec) async {
-      await spec.launch(const ReflektApp());
+      await spec.launch(ReflektApp(storageDirectory: spec.storageDirectory));
 
-      await spec.given("today's journal has nothing written in it", () async {
+      await spec.given("a new journal, with nothing written in it today",
+          () async {
+        // Creating the journal is specified by unlock_the_journal_test.dart;
+        // here it is only the precondition for writing in one.
+        await spec.type(find.byKey(SetPasswordKeys.field), 'a good password');
+        await spec.tap(find.byKey(SetPasswordKeys.submit));
+        // Deriving the key is deliberately slow, so wait for the journal
+        // rather than assume it is already there.
+        await spec.eventually(find.byKey(JournalHomeKeys.emptyState));
         expect(find.text('Reflekt'), findsOneWidget);
         expect(find.byKey(JournalHomeKeys.emptyState), findsOneWidget);
       });

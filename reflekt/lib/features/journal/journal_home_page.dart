@@ -1,28 +1,41 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 
 import '../../core/day_id.dart';
-import 'note.dart';
+import '../../db/journal_database.dart';
+import '../lock/journal_session.dart';
 import 'note_composer_page.dart';
 
-/// Keys the evidence test drives. Keep these stable — renaming one breaks the
-/// happy-flow recording.
+/// Keys the specs drive. Keep these stable — renaming one breaks a recording.
 class JournalHomeKeys {
   static const emptyState = Key('journal_empty_state');
   static const addNote = Key('journal_add_note');
   static const noteList = Key('journal_note_list');
 }
 
-/// Today's journal. Notes live in memory only until persistence lands
-/// (ADR-0002) — restarting the app clears them.
+/// Today's journal, read from the encrypted database.
 class JournalHomePage extends StatefulWidget {
-  const JournalHomePage({super.key});
+  const JournalHomePage({super.key, required this.session});
+
+  final JournalSession session;
 
   @override
   State<JournalHomePage> createState() => _JournalHomePageState();
 }
 
 class _JournalHomePageState extends State<JournalHomePage> {
-  final _notes = <Note>[];
+  late Future<List<Note>> _notes;
+  final _today = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  void _load() {
+    _notes = widget.session.database.notesForDay(dayIdOf(_today));
+  }
 
   Future<void> _composeNote() async {
     final text = await Navigator.of(context).push<String>(
@@ -31,23 +44,20 @@ class _JournalHomePageState extends State<JournalHomePage> {
     if (text == null || text.isEmpty) return;
 
     final now = DateTime.now();
-    setState(() {
-      _notes.insert(
-        0,
-        Note(
-          id: now.microsecondsSinceEpoch.toString(),
-          dayId: dayIdOf(now),
-          content: text,
-          createdAt: now,
-        ),
-      );
-    });
+    await widget.session.database.addNote(
+      NotesCompanion(
+        id: Value(now.microsecondsSinceEpoch.toString()),
+        dayId: Value(dayIdOf(now)),
+        content: Value(text),
+        createdAt: Value(now.millisecondsSinceEpoch),
+      ),
+    );
+    if (!mounted) return;
+    setState(_load);
   }
 
   @override
   Widget build(BuildContext context) {
-    final today = DateTime.now();
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Reflekt'),
@@ -58,7 +68,7 @@ class _JournalHomePageState extends State<JournalHomePage> {
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                formatDayLabel(today),
+                formatDayLabel(_today),
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ),
@@ -71,7 +81,17 @@ class _JournalHomePageState extends State<JournalHomePage> {
         icon: const Icon(Icons.edit_outlined),
         label: const Text('New note'),
       ),
-      body: _notes.isEmpty ? const _EmptyState() : _NoteList(notes: _notes),
+      body: FutureBuilder<List<Note>>(
+        future: _notes,
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final notes = snapshot.data!;
+          if (notes.isEmpty) return const _EmptyState();
+          return _NoteList(notes: notes.reversed.toList());
+        },
+      ),
     );
   }
 }
@@ -109,7 +129,11 @@ class _NoteList extends StatelessWidget {
           margin: EdgeInsets.zero,
           child: ListTile(
             title: Text(note.content),
-            subtitle: Text(formatTimeLabel(note.createdAt)),
+            subtitle: Text(
+              formatTimeLabel(
+                DateTime.fromMillisecondsSinceEpoch(note.createdAt),
+              ),
+            ),
           ),
         );
       },

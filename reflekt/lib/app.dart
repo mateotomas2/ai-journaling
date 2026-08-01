@@ -1,14 +1,46 @@
 import 'package:flutter/material.dart';
 
 import 'features/journal/journal_home_page.dart';
+import 'features/lock/journal_session.dart';
+import 'features/lock/set_password_page.dart';
+import 'features/lock/unlock_page.dart';
 
 /// Root of the Reflekt app.
-///
-/// Scope note: this is the foundation shell (ADR-0001). Local persistence
-/// (ADR-0002, Drift + SQLCipher) is not wired up yet, so journal state lives
-/// in memory only and is lost on restart.
-class ReflektApp extends StatelessWidget {
-  const ReflektApp({super.key});
+class ReflektApp extends StatefulWidget {
+  const ReflektApp({
+    super.key,
+    this.lockAfter = const Duration(minutes: 3),
+    this.storageDirectory,
+  });
+
+  /// How long backgrounded before the journal re-locks (ADR-0006).
+  final Duration lockAfter;
+
+  /// Test seam so a spec can point at a scratch directory.
+  final String? storageDirectory;
+
+  @override
+  State<ReflektApp> createState() => _ReflektAppState();
+}
+
+class _ReflektAppState extends State<ReflektApp> {
+  late final JournalSession _session;
+
+  @override
+  void initState() {
+    super.initState();
+    _session = JournalSession(
+      lockAfter: widget.lockAfter,
+      overrideDirectory: widget.storageDirectory,
+    );
+    _session.start();
+  }
+
+  @override
+  void dispose() {
+    _session.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +53,17 @@ class ReflektApp extends StatelessWidget {
       title: 'Reflekt',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(colorScheme: scheme, useMaterial3: true),
-      home: const JournalHomePage(),
+      home: ListenableBuilder(
+        listenable: _session,
+        builder: (context, _) => switch (_session.state) {
+          JournalLockState.starting =>
+            const Scaffold(body: Center(child: CircularProgressIndicator())),
+          JournalLockState.needsPassword =>
+            SetPasswordPage(onChosen: _session.createJournal),
+          JournalLockState.locked => UnlockPage(onUnlock: _session.unlock),
+          JournalLockState.open => JournalHomePage(session: _session),
+        },
+      ),
     );
   }
 }

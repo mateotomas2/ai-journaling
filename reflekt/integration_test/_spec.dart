@@ -8,6 +8,9 @@
 /// Not named `*_test.dart`, so it is never collected as a flow.
 library;
 
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -23,10 +26,23 @@ Future<void> runSpec(
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets(title, (tester) async {
-    final spec = Spec._(tester);
+    // A fresh directory per run. The app's real storage survives between runs
+    // on a device, so without this the second run would find the previous
+    // journal and open a lock screen where the spec expects a first run.
+    final storage = Directory.systemTemp.createTempSync('reflekt-spec');
+    final spec = Spec._(tester, storage.path);
     try {
       await body(spec);
-      binding.reportData = {'spec': title, 'steps': spec.steps};
+      // Rest on the final screen. `flutter drive` exits the moment the body
+      // returns and the recording stops with it, so without this the video can
+      // end mid-transition — on a spinner rather than on the outcome the spec
+      // exists to demonstrate.
+      await spec._hold(2000);
+      binding.reportData = {
+        'spec': title,
+        'steps': spec.steps,
+        'waits': spec.waits,
+      };
     } catch (e, st) {
       // Reported back through the driver, which needs
       // `writeResponseOnFailure: true` — off by default, so without it these
@@ -35,6 +51,7 @@ Future<void> runSpec(
       binding.reportData = {
         'spec': title,
         'steps': spec.steps,
+        'waits': spec.waits,
         'failedAt': spec.steps.isEmpty ? '(before first step)' : spec.steps.last,
         'error': e.toString(),
         'stack': st.toString().split('\n').take(6).join(' | '),
@@ -46,11 +63,15 @@ Future<void> runSpec(
 
 /// The vocabulary a spec is written in.
 class Spec {
-  Spec._(this.tester);
+  Spec._(this.tester, this.storageDirectory);
 
   /// Escape hatch for assertions that need widget internals, e.g.
   /// `spec.tester.widget<TextButton>(finder).onPressed`.
   final WidgetTester tester;
+
+  /// A directory unique to this run. Pass it to `ReflektApp` so the spec starts
+  /// from an empty device every time.
+  final String storageDirectory;
 
   final _steps = <String>[];
 
@@ -129,13 +150,18 @@ class Spec {
   /// Deliberately not `tester.enterText`, which would fill the field instantly.
   /// `EditableTextState.updateEditingValue` is the same path the platform uses
   /// to deliver keystrokes, so this stays faithful while remaining watchable.
-  Future<void> type(Finder finder, String text) async {
+  Future<void> type(Finder finder, String text, {bool clear = false}) async {
     await tester.tap(finder);
     await _hold(300);
 
     final editable = tester.state<EditableTextState>(
       find.descendant(of: finder, matching: find.byType(EditableText)),
     );
+
+    if (clear) {
+      editable.updateEditingValue(TextEditingValue.empty);
+      await _hold(200);
+    }
 
     for (var i = 1; i <= text.length; i++) {
       editable.updateEditingValue(
@@ -148,6 +174,35 @@ class Spec {
       await _hold(45);
     }
   }
+
+  /// Pumps until [finder] matches something, or gives up.
+  ///
+  /// For outcomes that arrive on their own schedule — deriving a key is
+  /// deliberately slow, and slower still on an emulator. A fixed pause would
+  /// either flake or pad every recording with dead time.
+  Future<void> eventually(
+    Finder finder, {
+    Duration timeout = const Duration(seconds: 120),
+  }) async {
+    final started = DateTime.now();
+    while (DateTime.now().difference(started) < timeout) {
+      await tester.pump(const Duration(milliseconds: 50));
+      if (finder.evaluate().isNotEmpty) {
+        _waits.add(' after '
+            '${DateTime.now().difference(started).inMilliseconds}ms');
+        return;
+      }
+    }
+    throw TimeoutException(
+      'Waited ${timeout.inSeconds}s for  and it never '
+      'appeared.',
+    );
+  }
+
+  /// How long each `eventually` actually took. Reported back with the trace so
+  /// a slow spec explains itself instead of just feeling sluggish.
+  final _waits = <String>[];
+  List<String> get waits => List.unmodifiable(_waits);
 
   /// Pumps frames for [ms] of wall-clock time.
   ///
