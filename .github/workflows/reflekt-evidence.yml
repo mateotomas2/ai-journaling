@@ -1,0 +1,86 @@
+name: Reflekt evidence
+
+# Enforces the evidence contract in reflekt/CLAUDE.md:
+# every PR touching the Flutter app must ship a happy-flow test that passes,
+# and committed evidence a reviewer can watch.
+#
+# The recording pipeline captures frames through WebDriver rather than grabbing
+# the screen, which is exactly why it can run on a headless CI runner.
+
+on:
+  pull_request:
+    paths:
+      - 'reflekt/**'
+      - '.github/workflows/reflekt-evidence.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'reflekt/**'
+
+defaults:
+  run:
+    working-directory: reflekt
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      # chromedriver must match the runner's Chrome exactly, so resolve the
+      # version at run time instead of pinning one that will drift.
+      - uses: browser-actions/setup-chrome@v1
+        with:
+          install-chromedriver: true
+
+      - name: Report toolchain
+        run: |
+          flutter --version
+          google-chrome --version || chrome --version
+          chromedriver --version
+          ffmpeg -version | head -1
+
+      - run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Unit and widget tests
+        run: flutter test
+
+      # The contract check: every flow has committed evidence, and every piece
+      # of evidence comes from a real test.
+      - name: Check evidence contract
+        run: ./scripts/check_evidence.sh
+
+      # Re-record from scratch. This is the part that makes the evidence
+      # trustworthy: it proves the flows actually pass at this commit, rather
+      # than trusting whatever video happened to be committed.
+      - name: Record evidence (proves the flows pass at HEAD)
+        run: ./scripts/record_evidence.sh
+
+      # Always upload, especially on failure — the frames and step trace are how
+      # you debug a broken flow, since web profile builds report empty
+      # assertion details.
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reflekt-evidence
+          path: |
+            reflekt/evidence/*.gif
+            reflekt/evidence/*.mp4
+          if-no-files-found: warn
+          retention-days: 30

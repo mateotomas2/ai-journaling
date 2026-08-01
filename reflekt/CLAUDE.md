@@ -23,7 +23,13 @@ is not ready for review.
 
 ### The rules
 
-1. Every user-facing flow has an integration test in `integration_test/`.
+0. **Every new feature gets its own happy-path test, and that recording is what
+   goes in the PR.** One feature, one flow, one file. Do not bolt new steps onto
+   an existing feature's test to avoid writing a new one — a happy path is the
+   shortest believable story of that feature working, and a reviewer should be
+   able to watch exactly one thing per recording.
+1. Every user-facing flow has an integration test in `integration_test/`, named
+   by the convention below.
 2. That test captures its own frames via `Reel.shoot()` / `Reel.hold()`.
 3. `scripts/record_evidence.sh` runs the test and writes both an MP4 and an
    animated GIF into `evidence/`.
@@ -47,15 +53,39 @@ is not ready for review.
    whole point is that it cannot be faked.
 6. Keep videos short (seconds, not minutes). They live in git forever.
 
+### Naming convention (enforced)
+
+```
+integration_test/<feature>_test.dart  ->  evidence/<feature>.gif + <feature>.mp4
+```
+
+Underscores in the test name become dashes in the evidence name, e.g.
+`integration_test/note_search_test.dart` → `evidence/note-search.gif`.
+`scripts/check_evidence.sh` enforces this mapping in both directions: a flow
+without committed evidence fails, and evidence without a matching test fails
+too — otherwise a video implies a flow is covered when nothing verifies it.
+
 ### Running it
 
 ```bash
-scripts/record_evidence.sh                 # -> evidence/happy-flow.mp4
-scripts/record_evidence.sh my-feature      # -> evidence/my-feature.mp4
+scripts/record_evidence.sh                # record every flow
+scripts/record_evidence.sh note_search    # record one flow
+scripts/check_evidence.sh                 # verify the contract before pushing
 
-EVIDENCE_TARGET=integration_test/other_test.dart scripts/record_evidence.sh other
 EVIDENCE_HEADLESS=0 scripts/record_evidence.sh   # watch it run in a real window
 ```
+
+### What CI enforces
+
+`.github/workflows/reflekt-evidence.yml` runs on every PR touching `reflekt/`.
+It runs `flutter analyze`, `flutter test`, `check_evidence.sh`, and then
+**re-records every flow from scratch**. That last step is the point: it proves
+the flows actually pass at this commit, rather than trusting whatever video
+happened to be committed. Evidence is uploaded as an artifact even when the job
+fails, because a failed run is exactly when you need the frames and step trace.
+
+Passing CI is not a substitute for embedding the GIF in the PR body. CI proves
+it works; the GIF is what lets a human *see* it without leaving the page.
 
 ### One-time setup
 
@@ -96,14 +126,22 @@ evidence pipeline, usually without a useful error message.
   only debugging channel that survives a web profile build. When a run fails,
   read the `REPORT_DATA` line — it shows the last step reached and the error.
 
-## Adding a new flow
+## Adding a new feature — the required loop
 
-1. Add `integration_test/<name>_test.dart`, following `happy_flow_test.dart`.
+Every feature follows this. There is no path to a PR that skips it.
+
+1. Add `integration_test/<feature>_test.dart`, following `happy_flow_test.dart`.
+   One feature, one happy path.
 2. Give every widget the test touches a stable `Key` in a `...Keys` class next to
    the widget. Renaming a key breaks the recording.
 3. Build the test around a `Reel`: `hold()` where a reviewer needs to read the
    screen, `shoot()` for single moments.
-4. Record it, watch the MP4 yourself, then attach it to the PR.
+4. `scripts/record_evidence.sh <feature>`.
+5. **Watch the GIF yourself.** A green test with a broken recording is not
+   evidence — the first working version of this pipeline produced a perfectly
+   "successful" all-black video. Open the file and look at it.
+6. `scripts/check_evidence.sh`, then commit `evidence/<feature>.gif` and `.mp4`.
+7. Embed the GIF in the PR body.
 
 ## Commands
 
@@ -111,6 +149,7 @@ evidence pipeline, usually without a useful error message.
 flutter analyze                # must be clean
 flutter test                   # unit + widget tests
 scripts/record_evidence.sh     # E2E + evidence recording
+scripts/check_evidence.sh      # evidence contract (CI runs this too)
 ```
 
 ## Code style
