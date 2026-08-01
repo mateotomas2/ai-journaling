@@ -89,14 +89,18 @@ it works; the GIF is what lets a human *see* it without leaving the page.
 
 ### One-time setup
 
-`ffmpeg` and a `chromedriver` matching your installed Chrome must be on `PATH`:
+`ffmpeg` must be installed, and `chromedriver` must match your Chrome:
 
 ```bash
-google-chrome --version   # note the version, e.g. 151.0.7922.71
-# download the matching linux64 chromedriver from
-# https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json
-install -m755 chromedriver ~/.local/bin/chromedriver
+scripts/install_chromedriver.sh    # resolves and installs the matching driver
 ```
+
+The versions have to line up or the session dies with *"This version of
+ChromeDriver only supports Chrome version N"*. Note the driver must match the
+**default** Chrome on the box, not `$CHROME_EXECUTABLE` — chromedriver spawns
+its own browser for the WebDriver session and ignores that variable. Installing
+a second Chrome to satisfy the driver therefore does not work; match the driver
+to the browser instead.
 
 ## Constraints that are NOT arbitrary
 

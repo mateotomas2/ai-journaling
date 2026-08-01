@@ -39,28 +39,25 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
 
-      - uses: browser-actions/setup-chrome@v1
-        id: chrome
-        with:
-          chrome-version: stable
-          install-chromedriver: true
-
-      # The runner already ships its own Chrome at /opt/google/chrome, so
-      # without pinning, flutter_tools picks that one while chromedriver comes
-      # from the action — and the session dies with "This version of
-      # ChromeDriver only supports Chrome version N". Force both to the pair the
-      # action just installed.
-      - name: Pin Chrome and chromedriver to the same install
+      # Use the Chrome the runner already ships and fetch a chromedriver to
+      # match it, rather than installing a second Chrome.
+      #
+      # Installing another browser does not work here: chromedriver spawns its
+      # OWN Chrome for the WebDriver session and ignores CHROME_EXECUTABLE, so
+      # it kept launching /opt/google/chrome/chrome and failing with "This
+      # version of ChromeDriver only supports Chrome version N". The driver has
+      # to match the default Chrome on the box. Resolving at run time also means
+      # a runner image bumping Chrome cannot break this.
+      - name: Install a matching chromedriver
         run: |
-          echo "CHROME_EXECUTABLE=${{ steps.chrome.outputs.chrome-path }}" >> "$GITHUB_ENV"
-          dirname "${{ steps.chrome.outputs.chromedriver-path }}" >> "$GITHUB_PATH"
+          ./scripts/install_chromedriver.sh "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Report toolchain
         run: |
           flutter --version
-          echo "chrome:       $("$CHROME_EXECUTABLE" --version)"
+          echo "chrome:       $(google-chrome --version)"
           echo "chromedriver: $(chromedriver --version)"
-          echo "which chromedriver: $(command -v chromedriver)"
           ffmpeg -version | head -1
 
       - run: flutter pub get
