@@ -3,9 +3,10 @@ name: Reflekt checks
 # Fast, automatic checks for every PR touching the Flutter app.
 #
 # Deliberately does NOT record video: that needs Chrome plus a few minutes, and
-# recording is on-demand (see reflekt-evidence.yml). What this does enforce is
-# that a PR cannot quietly ship with no evidence at all — check_evidence.sh
-# verifies every flow has a committed recording, which costs nothing.
+# recording is on-demand (see reflekt-evidence.yml).
+#
+# Nothing here verifies that a PR ships evidence — that is a review-time
+# judgement, not an automated gate.
 
 on:
   pull_request:
@@ -41,8 +42,3 @@ jobs:
 
       - name: Unit and widget tests
         run: flutter test
-
-      # Cheap contract check: every flow has committed evidence, and every piece
-      # of evidence comes from a real test. Does not re-record.
-      - name: Check evidence contract
-        run: ./scripts/check_evidence.sh

@@ -3,7 +3,7 @@
 # Records happy-flow integration tests to the evidence files attached to a PR.
 # This is the evidence system described in CLAUDE.md — every PR ships one.
 #
-# Convention (enforced by scripts/check_evidence.sh):
+# Convention:
 #   integration_test/<feature>_test.dart  ->  evidence/<feature>.gif + .mp4
 #   (underscores in the test name become dashes in the evidence name)
 #

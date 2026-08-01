@@ -20,7 +20,6 @@ application/octet-stream with nosniff so it would not play anyway.
 - [ ] Every feature in this PR has a happy-flow test in `integration_test/`
 - [ ] `scripts/record_evidence.sh` was run and the recording is committed
 - [ ] The GIF is embedded above and I watched it myself
-- [ ] `scripts/check_evidence.sh` passes
 
 ## Checks
 

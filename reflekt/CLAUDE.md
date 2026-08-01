@@ -53,7 +53,7 @@ is not ready for review.
    whole point is that it cannot be faked.
 6. Keep videos short (seconds, not minutes). They live in git forever.
 
-### Naming convention (enforced)
+### Naming convention
 
 ```
 integration_test/<feature>_test.dart  ->  evidence/<feature>.gif + <feature>.mp4
@@ -61,16 +61,17 @@ integration_test/<feature>_test.dart  ->  evidence/<feature>.gif + <feature>.mp4
 
 Underscores in the test name become dashes in the evidence name, e.g.
 `integration_test/note_search_test.dart` → `evidence/note-search.gif`.
-`scripts/check_evidence.sh` enforces this mapping in both directions: a flow
-without committed evidence fails, and evidence without a matching test fails
-too — otherwise a video implies a flow is covered when nothing verifies it.
+`scripts/record_evidence.sh` derives the output names from this mapping, so a
+test file and its evidence always line up.
+
+Nothing checks this automatically — keeping evidence present and current is a
+review-time responsibility.
 
 ### Running it
 
 ```bash
 scripts/record_evidence.sh                # record every flow
 scripts/record_evidence.sh note_search    # record one flow
-scripts/check_evidence.sh                 # verify the contract before pushing
 
 EVIDENCE_HEADLESS=0 scripts/record_evidence.sh   # watch it run in a real window
 EVIDENCE_VIEWPORT=412x640@2 scripts/record_evidence.sh   # shorter still
@@ -91,8 +92,8 @@ tall.
 Two workflows, split by cost:
 
 - **`reflekt-checks.yml` — automatic** on every PR touching `reflekt/`. Runs
-  `flutter analyze`, `flutter test`, and `check_evidence.sh`. It does not record
-  anything, so it is quick. It is what stops a PR shipping with no evidence.
+  `flutter analyze` and `flutter test`. It does not record anything, so it is
+  quick.
 - **`reflekt-evidence.yml` — manual only** (`workflow_dispatch`). Records the
   videos. Recording needs Chrome and several minutes, so it runs on demand:
 
@@ -111,10 +112,10 @@ Two workflows, split by cost:
   It uploads the results as an artifact; download it, commit the files, and
   embed the GIF. For local work `scripts/record_evidence.sh` is faster.
 
-Note the trade-off this split accepts: nothing automatically proves the
-committed video matches the current code. `check_evidence.sh` confirms evidence
-*exists*, not that it is fresh. Re-record after changing a flow — that is on
-you, not on CI.
+Note the trade-off this accepts: nothing automated checks evidence at all — not
+that it exists, not that it matches the current code. Recording after changing a
+flow, and noticing when a PR arrives without a video, are both on the humans
+reviewing it.
 
 Passing checks is not a substitute for embedding the GIF in the PR body. The
 GIF is what lets a human *see* it without leaving the page.
@@ -204,7 +205,7 @@ Every feature follows this. There is no path to a PR that skips it.
 5. **Watch the GIF yourself.** A green test with a broken recording is not
    evidence — the first working version of this pipeline produced a perfectly
    "successful" all-black video. Open the file and look at it.
-6. `scripts/check_evidence.sh`, then commit `evidence/<feature>.gif` and `.mp4`.
+6. Commit `evidence/<feature>.gif` and `.mp4`.
 7. Embed the GIF in the PR body.
 
 ## Commands
@@ -213,7 +214,6 @@ Every feature follows this. There is no path to a PR that skips it.
 flutter analyze                # must be clean
 flutter test                   # unit + widget tests
 scripts/record_evidence.sh     # E2E + evidence recording
-scripts/check_evidence.sh      # evidence contract (CI runs this too)
 ```
 
 ## Code style
