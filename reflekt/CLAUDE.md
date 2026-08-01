@@ -21,9 +21,32 @@ adding one would be a mistake — a spec that is not executed drifts from the co
 the moment either changes.
 
 A feature is specified by `integration_test/<feature>_test.dart`: a `SPEC —`
-header stating the intent and what is deliberately out of scope, then a sequence
-of named behaviours. Running it proves the spec and produces the video, so
-specification, verification, and evidence are one artefact.
+header stating the intent and what is deliberately out of scope, then the
+scenario in **Given / When / Then**. Running it proves the spec and produces the
+video, so specification, verification, and evidence are one artefact.
+
+```dart
+await spec.given("today's journal has nothing written in it", () async {
+  expect(find.byKey(JournalHomeKeys.emptyState), findsOneWidget);
+});
+
+await spec.when('the composer is opened', () async {
+  await spec.tap(find.byKey(JournalHomeKeys.addNote));
+});
+
+await spec.then('an empty note is offered to write in', () async {
+  expect(find.byKey(NoteComposerKeys.field), findsOneWidget);
+});
+
+await spec.and('saving is refused while nothing has been written', () async {
+  expect(saveButton(spec).onPressed, isNull);
+});
+```
+
+**`when` acts and never asserts; `then` asserts and never acts.** Keep that
+split — the moment a `when` block contains an `expect`, the spec stops saying
+which behaviour is actually under test. Use `and` to continue the preceding
+keyword rather than repeating it.
 
 **Every PR ships that test and an MP4 of it running.** A reviewer must be able to
 open the PR and *watch the feature work* without checking anything out. A PR that
@@ -209,10 +232,11 @@ Every feature follows this. There is no path to a PR that skips it.
 2. Open with a `SPEC —` doc comment: the feature name, its intent in a sentence,
    and an explicit "deliberately out of scope" list so absent behaviour is not
    mistaken for a gap.
-3. Write the body as `spec.step('<behaviour>', ...)` calls. Each description is
-   a line of the specification — write it for a human, as a sentence completing
-   "the app …", not as a machine slug. Use `spec.tap` / `spec.type` for
-   interaction and plain `expect` for assertions; the harness handles recording.
+3. Write the scenario as `spec.given` / `spec.when` / `spec.then` / `spec.and`.
+   Each description completes its keyword as a sentence — it is a line of the
+   specification, so write it for a human, not as a machine slug. Use
+   `spec.tap` / `spec.type` for interaction and plain `expect` for assertions;
+   the harness handles recording. Keep `when` free of assertions.
 4. Give every widget the test touches a stable `Key` in a `...Keys` class next to
    the widget. Renaming a key breaks the recording.
 5. `scripts/record_evidence.sh <feature>`.

@@ -59,17 +59,37 @@ class Spec {
   /// The behaviours asserted so far, in order. Reported back to the driver.
   List<String> get steps => List.unmodifiable(_steps);
 
-  /// Asserts one named behaviour.
+  /// The state the world is in before anything happens.
   ///
-  /// [description] is a sentence completing "the app ..." — it is a line of
-  /// the specification, so write it for a human, not a machine. Frames are
-  /// captured automatically at the end so the recording lingers on each step
-  /// long enough to read.
-  Future<void> step(
+  /// Sets up and/or asserts starting conditions. A spec normally opens with
+  /// exactly one `given`.
+  Future<void> given(String description, Future<void> Function() body) =>
+      _step('Given', description, body);
+
+  /// The action being specified. **Acts, never asserts** — put the expectations
+  /// in the following [then], or the spec stops saying which behaviour is
+  /// actually under test.
+  Future<void> when(String description, Future<void> Function() body) =>
+      _step('When', description, body);
+
+  /// The outcome that must hold. **Asserts, never acts.**
+  Future<void> then(String description, Future<void> Function() body) =>
+      _step('Then', description, body);
+
+  /// Continues the preceding keyword, so a clause reads as prose rather than
+  /// repeating `Then … Then …`.
+  Future<void> and(String description, Future<void> Function() body) =>
+      _step('And', description, body);
+
+  /// [description] completes its keyword as a sentence — it is a line of the
+  /// specification, so write it for a human, not a machine. Frames are captured
+  /// at the end so the recording lingers long enough to read.
+  Future<void> _step(
+    String keyword,
     String description,
     Future<void> Function() body,
   ) async {
-    _steps.add(description);
+    _steps.add('$keyword $description');
     await body();
     await _hold();
   }

@@ -31,32 +31,43 @@ void main() {
     body: (spec) async {
       await spec.launch(const ReflektApp());
 
-      await spec.step("opens on today's journal with nothing written yet",
-          () async {
+      await spec.given("today's journal has nothing written in it", () async {
         expect(find.text('Reflekt'), findsOneWidget);
         expect(find.byKey(JournalHomeKeys.emptyState), findsOneWidget);
       });
 
-      await spec.step('offers a composer for writing a note', () async {
+      await spec.when('the composer is opened', () async {
         await spec.tap(find.byKey(JournalHomeKeys.addNote));
+      });
+
+      await spec.then('an empty note is offered to write in', () async {
         expect(find.byKey(NoteComposerKeys.field), findsOneWidget);
       });
 
-      await spec.step('refuses to save a note with nothing in it', () async {
+      await spec.and('saving is refused while nothing has been written',
+          () async {
         expect(saveButton(spec).onPressed, isNull);
       });
 
-      await spec.step('allows saving once something has been written',
-          () async {
+      await spec.when('a note is written', () async {
         await spec.type(find.byKey(NoteComposerKeys.field), noteText);
+      });
+
+      await spec.then('saving becomes available', () async {
         expect(saveButton(spec).onPressed, isNotNull);
       });
 
-      await spec.step("lists the saved note on today's journal", () async {
+      await spec.when('the note is saved', () async {
         await spec.tap(find.byKey(NoteComposerKeys.save));
-        expect(find.byKey(JournalHomeKeys.emptyState), findsNothing);
+      });
+
+      await spec.then("the note appears on today's journal", () async {
         expect(find.byKey(JournalHomeKeys.noteList), findsOneWidget);
         expect(find.text(noteText), findsOneWidget);
+      });
+
+      await spec.and('the journal no longer looks empty', () async {
+        expect(find.byKey(JournalHomeKeys.emptyState), findsNothing);
       });
     },
   );
