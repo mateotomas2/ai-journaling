@@ -7,9 +7,16 @@ architectural changes.
 
 ## Current state
 
-This is the foundation shell. Journal notes live **in memory only** and are lost
-on restart. Local persistence (Drift + SQLCipher, ADR-0002), on-device
-embeddings (ADR-0003), and Google Drive backup (ADR-0004) are not built yet.
+Notes persist to an encrypted SQLite database (Drift + SQLCipher, ADR-0002).
+The key is derived from a user-chosen password with Argon2id and held in memory
+only; the journal locks on cold start and after 3 minutes backgrounded
+(ADR-0006). On-device embeddings (ADR-0003), Google Drive backup (ADR-0004) and
+biometric unlock are not built yet.
+
+**SQLCipher is selected by a `hooks:` user-define in `pubspec.yaml`, not by a
+package.** Stock SQLite accepts `PRAGMA key` and ignores it, so losing that
+entry would not fail anything — it would silently write journals in the clear.
+`test/encryption_test.dart` is what guards it.
 
 Target platform is **Android** (ADR-0001). The web build exists only as a dev and
 test surface — it is never shipped.
@@ -105,19 +112,19 @@ review-time responsibility.
 scripts/record_evidence.sh                # record every flow
 scripts/record_evidence.sh note_search    # record one flow
 
-EVIDENCE_HEADLESS=0 scripts/record_evidence.sh   # watch it run in a real window
-EVIDENCE_VIEWPORT=412x640@2 scripts/record_evidence.sh   # shorter still
 ```
 
-Recordings use a **phone viewport** (`412x732@2` by default), since Android is
-the shipping target and desktop-shaped evidence misrepresents the product.
-Supplying the `@dpr` puts Chrome into real mobile emulation — device metrics,
-pixel ratio and an Android user agent — not just a narrow window.
+The emulator boots headless and is shut down afterwards, unless one was already
+running — in which case the script reuses it, which is much faster while
+iterating. To watch a run, start the emulator yourself first:
 
-The default is 9:16 rather than a true modern 9:20 phone: that aspect makes an
-awkwardly tall GIF in a PR body, and the extra height is dead space on these
-screens. Shorten further with `EVIDENCE_VIEWPORT` if a flow still reads as too
-tall.
+```bash
+$ANDROID_HOME/emulator/emulator -avd reflekt-evidence &
+```
+
+Recordings are the emulator's screen, so they are phone-shaped by construction —
+no viewport emulation involved. Change the shape by recreating the AVD with
+different `EVIDENCE_LCD_*` values.
 
 ### What CI does
 
@@ -127,7 +134,7 @@ Two workflows, split by cost:
   `flutter analyze` and `flutter test`. It does not record anything, so it is
   quick.
 - **`reflekt-evidence.yml` — manual only** (`workflow_dispatch`). Records the
-  videos. Recording needs Chrome and several minutes, so it runs on demand:
+  videos. Recording needs an emulator and several minutes, so it runs on demand:
 
   ```bash
   gh workflow run reflekt-evidence.yml --ref <branch>
@@ -154,74 +161,47 @@ GIF is what lets a human *see* it without leaving the page.
 
 ### One-time setup
 
-`ffmpeg` must be installed, and `chromedriver` must match your Chrome:
+`ffmpeg`, a JDK 17+, and the Android SDK. Then:
 
 ```bash
-scripts/install_chromedriver.sh    # resolves and installs the matching driver
+scripts/setup_android.sh    # creates the AVD recordings run on
 ```
 
-The versions have to line up or the session dies with *"This version of
-ChromeDriver only supports Chrome version N"*. Note the driver must match the
-**default** Chrome on the box, not `$CHROME_EXECUTABLE` — chromedriver spawns
-its own browser for the WebDriver session and ignores that variable. Installing
-a second Chrome to satisfy the driver therefore does not work; match the driver
-to the browser instead.
+The emulator needs KVM or it is unusably slow:
+
+```bash
+sudo setfacl -m u:$USER:rw /dev/kvm     # this session, takes effect immediately
+sudo usermod -aG kvm $USER              # permanent, needs a re-login
+```
+
+`setup_android.sh` creates the AVD at **1080x1920**, overriding the device
+profile's taller screen: 9:16 keeps the GIF a sensible height in a PR body,
+where a true 9:20 phone is mostly dead space in this app.
 
 ## Constraints that are NOT arbitrary
 
 Each of these cost real debugging time. Changing one will silently break the
 evidence pipeline, usually without a useful error message.
 
-- **Run in `--profile`, not debug.** In debug mode `dwds` cannot attach its debug
-  service to Chrome here and throws `AppConnectionException`.
-- **Viewport size comes from `--browser-dimension`, not `--web-browser-flag`.**
-  flutter_tools resizes the window itself after the session starts
-  (`window.setSize` in `web_driver_service.dart`), so a `--window-size` browser
-  arg is silently overwritten and screenshots stay at the 1600x1024 default.
-  Two different browsers are involved and they take flags differently: the
-  WebDriver session browser (which renders the app and takes the screenshots)
-  reads `--web-browser-flag` via `goog:chromeOptions.args`, while the browser
-  flutter_tools launches to host the app reads neither that nor
-  `flutter drive --headless` — only `CHROME_EXECUTABLE`.
-- **Headless Chrome is forced through a `CHROME_EXECUTABLE` shim.** Two obvious
-  approaches both fail *silently*: `flutter drive --headless` does not touch the
-  browser (flutter_tools launches its own Chrome to host the app and the flag
-  never reaches it), and `--web-browser-flag` does not reach that launch either
-  — in a failure log, compare the `Command used to launch it:` line and note
-  that none of those flags appear. flutter_tools does honour
-  `CHROME_EXECUTABLE`, so the script writes a shim that forces
-  `--headless=new`. On a dev machine Chrome finds the compositor regardless, so
-  breaking this is invisible locally and only shows up as CI dying with
-  `Missing X server or $DISPLAY`.
-- **To test anything display-related, unset `XDG_RUNTIME_DIR` too:**
-
-  ```bash
-  env -u DISPLAY -u WAYLAND_DISPLAY -u XDG_RUNTIME_DIR scripts/record_evidence.sh
-  ```
-
-  Unsetting only `DISPLAY` and `WAYLAND_DISPLAY` is **not** a faithful CI
-  simulation — Chrome's ozone layer still finds the compositor through
-  `XDG_RUNTIME_DIR`, so a broken headless setup will appear to pass.
-- **Never use `tester.enterText` in these tests.** On Flutter web the engine
-  routes text through a hidden DOM input the test harness never reaches, so
-  `enterText` leaves the controller empty and the test fails with no usable
-  message. Use the `typeInto` helper, which drives
-  `EditableTextState.updateEditingValue` — the same path the real platform uses.
+- **Recording starts when the app launches, not when the script does.** A cold
+  Gradle build runs longer than `screenrecord`'s 180s limit, so starting the
+  recording up front spends it entirely on the build and yields a video of an
+  idle home screen with the spec nowhere in it. The script polls
+  `adb shell pidof com.aijournaling.reflekt` and only then starts recording.
+- **Stop `screenrecord` with SIGINT.** `adb shell pkill -INT screenrecord` lets
+  it finalise the MP4 container. Killing it outright leaves a file that exists,
+  has a plausible size, and will not play.
+- **`adb wait-for-device` is not "ready".** It returns as soon as adb can talk
+  to the device, long before Android can install anything. Poll
+  `getprop sys.boot_completed` or the first `flutter drive` races the boot and
+  fails with a confusing install error.
+- **Run in `--profile`, not debug.** Debug builds carry the observatory and
+  service extensions that make timings unrepresentative of what ships.
 - **Never use `pumpAndSettle` once a text field has focus.** The cursor blinks
-  forever, so the tree never settles and `pumpAndSettle` times out. Use
-  `spec.step`, which holds frames for you.
-- **Frames come from WebDriver, not a screen grab.** `ffmpeg -f x11grab` captures
-  pure black on this machine: under Wayland, XWayland windows never composite
-  into the X root window. GNOME's `org.gnome.Shell.Screencast` D-Bus interface
-  also produced only an empty header here. Capturing through WebDriver means the
-  recording does not depend on the compositor and runs headless in CI.
-- **The driver sets `writeResponseOnFailure: true`.** It defaults to `false`,
-  which drops diagnostics on exactly the runs that need them. Web profile builds
-  strip `debugPrint` and report empty assertion details, so without this a failed
-  run tells you nothing at all.
-- **Tests report a step trace through `binding.reportData`.** That trace is the
-  only debugging channel that survives a web profile build. When a run fails,
-  read the `REPORT_DATA` line — it shows the last step reached and the error.
+  forever, so the tree never settles and `pumpAndSettle` times out. The harness
+  paces with `_hold()` instead.
+- **Scripts use `grep`, not `ripgrep`.** A committed script must not depend on a
+  tool that a CI runner or a colleague's machine may not have.
 
 ## Adding a new feature — the required loop
 

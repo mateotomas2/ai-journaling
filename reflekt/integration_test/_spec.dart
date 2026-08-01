@@ -8,6 +8,9 @@
 /// Not named `*_test.dart`, so it is never collected as a flow.
 library;
 
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -23,18 +26,32 @@ Future<void> runSpec(
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets(title, (tester) async {
-    final spec = Spec._(tester, binding);
+    // A fresh directory per run. The app's real storage survives between runs
+    // on a device, so without this the second run would find the previous
+    // journal and open a lock screen where the spec expects a first run.
+    final storage = Directory.systemTemp.createTempSync('reflekt-spec');
+    final spec = Spec._(tester, storage.path);
     try {
       await body(spec);
-      binding.reportData = {'spec': title, 'steps': spec.steps};
-    } catch (e, st) {
-      // Web profile builds strip debugPrint and report empty assertion
-      // details, so this trace is the only usable debugging channel. It shows
-      // which step was reached. Paired with `writeResponseOnFailure: true` in
-      // the driver, which is off by default.
+      // Rest on the final screen. `flutter drive` exits the moment the body
+      // returns and the recording stops with it, so without this the video can
+      // end mid-transition — on a spinner rather than on the outcome the spec
+      // exists to demonstrate.
+      await spec._hold(2000);
       binding.reportData = {
         'spec': title,
         'steps': spec.steps,
+        'waits': spec.waits,
+      };
+    } catch (e, st) {
+      // Reported back through the driver, which needs
+      // `writeResponseOnFailure: true` — off by default, so without it these
+      // diagnostics are dropped on exactly the runs that need them. `failedAt`
+      // names the clause of the spec that stopped holding.
+      binding.reportData = {
+        'spec': title,
+        'steps': spec.steps,
+        'waits': spec.waits,
         'failedAt': spec.steps.isEmpty ? '(before first step)' : spec.steps.last,
         'error': e.toString(),
         'stack': st.toString().split('\n').take(6).join(' | '),
@@ -46,15 +63,17 @@ Future<void> runSpec(
 
 /// The vocabulary a spec is written in.
 class Spec {
-  Spec._(this.tester, this._binding);
+  Spec._(this.tester, this.storageDirectory);
 
   /// Escape hatch for assertions that need widget internals, e.g.
   /// `spec.tester.widget<TextButton>(finder).onPressed`.
   final WidgetTester tester;
-  final IntegrationTestWidgetsFlutterBinding _binding;
+
+  /// A directory unique to this run. Pass it to `ReflektApp` so the spec starts
+  /// from an empty device every time.
+  final String storageDirectory;
 
   final _steps = <String>[];
-  int _frame = 0;
 
   /// The behaviours asserted so far, in order. Reported back to the driver.
   List<String> get steps => List.unmodifiable(_steps);
@@ -100,25 +119,49 @@ class Spec {
     await _hold();
   }
 
-  Future<void> tap(Finder finder) async {
-    await tester.tap(finder);
-    await _hold(2);
+  /// Relaunches the app, discarding everything held in memory.
+  ///
+  /// Pumps an unrelated widget in between, and this is load-bearing: pumping
+  /// the same widget type again would *update* the existing element tree and
+  /// reuse its `State` objects, so in-memory state would survive and a
+  /// persistence spec would pass without anything being persisted. Clearing the
+  /// tree first forces fresh `State`.
+  ///
+  /// This is not a process restart — the isolate, and anything cached at module
+  /// scope, are untouched. It proves state was rebuilt from storage rather than
+  /// held in a widget.
+  Future<void> restart(Widget app) async {
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    await tester.pumpWidget(app);
+    await _hold();
   }
 
-  /// Types [text] one character at a time.
-  ///
-  /// Deliberately not `tester.enterText`: on Flutter web the engine routes
-  /// text through a hidden DOM input the test harness never reaches, so
-  /// `enterText` silently leaves the controller empty and the failure message
-  /// is useless. Driving `EditableTextState.updateEditingValue` is the same
-  /// path the real platform uses to deliver keystrokes.
-  Future<void> type(Finder finder, String text) async {
+  Future<void> tap(Finder finder) async {
     await tester.tap(finder);
-    await _hold(2);
+    // Long enough to cover a route transition on an emulator, which is a good
+    // deal slower than a desktop browser.
+    await _hold(700);
+  }
+
+  /// Types [text] one character at a time, so the recording shows it being
+  /// written rather than appearing in a single frame.
+  ///
+  /// Deliberately not `tester.enterText`, which would fill the field instantly.
+  /// `EditableTextState.updateEditingValue` is the same path the platform uses
+  /// to deliver keystrokes, so this stays faithful while remaining watchable.
+  Future<void> type(Finder finder, String text, {bool clear = false}) async {
+    await tester.tap(finder);
+    await _hold(300);
 
     final editable = tester.state<EditableTextState>(
       find.descendant(of: finder, matching: find.byType(EditableText)),
     );
+
+    if (clear) {
+      editable.updateEditingValue(TextEditingValue.empty);
+      await _hold(200);
+    }
 
     for (var i = 1; i <= text.length; i++) {
       editable.updateEditingValue(
@@ -127,33 +170,53 @@ class Spec {
           selection: TextSelection.collapsed(offset: i),
         ),
       );
-      if (i % 3 == 0 || i == text.length) {
-        await _shoot();
-      } else {
-        await tester.pump(const Duration(milliseconds: 16));
+      // Slow enough that the recording shows text being typed, not appearing.
+      await _hold(45);
+    }
+  }
+
+  /// Pumps until [finder] matches something, or gives up.
+  ///
+  /// For outcomes that arrive on their own schedule — deriving a key is
+  /// deliberately slow, and slower still on an emulator. A fixed pause would
+  /// either flake or pad every recording with dead time.
+  Future<void> eventually(
+    Finder finder, {
+    Duration timeout = const Duration(seconds: 120),
+  }) async {
+    final started = DateTime.now();
+    while (DateTime.now().difference(started) < timeout) {
+      await tester.pump(const Duration(milliseconds: 50));
+      if (finder.evaluate().isNotEmpty) {
+        _waits.add(' after '
+            '${DateTime.now().difference(started).inMilliseconds}ms');
+        return;
       }
     }
+    throw TimeoutException(
+      'Waited ${timeout.inSeconds}s for  and it never '
+      'appeared.',
+    );
   }
 
-  /// Captures one frame of the evidence recording.
+  /// How long each `eventually` actually took. Reported back with the trace so
+  /// a slow spec explains itself instead of just feeling sluggish.
+  final _waits = <String>[];
+  List<String> get waits => List.unmodifiable(_waits);
+
+  /// Pumps frames for [ms] of wall-clock time.
   ///
-  /// Frames come from WebDriver rather than a screen grab, which is what makes
-  /// recording independent of the compositor and workable headless in CI.
-  Future<void> _shoot() async {
-    for (var i = 0; i < 3; i++) {
-      await tester.pump(const Duration(milliseconds: 16));
-    }
-    await _binding.takeScreenshot('f${_frame.toString().padLeft(4, '0')}');
-    _frame++;
-  }
-
-  /// Holds the current screen for [shots] frames so a reviewer can read it.
+  /// The evidence video is captured off-device by `adb shell screenrecord`
+  /// while this runs, so the spec's only job is to move at a pace a human can
+  /// follow. Without these pauses the whole flow completes in a few frames and
+  /// the recording is useless as evidence.
   ///
   /// Never uses `pumpAndSettle`: once a text field has focus its cursor blinks
   /// forever, so the tree never settles and `pumpAndSettle` times out.
-  Future<void> _hold([int shots = 4]) async {
-    for (var i = 0; i < shots; i++) {
-      await _shoot();
+  Future<void> _hold([int ms = 900]) async {
+    final deadline = DateTime.now().add(Duration(milliseconds: ms));
+    while (DateTime.now().isBefore(deadline)) {
+      await tester.pump(const Duration(milliseconds: 16));
     }
   }
 }

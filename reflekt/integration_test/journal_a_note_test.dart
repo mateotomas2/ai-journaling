@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:reflekt/app.dart';
 import 'package:reflekt/features/journal/journal_home_page.dart';
 import 'package:reflekt/features/journal/note_composer_page.dart';
+import 'package:reflekt/features/lock/set_password_page.dart';
 
 import '_spec.dart';
 
@@ -26,12 +27,29 @@ void main() {
   TextButton saveButton(Spec spec) =>
       spec.tester.widget<TextButton>(find.byKey(NoteComposerKeys.save));
 
+  // Scoped to the journal list on purpose. A bare `find.text` also matches the
+  // composer's field, which is still animating out just after a save — so it
+  // would be satisfied by text that is on its way off the screen rather than
+  // by a note that actually landed on the journal.
+  Finder noteOnJournal(String text) => find.descendant(
+        of: find.byKey(JournalHomeKeys.noteList),
+        matching: find.text(text),
+      );
+
   runSpec(
     'Journal a note',
     body: (spec) async {
-      await spec.launch(const ReflektApp());
+      await spec.launch(ReflektApp(storageDirectory: spec.storageDirectory));
 
-      await spec.given("today's journal has nothing written in it", () async {
+      await spec.given("a new journal, with nothing written in it today",
+          () async {
+        // Creating the journal is specified by unlock_the_journal_test.dart;
+        // here it is only the precondition for writing in one.
+        await spec.type(find.byKey(SetPasswordKeys.field), 'a good password');
+        await spec.tap(find.byKey(SetPasswordKeys.submit));
+        // Deriving the key is deliberately slow, so wait for the journal
+        // rather than assume it is already there.
+        await spec.eventually(find.byKey(JournalHomeKeys.emptyState));
         expect(find.text('Reflekt'), findsOneWidget);
         expect(find.byKey(JournalHomeKeys.emptyState), findsOneWidget);
       });
@@ -63,7 +81,7 @@ void main() {
 
       await spec.then("the note appears on today's journal", () async {
         expect(find.byKey(JournalHomeKeys.noteList), findsOneWidget);
-        expect(find.text(noteText), findsOneWidget);
+        expect(noteOnJournal(noteText), findsOneWidget);
       });
 
       await spec.and('the journal no longer looks empty', () async {
