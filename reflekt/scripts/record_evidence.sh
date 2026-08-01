@@ -27,7 +27,7 @@ FRAME_DIR="$OUT_DIR/frames"
 
 DRIVER_PORT="${EVIDENCE_DRIVER_PORT:-4444}"
 FPS="${EVIDENCE_FPS:-5}"
-GIF_WIDTH="${EVIDENCE_GIF_WIDTH:-900}"
+GIF_WIDTH="${EVIDENCE_GIF_WIDTH:-412}"
 HEADLESS="${EVIDENCE_HEADLESS:-1}"
 FLUTTER="${FLUTTER_BIN:-flutter}"
 
@@ -72,21 +72,28 @@ done
 curl -sf "http://localhost:$DRIVER_PORT/status" >/dev/null 2>&1 \
   || fail "chromedriver did not come up on :$DRIVER_PORT"
 
-# Getting Chrome to run headless here is fiddly, and both obvious approaches
-# fail silently:
+# Record at a phone viewport, not a desktop one: Android is the shipping target
+# (ADR-0001), so evidence shaped like a desktop window misrepresents the
+# product. Default is a Pixel-class viewport at 2x.
 #
-#   * `flutter drive --headless` does not touch the browser. flutter_tools
-#     launches its own Chrome to host the app and that flag never reaches it.
-#   * `--web-browser-flag` does not reach that launch either — compare the
-#     "Command used to launch it:" line in a failure, none of the flags appear.
+# This MUST go through `--browser-dimension`, not `--web-browser-flag`:
+# flutter_tools resizes the window itself after the session starts
+# (`window.setSize` in web_driver_service.dart), so a `--window-size` browser
+# arg is simply overwritten and screenshots stay 1600x1024. `--browser-dimension`
+# also takes an optional `@dpr`, and supplying it switches Chrome into real
+# mobile emulation — device metrics, pixel ratio and an Android user agent —
+# rather than just a narrow desktop window.
 #
-# On a developer machine Chrome finds the compositor anyway, so the mistake is
-# invisible until CI dies with "Missing X server or $DISPLAY".
-#
-# flutter_tools does honour CHROME_EXECUTABLE, so wrap the real browser in a
-# shim that forces the flags on.
-BROWSER_FLAGS=(--web-browser-flag="--hide-scrollbars")
+# Format is width x height [@dpr], split on [,x@].
+VIEWPORT="${EVIDENCE_VIEWPORT:-412x915@2}"
+BROWSER_FLAGS=(
+  --browser-dimension="$VIEWPORT"
+  --web-browser-flag="--hide-scrollbars"
+)
 
+# Headless for the host browser (see 2 above). On a developer machine Chrome
+# finds the compositor anyway, so getting this wrong is invisible locally and
+# only shows up as CI dying with "Missing X server or $DISPLAY".
 if [[ "$HEADLESS" == "1" ]]; then
   REAL_CHROME="${CHROME_EXECUTABLE:-}"
   if [[ -z "$REAL_CHROME" ]]; then

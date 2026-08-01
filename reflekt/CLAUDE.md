@@ -73,7 +73,13 @@ scripts/record_evidence.sh note_search    # record one flow
 scripts/check_evidence.sh                 # verify the contract before pushing
 
 EVIDENCE_HEADLESS=0 scripts/record_evidence.sh   # watch it run in a real window
+EVIDENCE_VIEWPORT=390x844@3 scripts/record_evidence.sh   # a different device
 ```
+
+Recordings use a **phone viewport** (`412x915@2` by default), since Android is
+the shipping target and desktop-shaped evidence misrepresents the product.
+Supplying the `@dpr` puts Chrome into real mobile emulation — device metrics,
+pixel ratio and an Android user agent — not just a narrow window.
 
 ### What CI does
 
@@ -130,6 +136,15 @@ evidence pipeline, usually without a useful error message.
 
 - **Run in `--profile`, not debug.** In debug mode `dwds` cannot attach its debug
   service to Chrome here and throws `AppConnectionException`.
+- **Viewport size comes from `--browser-dimension`, not `--web-browser-flag`.**
+  flutter_tools resizes the window itself after the session starts
+  (`window.setSize` in `web_driver_service.dart`), so a `--window-size` browser
+  arg is silently overwritten and screenshots stay at the 1600x1024 default.
+  Two different browsers are involved and they take flags differently: the
+  WebDriver session browser (which renders the app and takes the screenshots)
+  reads `--web-browser-flag` via `goog:chromeOptions.args`, while the browser
+  flutter_tools launches to host the app reads neither that nor
+  `flutter drive --headless` — only `CHROME_EXECUTABLE`.
 - **Headless Chrome is forced through a `CHROME_EXECUTABLE` shim.** Two obvious
   approaches both fail *silently*: `flutter drive --headless` does not touch the
   browser (flutter_tools launches its own Chrome to host the app and the flag
