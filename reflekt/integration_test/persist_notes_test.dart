@@ -21,6 +21,15 @@ import '_spec.dart';
 void main() {
   const noteText = 'Written before the restart.';
 
+  // Scoped to the journal list on purpose. A bare `find.text` also matches the
+  // composer's field, which is still animating out just after a save — so it
+  // would be satisfied by text that is on its way off the screen rather than
+  // by a note that actually landed on the journal.
+  Finder noteOnJournal(String text) => find.descendant(
+        of: find.byKey(JournalHomeKeys.noteList),
+        matching: find.text(text),
+      );
+
   runSpec(
     'Notes survive a restart',
     body: (spec) async {
@@ -30,7 +39,7 @@ void main() {
         await spec.tap(find.byKey(JournalHomeKeys.addNote));
         await spec.type(find.byKey(NoteComposerKeys.field), noteText);
         await spec.tap(find.byKey(NoteComposerKeys.save));
-        expect(find.text(noteText), findsOneWidget);
+        expect(noteOnJournal(noteText), findsOneWidget);
       });
 
       await spec.when('the app is closed and reopened', () async {
@@ -38,7 +47,7 @@ void main() {
       });
 
       await spec.then("the note is still on today's journal", () async {
-        expect(find.text(noteText), findsOneWidget);
+        expect(noteOnJournal(noteText), findsOneWidget);
       });
 
       await spec.and('the journal is not offering an empty day', () async {

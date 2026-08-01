@@ -118,7 +118,9 @@ class Spec {
 
   Future<void> tap(Finder finder) async {
     await tester.tap(finder);
-    await _hold(400);
+    // Long enough to cover a route transition on an emulator, which is a good
+    // deal slower than a desktop browser.
+    await _hold(700);
   }
 
   /// Types [text] one character at a time, so the recording shows it being

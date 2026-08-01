@@ -118,6 +118,11 @@ record_one() {
   status_file="$(mktemp -t reflekt-drive-XXXXXX.status)"
 
   (
+    # `set +e` is load-bearing. Under the inherited `set -e`, a failing
+    # `flutter drive` terminates this subshell on the spot and the status is
+    # never written — leaving an empty file that reads as success, so a failing
+    # spec would still produce evidence.
+    set +e
     "$FLUTTER" drive \
       --driver=test_driver/integration_test.dart \
       --target="$target" \
@@ -142,7 +147,11 @@ record_one() {
 
   wait "$drive_pid" 2>/dev/null || true
   local status
-  status="$(cat "$status_file" 2>/dev/null || echo 1)"
+  status="$(cat "$status_file" 2>/dev/null || true)"
+  # Absent or unparseable means the run died before reporting. Treat anything
+  # that is not an explicit success as failure — never the other way round, or
+  # a crashed run ships evidence of nothing.
+  [[ "$status" =~ ^[0-9]+$ ]] || status=1
   cat "$drive_log"
   rm -f "$drive_log" "$status_file"
 
