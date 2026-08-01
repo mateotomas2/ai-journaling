@@ -86,9 +86,16 @@ Two workflows, split by cost:
   videos. Recording needs Chrome and several minutes, so it runs on demand:
 
   ```bash
-  gh workflow run "Reflekt evidence (manual)" --ref <branch>
-  gh workflow run "Reflekt evidence (manual)" --ref <branch> -f flow=note_search
+  gh workflow run reflekt-evidence.yml --ref <branch>
+  gh workflow run reflekt-evidence.yml --ref <branch> -f flow=note_search
   ```
+
+  Dispatch by **filename**, not by display name — `gh` resolves display names
+  against the default branch, so `gh workflow run "Reflekt evidence (manual)"`
+  fails with *"could not find any workflows named …"* whenever the name differs
+  from (or does not yet exist on) `master`. For the same reason, a
+  `workflow_dispatch` trigger added on a feature branch only becomes available
+  once that workflow file has landed on the default branch.
 
   It uploads the results as an artifact; download it, commit the files, and
   embed the GIF. For local work `scripts/record_evidence.sh` is faster.
