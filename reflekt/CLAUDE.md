@@ -75,17 +75,31 @@ scripts/check_evidence.sh                 # verify the contract before pushing
 EVIDENCE_HEADLESS=0 scripts/record_evidence.sh   # watch it run in a real window
 ```
 
-### What CI enforces
+### What CI does
 
-`.github/workflows/reflekt-evidence.yml` runs on every PR touching `reflekt/`.
-It runs `flutter analyze`, `flutter test`, `check_evidence.sh`, and then
-**re-records every flow from scratch**. That last step is the point: it proves
-the flows actually pass at this commit, rather than trusting whatever video
-happened to be committed. Evidence is uploaded as an artifact even when the job
-fails, because a failed run is exactly when you need the frames and step trace.
+Two workflows, split by cost:
 
-Passing CI is not a substitute for embedding the GIF in the PR body. CI proves
-it works; the GIF is what lets a human *see* it without leaving the page.
+- **`reflekt-checks.yml` — automatic** on every PR touching `reflekt/`. Runs
+  `flutter analyze`, `flutter test`, and `check_evidence.sh`. It does not record
+  anything, so it is quick. It is what stops a PR shipping with no evidence.
+- **`reflekt-evidence.yml` — manual only** (`workflow_dispatch`). Records the
+  videos. Recording needs Chrome and several minutes, so it runs on demand:
+
+  ```bash
+  gh workflow run "Reflekt evidence (manual)" --ref <branch>
+  gh workflow run "Reflekt evidence (manual)" --ref <branch> -f flow=note_search
+  ```
+
+  It uploads the results as an artifact; download it, commit the files, and
+  embed the GIF. For local work `scripts/record_evidence.sh` is faster.
+
+Note the trade-off this split accepts: nothing automatically proves the
+committed video matches the current code. `check_evidence.sh` confirms evidence
+*exists*, not that it is fresh. Re-record after changing a flow — that is on
+you, not on CI.
+
+Passing checks is not a substitute for embedding the GIF in the PR body. The
+GIF is what lets a human *see* it without leaving the page.
 
 ### One-time setup
 
