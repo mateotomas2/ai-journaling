@@ -59,6 +59,28 @@ keyword rather than repeating it.
 open the PR and *watch the feature work* without checking anything out. A PR that
 changes behaviour and has no updated recording is not ready for review.
 
+### What belongs in a spec, and what does not
+
+A recorded spec is for behaviour **a human should watch**. Not everything is.
+
+The journal re-locking after time in the background is real behaviour with real
+edge cases, but the interesting moment happens while the app is backgrounded —
+a recording of it is a blank screen. Worse, driving lifecycle changes on a
+device hangs the test: a paused app stops producing frames, so `tester.pump()`
+never returns. That rule lives in `LockPolicy` with an injected clock and is
+covered by `test/lock_policy_test.dart`, which proves it in milliseconds
+instead of waiting on it.
+
+The test to apply: *would a reviewer learn something from watching this?* If the
+answer is no, it is a unit test, and the feature's spec covers the part that is
+visible. Do not stretch a spec to cover logic that has nothing to show — the
+recording gets longer, slower and less watchable, which erodes the reason
+anyone opens it.
+
+Extracting the rule to make it testable is usually the right move anyway. Here
+the timeout was entangled with SQLCipher, so it could only run somewhere it
+could barely be observed.
+
 ### The rules
 
 0. **Every new feature gets its own spec test, and that recording is what goes
