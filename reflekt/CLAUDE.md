@@ -73,13 +73,18 @@ scripts/record_evidence.sh note_search    # record one flow
 scripts/check_evidence.sh                 # verify the contract before pushing
 
 EVIDENCE_HEADLESS=0 scripts/record_evidence.sh   # watch it run in a real window
-EVIDENCE_VIEWPORT=390x844@3 scripts/record_evidence.sh   # a different device
+EVIDENCE_VIEWPORT=412x640@2 scripts/record_evidence.sh   # shorter still
 ```
 
-Recordings use a **phone viewport** (`412x915@2` by default), since Android is
+Recordings use a **phone viewport** (`412x732@2` by default), since Android is
 the shipping target and desktop-shaped evidence misrepresents the product.
 Supplying the `@dpr` puts Chrome into real mobile emulation — device metrics,
 pixel ratio and an Android user agent — not just a narrow window.
+
+The default is 9:16 rather than a true modern 9:20 phone: that aspect makes an
+awkwardly tall GIF in a PR body, and the extra height is dead space on these
+screens. Shorten further with `EVIDENCE_VIEWPORT` if a flow still reads as too
+tall.
 
 ### What CI does
 

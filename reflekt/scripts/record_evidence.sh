@@ -74,7 +74,11 @@ curl -sf "http://localhost:$DRIVER_PORT/status" >/dev/null 2>&1 \
 
 # Record at a phone viewport, not a desktop one: Android is the shipping target
 # (ADR-0001), so evidence shaped like a desktop window misrepresents the
-# product. Default is a Pixel-class viewport at 2x.
+# product.
+#
+# Default is 9:16 rather than a modern 9:20 phone. A true tall-phone aspect
+# makes an awkwardly tall GIF in a PR body, and the extra height is dead space
+# on these screens anyway.
 #
 # This MUST go through `--browser-dimension`, not `--web-browser-flag`:
 # flutter_tools resizes the window itself after the session starts
@@ -85,7 +89,7 @@ curl -sf "http://localhost:$DRIVER_PORT/status" >/dev/null 2>&1 \
 # rather than just a narrow desktop window.
 #
 # Format is width x height [@dpr], split on [,x@].
-VIEWPORT="${EVIDENCE_VIEWPORT:-412x915@2}"
+VIEWPORT="${EVIDENCE_VIEWPORT:-412x732@2}"
 BROWSER_FLAGS=(
   --browser-dimension="$VIEWPORT"
   --web-browser-flag="--hide-scrollbars"
