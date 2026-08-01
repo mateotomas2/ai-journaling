@@ -105,6 +105,14 @@ evidence pipeline, usually without a useful error message.
 
 - **Run in `--profile`, not debug.** In debug mode `dwds` cannot attach its debug
   service to Chrome here and throws `AppConnectionException`.
+- **`flutter drive --headless` does not make the browser headless.** flutter_tools
+  launches its own Chrome to host the app, and that flag never reaches it — on a
+  machine with a display the flag is silently ignored and Chrome runs headed, so
+  the mistake stays invisible until CI dies with `Missing X server or $DISPLAY`.
+  Headlessness must be passed to the browser:
+  `--web-browser-flag="--headless=new"`. Verify changes here with
+  `env -u DISPLAY -u WAYLAND_DISPLAY scripts/record_evidence.sh`, which is a
+  faithful simulation of a CI runner.
 - **Never use `tester.enterText` in these tests.** On Flutter web the engine
   routes text through a hidden DOM input the test harness never reaches, so
   `enterText` leaves the controller empty and the test fails with no usable

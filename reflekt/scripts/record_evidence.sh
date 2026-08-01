@@ -70,8 +70,16 @@ done
 curl -sf "http://localhost:$DRIVER_PORT/status" >/dev/null 2>&1 \
   || fail "chromedriver did not come up on :$DRIVER_PORT"
 
-HEADLESS_FLAG="--no-headless"
-[[ "$HEADLESS" == "1" ]] && HEADLESS_FLAG="--headless"
+# `flutter drive --headless` does NOT make the browser headless: flutter_tools
+# launches its own Chrome to host the app and that flag never reaches it, so on
+# a machine with no X server Chrome dies with "Missing X server or $DISPLAY".
+# Headlessness has to be handed to the browser itself.
+BROWSER_FLAGS=(--web-browser-flag="--hide-scrollbars")
+if [[ "$HEADLESS" == "1" ]]; then
+  BROWSER_FLAGS+=(--web-browser-flag="--headless=new")
+  BROWSER_FLAGS+=(--web-browser-flag="--no-sandbox")
+  BROWSER_FLAGS+=(--web-browser-flag="--disable-dev-shm-usage")
+fi
 
 record_one() {
   local target="$1"
@@ -90,9 +98,8 @@ record_one() {
       -d chrome \
       --browser-name=chrome \
       --driver-port="$DRIVER_PORT" \
-      "$HEADLESS_FLAG" \
       --profile \
-      --web-browser-flag="--hide-scrollbars"; then
+      "${BROWSER_FLAGS[@]}"; then
     fail "integration test FAILED: $target — no evidence produced. Read the REPORT_DATA line above for the step trace."
   fi
 
