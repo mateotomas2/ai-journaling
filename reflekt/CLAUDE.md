@@ -16,28 +16,37 @@ test surface — it is never shipped.
 
 ## The evidence system (MANDATORY)
 
-**Every PR ships a happy-flow E2E test and an MP4 of it running.** No exceptions.
-A reviewer must be able to open the PR and *watch the feature work* without
-checking anything out. A PR that changes behaviour and has no updated recording
-is not ready for review.
+**The E2E test IS the specification.** There is no separate spec document, and
+adding one would be a mistake — a spec that is not executed drifts from the code
+the moment either changes.
+
+A feature is specified by `integration_test/<feature>_test.dart`: a `SPEC —`
+header stating the intent and what is deliberately out of scope, then a sequence
+of named behaviours. Running it proves the spec and produces the video, so
+specification, verification, and evidence are one artefact.
+
+**Every PR ships that test and an MP4 of it running.** A reviewer must be able to
+open the PR and *watch the feature work* without checking anything out. A PR that
+changes behaviour and has no updated recording is not ready for review.
 
 ### The rules
 
-0. **Every new feature gets its own happy-path test, and that recording is what
-   goes in the PR.** One feature, one flow, one file. Do not bolt new steps onto
-   an existing feature's test to avoid writing a new one — a happy path is the
+0. **Every new feature gets its own spec test, and that recording is what goes
+   in the PR.** One feature, one flow, one file. Do not bolt new steps onto an
+   existing feature's test to avoid writing a new one — a happy path is the
    shortest believable story of that feature working, and a reviewer should be
    able to watch exactly one thing per recording.
-1. Every user-facing flow has an integration test in `integration_test/`, named
-   by the convention below.
-2. That test captures its own frames via `Reel.shoot()` / `Reel.hold()`.
+1. Every user-facing flow has a spec test in `integration_test/`, named by the
+   convention below.
+2. Tests are written against the `_spec.dart` harness, which captures frames
+   automatically. A test body contains behaviour, never recording calls.
 3. `scripts/record_evidence.sh` runs the test and writes both an MP4 and an
    animated GIF into `evidence/`.
 4. Both are **committed**. Embed the **GIF** in the PR body with normal image
    syntax so it animates inline, and link the MP4 for full quality:
 
    ```md
-   ![happy flow](https://raw.githubusercontent.com/<owner>/<repo>/<branch>/reflekt/evidence/happy-flow.gif)
+   ![journal a note](https://raw.githubusercontent.com/<owner>/<repo>/<branch>/reflekt/evidence/journal-a-note.gif)
    ```
 
    A `<video>` tag does **not** work in a PR body — GitHub's sanitizer strips the
@@ -177,7 +186,7 @@ evidence pipeline, usually without a useful error message.
   `EditableTextState.updateEditingValue` — the same path the real platform uses.
 - **Never use `pumpAndSettle` once a text field has focus.** The cursor blinks
   forever, so the tree never settles and `pumpAndSettle` times out. Use
-  `Reel.hold()`.
+  `spec.step`, which holds frames for you.
 - **Frames come from WebDriver, not a screen grab.** `ffmpeg -f x11grab` captures
   pure black on this machine: under Wayland, XWayland windows never composite
   into the X root window. GNOME's `org.gnome.Shell.Screencast` D-Bus interface
@@ -195,18 +204,23 @@ evidence pipeline, usually without a useful error message.
 
 Every feature follows this. There is no path to a PR that skips it.
 
-1. Add `integration_test/<feature>_test.dart`, following `happy_flow_test.dart`.
-   One feature, one happy path.
-2. Give every widget the test touches a stable `Key` in a `...Keys` class next to
+1. Add `integration_test/<feature>_test.dart`, following
+   `journal_a_note_test.dart`. One feature, one happy path.
+2. Open with a `SPEC —` doc comment: the feature name, its intent in a sentence,
+   and an explicit "deliberately out of scope" list so absent behaviour is not
+   mistaken for a gap.
+3. Write the body as `spec.step('<behaviour>', ...)` calls. Each description is
+   a line of the specification — write it for a human, as a sentence completing
+   "the app …", not as a machine slug. Use `spec.tap` / `spec.type` for
+   interaction and plain `expect` for assertions; the harness handles recording.
+4. Give every widget the test touches a stable `Key` in a `...Keys` class next to
    the widget. Renaming a key breaks the recording.
-3. Build the test around a `Reel`: `hold()` where a reviewer needs to read the
-   screen, `shoot()` for single moments.
-4. `scripts/record_evidence.sh <feature>`.
-5. **Watch the GIF yourself.** A green test with a broken recording is not
+5. `scripts/record_evidence.sh <feature>`.
+6. **Watch the GIF yourself.** A green test with a broken recording is not
    evidence — the first working version of this pipeline produced a perfectly
    "successful" all-black video. Open the file and look at it.
-6. Commit `evidence/<feature>.gif` and `.mp4`.
-7. Embed the GIF in the PR body.
+7. Commit `evidence/<feature>.gif` and `.mp4`.
+8. Embed the GIF in the PR body.
 
 ## Commands
 

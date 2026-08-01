@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Records happy-flow integration tests to the evidence files attached to a PR.
+# Records the spec tests to the evidence files attached to a PR.
 # This is the evidence system described in CLAUDE.md — every PR ships one.
 #
 # Convention:
@@ -15,7 +15,7 @@
 #
 # Usage:
 #   scripts/record_evidence.sh              # record every flow
-#   scripts/record_evidence.sh happy_flow   # record one flow
+#   scripts/record_evidence.sh journal_a_note  # record one flow
 #
 set -euo pipefail
 
@@ -95,7 +95,9 @@ BROWSER_FLAGS=(
   --web-browser-flag="--hide-scrollbars"
 )
 
-# Headless for the host browser (see 2 above). On a developer machine Chrome
+# Headless for the OTHER browser: flutter_tools launches its own Chrome to host
+# the app, and that one reads neither --web-browser-flag nor
+# `flutter drive --headless` — only CHROME_EXECUTABLE. On a developer machine it
 # finds the compositor anyway, so getting this wrong is invisible locally and
 # only shows up as CI dying with "Missing X server or $DISPLAY".
 if [[ "$HEADLESS" == "1" ]]; then
@@ -150,7 +152,7 @@ record_one() {
 
   frames=("$FRAME_DIR"/f*.png)
   frame_count=${#frames[@]}
-  [[ "$frame_count" -gt 0 ]] || fail "no frames captured for $target — does the test use Reel.shoot()/hold()?"
+  [[ "$frame_count" -gt 0 ]] || fail "no frames captured for $target — is it written against the _spec.dart harness?"
 
   log "stitching $frame_count frames at ${FPS}fps -> $(basename "$mp4")"
   # yuv420p needs even dimensions, hence the scale filter.
