@@ -32,12 +32,14 @@ HEADLESS="${EVIDENCE_HEADLESS:-1}"
 FLUTTER="${FLUTTER_BIN:-flutter}"
 
 CHROMEDRIVER_PID=""
+CHROME_SHIM=""
 
 log()  { printf '\033[1;34m[evidence]\033[0m %s\n' "$*"; }
 fail() { printf '\033[1;31m[evidence]\033[0m %s\n' "$*" >&2; exit 1; }
 
 cleanup() {
   [[ -n "$CHROMEDRIVER_PID" ]] && kill "$CHROMEDRIVER_PID" 2>/dev/null || true
+  [[ -n "$CHROME_SHIM" && -f "$CHROME_SHIM" ]] && rm -f "$CHROME_SHIM" || true
   rm -rf "$FRAME_DIR"
 }
 trap cleanup EXIT
@@ -70,15 +72,47 @@ done
 curl -sf "http://localhost:$DRIVER_PORT/status" >/dev/null 2>&1 \
   || fail "chromedriver did not come up on :$DRIVER_PORT"
 
-# `flutter drive --headless` does NOT make the browser headless: flutter_tools
-# launches its own Chrome to host the app and that flag never reaches it, so on
-# a machine with no X server Chrome dies with "Missing X server or $DISPLAY".
-# Headlessness has to be handed to the browser itself.
+# Getting Chrome to run headless here is fiddly, and both obvious approaches
+# fail silently:
+#
+#   * `flutter drive --headless` does not touch the browser. flutter_tools
+#     launches its own Chrome to host the app and that flag never reaches it.
+#   * `--web-browser-flag` does not reach that launch either — compare the
+#     "Command used to launch it:" line in a failure, none of the flags appear.
+#
+# On a developer machine Chrome finds the compositor anyway, so the mistake is
+# invisible until CI dies with "Missing X server or $DISPLAY".
+#
+# flutter_tools does honour CHROME_EXECUTABLE, so wrap the real browser in a
+# shim that forces the flags on.
 BROWSER_FLAGS=(--web-browser-flag="--hide-scrollbars")
+
 if [[ "$HEADLESS" == "1" ]]; then
-  BROWSER_FLAGS+=(--web-browser-flag="--headless=new")
-  BROWSER_FLAGS+=(--web-browser-flag="--no-sandbox")
-  BROWSER_FLAGS+=(--web-browser-flag="--disable-dev-shm-usage")
+  REAL_CHROME="${CHROME_EXECUTABLE:-}"
+  if [[ -z "$REAL_CHROME" ]]; then
+    for candidate in google-chrome google-chrome-stable chromium chromium-browser; do
+      if command -v "$candidate" >/dev/null; then
+        REAL_CHROME="$(command -v "$candidate")"
+        break
+      fi
+    done
+  fi
+  [[ -n "$REAL_CHROME" ]] || fail "no Chrome found; set CHROME_EXECUTABLE"
+
+  CHROME_SHIM="$(mktemp -t reflekt-chrome-XXXXXX)"
+  cat >"$CHROME_SHIM" <<SHIM
+#!/usr/bin/env bash
+exec "$REAL_CHROME" \\
+  --headless=new \\
+  --no-sandbox \\
+  --disable-dev-shm-usage \\
+  --disable-gpu \\
+  --hide-scrollbars \\
+  "\$@"
+SHIM
+  chmod +x "$CHROME_SHIM"
+  export CHROME_EXECUTABLE="$CHROME_SHIM"
+  log "headless via CHROME_EXECUTABLE shim -> $REAL_CHROME"
 fi
 
 record_one() {

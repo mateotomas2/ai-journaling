@@ -105,14 +105,25 @@ evidence pipeline, usually without a useful error message.
 
 - **Run in `--profile`, not debug.** In debug mode `dwds` cannot attach its debug
   service to Chrome here and throws `AppConnectionException`.
-- **`flutter drive --headless` does not make the browser headless.** flutter_tools
-  launches its own Chrome to host the app, and that flag never reaches it — on a
-  machine with a display the flag is silently ignored and Chrome runs headed, so
-  the mistake stays invisible until CI dies with `Missing X server or $DISPLAY`.
-  Headlessness must be passed to the browser:
-  `--web-browser-flag="--headless=new"`. Verify changes here with
-  `env -u DISPLAY -u WAYLAND_DISPLAY scripts/record_evidence.sh`, which is a
-  faithful simulation of a CI runner.
+- **Headless Chrome is forced through a `CHROME_EXECUTABLE` shim.** Two obvious
+  approaches both fail *silently*: `flutter drive --headless` does not touch the
+  browser (flutter_tools launches its own Chrome to host the app and the flag
+  never reaches it), and `--web-browser-flag` does not reach that launch either
+  — in a failure log, compare the `Command used to launch it:` line and note
+  that none of those flags appear. flutter_tools does honour
+  `CHROME_EXECUTABLE`, so the script writes a shim that forces
+  `--headless=new`. On a dev machine Chrome finds the compositor regardless, so
+  breaking this is invisible locally and only shows up as CI dying with
+  `Missing X server or $DISPLAY`.
+- **To test anything display-related, unset `XDG_RUNTIME_DIR` too:**
+
+  ```bash
+  env -u DISPLAY -u WAYLAND_DISPLAY -u XDG_RUNTIME_DIR scripts/record_evidence.sh
+  ```
+
+  Unsetting only `DISPLAY` and `WAYLAND_DISPLAY` is **not** a faithful CI
+  simulation — Chrome's ozone layer still finds the compositor through
+  `XDG_RUNTIME_DIR`, so a broken headless setup will appear to pass.
 - **Never use `tester.enterText` in these tests.** On Flutter web the engine
   routes text through a hidden DOM input the test harness never reaches, so
   `enterText` leaves the controller empty and the test fails with no usable
