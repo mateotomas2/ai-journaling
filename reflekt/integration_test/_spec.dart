@@ -23,15 +23,15 @@ Future<void> runSpec(
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets(title, (tester) async {
-    final spec = Spec._(tester, binding);
+    final spec = Spec._(tester);
     try {
       await body(spec);
       binding.reportData = {'spec': title, 'steps': spec.steps};
     } catch (e, st) {
-      // Web profile builds strip debugPrint and report empty assertion
-      // details, so this trace is the only usable debugging channel. It shows
-      // which step was reached. Paired with `writeResponseOnFailure: true` in
-      // the driver, which is off by default.
+      // Reported back through the driver, which needs
+      // `writeResponseOnFailure: true` — off by default, so without it these
+      // diagnostics are dropped on exactly the runs that need them. `failedAt`
+      // names the clause of the spec that stopped holding.
       binding.reportData = {
         'spec': title,
         'steps': spec.steps,
@@ -46,15 +46,13 @@ Future<void> runSpec(
 
 /// The vocabulary a spec is written in.
 class Spec {
-  Spec._(this.tester, this._binding);
+  Spec._(this.tester);
 
   /// Escape hatch for assertions that need widget internals, e.g.
   /// `spec.tester.widget<TextButton>(finder).onPressed`.
   final WidgetTester tester;
-  final IntegrationTestWidgetsFlutterBinding _binding;
 
   final _steps = <String>[];
-  int _frame = 0;
 
   /// The behaviours asserted so far, in order. Reported back to the driver.
   List<String> get steps => List.unmodifiable(_steps);
@@ -120,19 +118,18 @@ class Spec {
 
   Future<void> tap(Finder finder) async {
     await tester.tap(finder);
-    await _hold(2);
+    await _hold(400);
   }
 
-  /// Types [text] one character at a time.
+  /// Types [text] one character at a time, so the recording shows it being
+  /// written rather than appearing in a single frame.
   ///
-  /// Deliberately not `tester.enterText`: on Flutter web the engine routes
-  /// text through a hidden DOM input the test harness never reaches, so
-  /// `enterText` silently leaves the controller empty and the failure message
-  /// is useless. Driving `EditableTextState.updateEditingValue` is the same
-  /// path the real platform uses to deliver keystrokes.
+  /// Deliberately not `tester.enterText`, which would fill the field instantly.
+  /// `EditableTextState.updateEditingValue` is the same path the platform uses
+  /// to deliver keystrokes, so this stays faithful while remaining watchable.
   Future<void> type(Finder finder, String text) async {
     await tester.tap(finder);
-    await _hold(2);
+    await _hold(300);
 
     final editable = tester.state<EditableTextState>(
       find.descendant(of: finder, matching: find.byType(EditableText)),
@@ -145,33 +142,24 @@ class Spec {
           selection: TextSelection.collapsed(offset: i),
         ),
       );
-      if (i % 3 == 0 || i == text.length) {
-        await _shoot();
-      } else {
-        await tester.pump(const Duration(milliseconds: 16));
-      }
+      // Slow enough that the recording shows text being typed, not appearing.
+      await _hold(45);
     }
   }
 
-  /// Captures one frame of the evidence recording.
+  /// Pumps frames for [ms] of wall-clock time.
   ///
-  /// Frames come from WebDriver rather than a screen grab, which is what makes
-  /// recording independent of the compositor and workable headless in CI.
-  Future<void> _shoot() async {
-    for (var i = 0; i < 3; i++) {
-      await tester.pump(const Duration(milliseconds: 16));
-    }
-    await _binding.takeScreenshot('f${_frame.toString().padLeft(4, '0')}');
-    _frame++;
-  }
-
-  /// Holds the current screen for [shots] frames so a reviewer can read it.
+  /// The evidence video is captured off-device by `adb shell screenrecord`
+  /// while this runs, so the spec's only job is to move at a pace a human can
+  /// follow. Without these pauses the whole flow completes in a few frames and
+  /// the recording is useless as evidence.
   ///
   /// Never uses `pumpAndSettle`: once a text field has focus its cursor blinks
   /// forever, so the tree never settles and `pumpAndSettle` times out.
-  Future<void> _hold([int shots = 4]) async {
-    for (var i = 0; i < shots; i++) {
-      await _shoot();
+  Future<void> _hold([int ms = 900]) async {
+    final deadline = DateTime.now().add(Duration(milliseconds: ms));
+    while (DateTime.now().isBefore(deadline)) {
+      await tester.pump(const Duration(milliseconds: 16));
     }
   }
 }
