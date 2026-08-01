@@ -40,3 +40,10 @@ playwright-report/
 # Temporary
 *.tmp
 *.temp
+
+# Agent skills (npx skills). The payload is restorable from skills-lock.json
+# via `npx skills update`, so only the lockfile is tracked — same model as
+# node_modules. .claude/skills holds symlinks into .agents, which would not
+# survive a Windows checkout anyway.
+.agents/
+.claude/skills/

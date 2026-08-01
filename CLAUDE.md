@@ -35,4 +35,23 @@ TypeScript 5.9.3 (strict mode enabled): Follow standard conventions
 
 
 <!-- MANUAL ADDITIONS START -->
+
+## Agent skills
+
+### Issue tracker
+
+Issues live as GitHub issues on `mateotomas2/ai-journaling`, driven via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical roles use their default names; all five exist on the repo. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `CONTEXT.md` and one `docs/adr/` at the root, covering both the React PWA (`src/`) and the Flutter app (`reflekt/`). See `docs/agents/domain.md`.
+
+## Flutter app
+
+`reflekt/` is the Flutter client and has its own `CLAUDE.md` — read it before touching that directory. Note its evidence system: user-facing changes there ship with a recorded happy-flow video.
+
 <!-- MANUAL ADDITIONS END -->

@@ -36,22 +36,22 @@ export function OfflineIndicator() {
     return null;
   }
 
+  const message = isOnline
+    ? "Back online"
+    : "You're offline. Messages saved locally.";
+
   return (
-    <div className="fixed bottom-4 right-4 z-50 animate-in slide-in-from-bottom-2 fade-in">
+    <div className="fixed bottom-4 right-4 z-50 pointer-events-none animate-in slide-in-from-bottom-2 fade-in">
       <Badge
         variant={isOnline ? "default" : "destructive"}
-        className={cn("flex items-center gap-2 px-4 py-2 text-sm shadow-lg")}
+        role="status"
+        aria-label={message}
+        className={cn("flex items-center justify-center p-2 rounded-full shadow-lg")}
       >
         {isOnline ? (
-          <>
-            <Wifi className="w-4 h-4" />
-            <span>Back online</span>
-          </>
+          <Wifi className="w-4 h-4" />
         ) : (
-          <>
-            <WifiOff className="w-4 h-4" />
-            <span>You're offline. Messages saved locally.</span>
-          </>
+          <WifiOff className="w-4 h-4" />
         )}
       </Badge>
     </div>

@@ -1,0 +1,90 @@
+name: Reflekt evidence (manual)
+
+# Records evidence videos on demand. Never runs automatically.
+#
+# Run it from the Actions tab, or:
+#   gh workflow run "Reflekt evidence (manual)" --ref <branch>
+#   gh workflow run "Reflekt evidence (manual)" --ref <branch> -f flow=note_search
+#
+# The recording is a by-product of a passing test: if the flow fails, the job
+# fails and no video is produced, so a video always means the flow ran green.
+#
+# Faster alternative for local work: scripts/record_evidence.sh
+
+on:
+  workflow_dispatch:
+    inputs:
+      flow:
+        description: 'Flow to record (test name without _test.dart). Empty records all flows.'
+        required: false
+        default: ''
+
+defaults:
+  run:
+    working-directory: reflekt
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      # Use the Chrome the runner already ships and fetch a chromedriver to
+      # match it, rather than installing a second Chrome.
+      #
+      # Installing another browser does not work here: chromedriver spawns its
+      # OWN Chrome for the WebDriver session and ignores CHROME_EXECUTABLE, so
+      # it would keep launching /opt/google/chrome/chrome and failing with "This
+      # version of ChromeDriver only supports Chrome version N". The driver has
+      # to match the default Chrome on the box. Resolving at run time also means
+      # a runner image bumping Chrome cannot break this.
+      - name: Install a matching chromedriver
+        run: |
+          ./scripts/install_chromedriver.sh "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Report toolchain
+        run: |
+          flutter --version
+          echo "chrome:       $(google-chrome --version)"
+          echo "chromedriver: $(chromedriver --version)"
+          ffmpeg -version | head -1
+
+      - run: flutter pub get
+
+      - name: Record evidence
+        run: ./scripts/record_evidence.sh ${{ inputs.flow }}
+
+      # Always upload, especially on failure — the frames and step trace are how
+      # you debug a broken flow, since web profile builds report empty
+      # assertion details.
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reflekt-evidence
+          path: |
+            reflekt/evidence/*.gif
+            reflekt/evidence/*.mp4
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: How to use this
+        if: success()
+        run: |
+          echo "Download the artifact above, commit the files into reflekt/evidence/,"
+          echo "and embed the GIF in the PR body:"
+          echo
+          echo "  ![flow](https://raw.githubusercontent.com/${{ github.repository }}/<branch>/reflekt/evidence/<flow>.gif)"

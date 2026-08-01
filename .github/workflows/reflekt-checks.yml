@@ -1,0 +1,44 @@
+name: Reflekt checks
+
+# Fast, automatic checks for every PR touching the Flutter app.
+#
+# Deliberately does NOT record video: that needs Chrome plus a few minutes, and
+# recording is on-demand (see reflekt-evidence.yml).
+#
+# Nothing here verifies that a PR ships evidence — that is a review-time
+# judgement, not an automated gate.
+
+on:
+  pull_request:
+    paths:
+      - 'reflekt/**'
+      - '.github/workflows/reflekt-checks.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'reflekt/**'
+
+defaults:
+  run:
+    working-directory: reflekt
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Unit and widget tests
+        run: flutter test
