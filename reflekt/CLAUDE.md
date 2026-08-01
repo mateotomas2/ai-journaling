@@ -25,11 +25,22 @@ is not ready for review.
 
 1. Every user-facing flow has an integration test in `integration_test/`.
 2. That test captures its own frames via `Reel.shoot()` / `Reel.hold()`.
-3. `scripts/record_evidence.sh` runs the test and stitches an MP4 into
-   `evidence/`.
-4. The MP4 is **committed** and linked in the PR body. GitHub renders `.mp4`
-   blobs with an inline player, and there is no scriptable API to attach a video
-   to a PR body — committing it is what makes the link work.
+3. `scripts/record_evidence.sh` runs the test and writes both an MP4 and an
+   animated GIF into `evidence/`.
+4. Both are **committed**. Embed the **GIF** in the PR body with normal image
+   syntax so it animates inline, and link the MP4 for full quality:
+
+   ```md
+   ![happy flow](https://raw.githubusercontent.com/<owner>/<repo>/<branch>/reflekt/evidence/happy-flow.gif)
+   ```
+
+   A `<video>` tag does **not** work in a PR body — GitHub's sanitizer strips the
+   tag entirely, and `raw.githubusercontent.com` serves `.mp4` as
+   `application/octet-stream` with `nosniff`, so it would not play even if the
+   tag survived. Inline video players only come from GitHub's own attachment
+   upload, which needs a browser session and is not scriptable. Images route
+   through GitHub's camo proxy with a real content-type, so a GIF is the only
+   thing that actually animates in a PR description.
 5. **The recording is produced by a passing test.** The script refuses to emit a
    video if the test fails, so a video in a PR always means the flow genuinely
    ran green. Never hand-record, trim, or otherwise doctor an evidence file — the

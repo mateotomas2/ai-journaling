@@ -23,10 +23,12 @@ OUT_NAME="${1:-happy-flow}"
 OUT_DIR="$PROJECT_ROOT/evidence"
 FRAME_DIR="$OUT_DIR/frames"
 OUT_FILE="$OUT_DIR/${OUT_NAME}.mp4"
+GIF_FILE="$OUT_DIR/${OUT_NAME}.gif"
 
 TARGET="${EVIDENCE_TARGET:-integration_test/happy_flow_test.dart}"
 DRIVER_PORT="${EVIDENCE_DRIVER_PORT:-4444}"
 FPS="${EVIDENCE_FPS:-5}"
+GIF_WIDTH="${EVIDENCE_GIF_WIDTH:-900}"
 HEADLESS="${EVIDENCE_HEADLESS:-1}"
 FLUTTER="${FLUTTER_BIN:-flutter}"
 
@@ -98,6 +100,22 @@ ffmpeg -nostdin -loglevel error -y \
   -c:v libx264 -preset veryslow -crf 28 -pix_fmt yuv420p \
   -movflags +faststart "$OUT_FILE"
 
+# A GIF as well as the MP4, because GitHub cannot show an inline video player in
+# a PR body: its sanitizer strips <video> outright, and raw.githubusercontent
+# serves .mp4 as application/octet-stream with nosniff so it would not play
+# anyway. Images go through GitHub's camo proxy with a real content-type, so a
+# GIF is the only thing that actually animates in the PR description.
+log "building inline GIF"
+PALETTE="$(mktemp -t reflekt-palette-XXXXXX.png)"
+GIF_FILTER="fps=${FPS},scale=${GIF_WIDTH}:-1:flags=lanczos"
+ffmpeg -nostdin -loglevel error -y -i "$OUT_FILE" \
+  -vf "${GIF_FILTER},palettegen=stats_mode=diff" "$PALETTE"
+ffmpeg -nostdin -loglevel error -y -i "$OUT_FILE" -i "$PALETTE" \
+  -lavfi "${GIF_FILTER}[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=3" \
+  "$GIF_FILE"
+rm -f "$PALETTE"
+
 rm -rf "$FRAME_DIR"
 
 log "done: $OUT_FILE ($(du -h "$OUT_FILE" | cut -f1), ${FRAME_COUNT} frames)"
+log "done: $GIF_FILE ($(du -h "$GIF_FILE" | cut -f1)) — embed this one in the PR body"
