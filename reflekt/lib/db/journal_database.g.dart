@@ -48,6 +48,18 @@ class $NotesTable extends Notes with TableInfo<$NotesTable, Note> {
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _categoryMeta = const VerificationMeta(
+    'category',
+  );
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+    'category',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   static const VerificationMeta _deletedAtMeta = const VerificationMeta(
     'deletedAt',
   );
@@ -66,6 +78,7 @@ class $NotesTable extends Notes with TableInfo<$NotesTable, Note> {
     dayId,
     content,
     createdAt,
+    category,
     deletedAt,
   ];
   @override
@@ -109,6 +122,12 @@ class $NotesTable extends Notes with TableInfo<$NotesTable, Note> {
     } else if (isInserting) {
       context.missing(_createdAtMeta);
     }
+    if (data.containsKey('category')) {
+      context.handle(
+        _categoryMeta,
+        category.isAcceptableOrUnknown(data['category']!, _categoryMeta),
+      );
+    }
     if (data.containsKey('deleted_at')) {
       context.handle(
         _deletedAtMeta,
@@ -140,6 +159,10 @@ class $NotesTable extends Notes with TableInfo<$NotesTable, Note> {
         DriftSqlType.int,
         data['${effectivePrefix}created_at'],
       )!,
+      category: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category'],
+      )!,
       deletedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}deleted_at'],
@@ -161,6 +184,11 @@ class Note extends DataClass implements Insertable<Note> {
   final String content;
   final int createdAt;
 
+  /// What the note is about. Empty when uncategorised, which is a first-class
+  /// state: making someone classify a thought before writing it down is a good
+  /// way to stop them writing it down.
+  final String category;
+
   /// 0 while the note exists; the moment it was deleted otherwise. A deleted
   /// row survives only as a tombstone so a restore cannot resurrect it — its
   /// content is erased at the same time (ADR-0007).
@@ -170,6 +198,7 @@ class Note extends DataClass implements Insertable<Note> {
     required this.dayId,
     required this.content,
     required this.createdAt,
+    required this.category,
     required this.deletedAt,
   });
   @override
@@ -179,6 +208,7 @@ class Note extends DataClass implements Insertable<Note> {
     map['day_id'] = Variable<String>(dayId);
     map['content'] = Variable<String>(content);
     map['created_at'] = Variable<int>(createdAt);
+    map['category'] = Variable<String>(category);
     map['deleted_at'] = Variable<int>(deletedAt);
     return map;
   }
@@ -189,6 +219,7 @@ class Note extends DataClass implements Insertable<Note> {
       dayId: Value(dayId),
       content: Value(content),
       createdAt: Value(createdAt),
+      category: Value(category),
       deletedAt: Value(deletedAt),
     );
   }
@@ -203,6 +234,7 @@ class Note extends DataClass implements Insertable<Note> {
       dayId: serializer.fromJson<String>(json['dayId']),
       content: serializer.fromJson<String>(json['content']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
+      category: serializer.fromJson<String>(json['category']),
       deletedAt: serializer.fromJson<int>(json['deletedAt']),
     );
   }
@@ -214,6 +246,7 @@ class Note extends DataClass implements Insertable<Note> {
       'dayId': serializer.toJson<String>(dayId),
       'content': serializer.toJson<String>(content),
       'createdAt': serializer.toJson<int>(createdAt),
+      'category': serializer.toJson<String>(category),
       'deletedAt': serializer.toJson<int>(deletedAt),
     };
   }
@@ -223,12 +256,14 @@ class Note extends DataClass implements Insertable<Note> {
     String? dayId,
     String? content,
     int? createdAt,
+    String? category,
     int? deletedAt,
   }) => Note(
     id: id ?? this.id,
     dayId: dayId ?? this.dayId,
     content: content ?? this.content,
     createdAt: createdAt ?? this.createdAt,
+    category: category ?? this.category,
     deletedAt: deletedAt ?? this.deletedAt,
   );
   Note copyWithCompanion(NotesCompanion data) {
@@ -237,6 +272,7 @@ class Note extends DataClass implements Insertable<Note> {
       dayId: data.dayId.present ? data.dayId.value : this.dayId,
       content: data.content.present ? data.content.value : this.content,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      category: data.category.present ? data.category.value : this.category,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
     );
   }
@@ -248,13 +284,15 @@ class Note extends DataClass implements Insertable<Note> {
           ..write('dayId: $dayId, ')
           ..write('content: $content, ')
           ..write('createdAt: $createdAt, ')
+          ..write('category: $category, ')
           ..write('deletedAt: $deletedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, dayId, content, createdAt, deletedAt);
+  int get hashCode =>
+      Object.hash(id, dayId, content, createdAt, category, deletedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -263,6 +301,7 @@ class Note extends DataClass implements Insertable<Note> {
           other.dayId == this.dayId &&
           other.content == this.content &&
           other.createdAt == this.createdAt &&
+          other.category == this.category &&
           other.deletedAt == this.deletedAt);
 }
 
@@ -271,6 +310,7 @@ class NotesCompanion extends UpdateCompanion<Note> {
   final Value<String> dayId;
   final Value<String> content;
   final Value<int> createdAt;
+  final Value<String> category;
   final Value<int> deletedAt;
   final Value<int> rowid;
   const NotesCompanion({
@@ -278,6 +318,7 @@ class NotesCompanion extends UpdateCompanion<Note> {
     this.dayId = const Value.absent(),
     this.content = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.category = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -286,6 +327,7 @@ class NotesCompanion extends UpdateCompanion<Note> {
     required String dayId,
     required String content,
     required int createdAt,
+    this.category = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -297,6 +339,7 @@ class NotesCompanion extends UpdateCompanion<Note> {
     Expression<String>? dayId,
     Expression<String>? content,
     Expression<int>? createdAt,
+    Expression<String>? category,
     Expression<int>? deletedAt,
     Expression<int>? rowid,
   }) {
@@ -305,6 +348,7 @@ class NotesCompanion extends UpdateCompanion<Note> {
       if (dayId != null) 'day_id': dayId,
       if (content != null) 'content': content,
       if (createdAt != null) 'created_at': createdAt,
+      if (category != null) 'category': category,
       if (deletedAt != null) 'deleted_at': deletedAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -315,6 +359,7 @@ class NotesCompanion extends UpdateCompanion<Note> {
     Value<String>? dayId,
     Value<String>? content,
     Value<int>? createdAt,
+    Value<String>? category,
     Value<int>? deletedAt,
     Value<int>? rowid,
   }) {
@@ -323,6 +368,7 @@ class NotesCompanion extends UpdateCompanion<Note> {
       dayId: dayId ?? this.dayId,
       content: content ?? this.content,
       createdAt: createdAt ?? this.createdAt,
+      category: category ?? this.category,
       deletedAt: deletedAt ?? this.deletedAt,
       rowid: rowid ?? this.rowid,
     );
@@ -343,6 +389,9 @@ class NotesCompanion extends UpdateCompanion<Note> {
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
     }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
     if (deletedAt.present) {
       map['deleted_at'] = Variable<int>(deletedAt.value);
     }
@@ -359,6 +408,7 @@ class NotesCompanion extends UpdateCompanion<Note> {
           ..write('dayId: $dayId, ')
           ..write('content: $content, ')
           ..write('createdAt: $createdAt, ')
+          ..write('category: $category, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -383,6 +433,7 @@ typedef $$NotesTableCreateCompanionBuilder =
       required String dayId,
       required String content,
       required int createdAt,
+      Value<String> category,
       Value<int> deletedAt,
       Value<int> rowid,
     });
@@ -392,6 +443,7 @@ typedef $$NotesTableUpdateCompanionBuilder =
       Value<String> dayId,
       Value<String> content,
       Value<int> createdAt,
+      Value<String> category,
       Value<int> deletedAt,
       Value<int> rowid,
     });
@@ -422,6 +474,11 @@ class $$NotesTableFilterComposer
 
   ColumnFilters<int> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get category => $composableBuilder(
+    column: $table.category,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -460,6 +517,11 @@ class $$NotesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get deletedAt => $composableBuilder(
     column: $table.deletedAt,
     builder: (column) => ColumnOrderings(column),
@@ -486,6 +548,9 @@ class $$NotesTableAnnotationComposer
 
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
 
   GeneratedColumn<int> get deletedAt =>
       $composableBuilder(column: $table.deletedAt, builder: (column) => column);
@@ -523,6 +588,7 @@ class $$NotesTableTableManager
                 Value<String> dayId = const Value.absent(),
                 Value<String> content = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
+                Value<String> category = const Value.absent(),
                 Value<int> deletedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => NotesCompanion(
@@ -530,6 +596,7 @@ class $$NotesTableTableManager
                 dayId: dayId,
                 content: content,
                 createdAt: createdAt,
+                category: category,
                 deletedAt: deletedAt,
                 rowid: rowid,
               ),
@@ -539,6 +606,7 @@ class $$NotesTableTableManager
                 required String dayId,
                 required String content,
                 required int createdAt,
+                Value<String> category = const Value.absent(),
                 Value<int> deletedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => NotesCompanion.insert(
@@ -546,6 +614,7 @@ class $$NotesTableTableManager
                 dayId: dayId,
                 content: content,
                 createdAt: createdAt,
+                category: category,
                 deletedAt: deletedAt,
                 rowid: rowid,
               ),

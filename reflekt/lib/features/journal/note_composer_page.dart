@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 
+import 'note_category.dart';
+
 /// Keys the specs drive. Keep these stable — renaming one breaks a recording.
 class NoteComposerKeys {
   static const field = Key('note_composer_field');
   static const save = Key('note_composer_save');
   static const delete = Key('note_composer_delete');
+
+  /// One per category, so a spec can name the one it means.
+  static Key categoryOf(String id) => Key('note_composer_category_$id');
 }
 
 /// What the composer was closed with.
@@ -14,8 +19,11 @@ sealed class ComposerResult {
 
 /// Keep this text — either as a new note or as a rewording of an existing one.
 class NoteWritten extends ComposerResult {
-  const NoteWritten(this.text);
+  const NoteWritten(this.text, this.category);
   final String text;
+
+  /// Null when the writer did not pick one, which is allowed.
+  final NoteCategory? category;
 }
 
 /// Erase the note being edited (ADR-0007).
@@ -25,11 +33,16 @@ class NoteDeleted extends ComposerResult {
 
 /// Writes a new note, or reworks one that already exists.
 class NoteComposerPage extends StatefulWidget {
-  const NoteComposerPage({super.key, this.existingText});
+  const NoteComposerPage({
+    super.key,
+    this.existingText,
+    this.existingCategory,
+  });
 
   /// Null when writing something new. Deleting is only offered for a note that
   /// already exists — there is nothing to erase otherwise.
   final String? existingText;
+  final NoteCategory? existingCategory;
 
   @override
   State<NoteComposerPage> createState() => _NoteComposerPageState();
@@ -39,6 +52,7 @@ class _NoteComposerPageState extends State<NoteComposerPage> {
   late final TextEditingController _controller =
       TextEditingController(text: widget.existingText ?? '');
   late bool _canSave = _controller.text.trim().isNotEmpty;
+  late NoteCategory? _category = widget.existingCategory;
 
   bool get _isExisting => widget.existingText != null;
 
@@ -60,7 +74,7 @@ class _NoteComposerPageState extends State<NoteComposerPage> {
   void _save() {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
-    Navigator.of(context).pop(NoteWritten(text));
+    Navigator.of(context).pop(NoteWritten(text, _category));
   }
 
   @override
@@ -84,9 +98,32 @@ class _NoteComposerPageState extends State<NoteComposerPage> {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: TextField(
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Wrap(
+              spacing: 8,
+              children: [
+                for (final category in NoteCategory.values)
+                  ChoiceChip(
+                    key: NoteComposerKeys.categoryOf(category.id),
+                    label: Text(category.label),
+                    selected: _category == category,
+                    // Tapping the chosen one again clears it: picking a
+                    // category should never be a one-way door.
+                    onSelected: (selected) => setState(
+                      () => _category = selected ? category : null,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: TextField(
           key: NoteComposerKeys.field,
           controller: _controller,
           autofocus: true,
@@ -95,8 +132,11 @@ class _NoteComposerPageState extends State<NoteComposerPage> {
           decoration: const InputDecoration(
             border: InputBorder.none,
             hintText: "What's on your mind?",
+                ),
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
