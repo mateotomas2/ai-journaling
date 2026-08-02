@@ -39,18 +39,35 @@ class Settings extends Table {
   Set<Column> get primaryKey => {name};
 }
 
-@DriftDatabase(tables: [Notes, Settings])
+/// A note's meaning, as a vector.
+///
+/// Kept beside the note rather than derived on the fly: embedding 384 numbers
+/// takes long enough that doing it for every note on every search would make
+/// searching feel broken.
+class Embeddings extends Table {
+  TextColumn get noteId => text()();
+
+  /// 384 float32s, raw. Storing them as text would cost several kilobytes a
+  /// note, and the journal is encrypted, so every byte is paid for twice.
+  BlobColumn get vector => blob()();
+
+  @override
+  Set<Column> get primaryKey => {noteId};
+}
+
+@DriftDatabase(tables: [Notes, Settings, Embeddings])
 class JournalDatabase extends _$JournalDatabase {
   JournalDatabase(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onUpgrade: (m, from, to) async {
           if (from < 2) await m.addColumn(notes, notes.deletedAt);
           if (from < 3) await m.createTable(settings);
+          if (from < 4) await m.createTable(embeddings);
         },
       );
 
@@ -72,6 +89,51 @@ class JournalDatabase extends _$JournalDatabase {
           ..orderBy([(n) => OrderingTerm.asc(n.createdAt)]))
         .get();
     return rows.map((n) => n.content).toList();
+  }
+
+  Future<void> putEmbedding(String noteId, Uint8List vector) =>
+      into(embeddings).insertOnConflictUpdate(
+        EmbeddingsCompanion(noteId: Value(noteId), vector: Value(vector)),
+      );
+
+  /// How many notes have been indexed. Distinguishes "nothing matched" from
+  /// "nothing has been indexed yet", which look identical from the outside and
+  /// mean very different things.
+  Future<int> countEmbeddings() async {
+    final row = await customSelect(
+      'SELECT COUNT(*) AS c FROM embeddings',
+      readsFrom: {embeddings},
+    ).getSingle();
+    return row.data['c'] as int;
+  }
+
+  Future<void> removeEmbedding(String noteId) =>
+      (delete(embeddings)..where((e) => e.noteId.equals(noteId))).go();
+
+  /// Every note that has a vector, with it. Tombstones are excluded by the
+  /// join, so a deleted note cannot come back through a search (ADR-0007).
+  Future<List<(Note, Uint8List)>> notesWithEmbeddings() async {
+    final query = select(notes).join([
+      innerJoin(embeddings, embeddings.noteId.equalsExp(notes.id)),
+    ])
+      ..where(notes.deletedAt.equals(0));
+
+    final rows = await query.get();
+    return [
+      for (final row in rows)
+        (row.readTable(notes), row.readTable(embeddings).vector),
+    ];
+  }
+
+  /// Notes that have never been embedded — what a backfill works through.
+  Future<List<Note>> notesWithoutEmbeddings() async {
+    final query = select(notes).join([
+      leftOuterJoin(embeddings, embeddings.noteId.equalsExp(notes.id)),
+    ])
+      ..where(notes.deletedAt.equals(0) & embeddings.noteId.isNull());
+
+    final rows = await query.get();
+    return [for (final row in rows) row.readTable(notes)];
   }
 
   Future<String?> setting(String name) async {

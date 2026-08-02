@@ -9,6 +9,8 @@ import 'note_composer_page.dart';
 import '../ai/ask_page.dart';
 import '../ai/journal_ai.dart';
 import '../ai/openrouter_ai.dart';
+import '../memory/journal_embedder.dart';
+import '../memory/meaning_search_page.dart';
 import '../settings/ai_settings.dart';
 import '../settings/settings_page.dart';
 import 'search_page.dart';
@@ -23,6 +25,7 @@ class JournalHomeKeys {
   static const search = Key('journal_search');
   static const settings = Key('journal_settings');
   static const ask = Key('journal_ask');
+  static const findByMeaning = Key('journal_find_by_meaning');
 }
 
 /// One day of the journal, read from the encrypted database.
@@ -78,16 +81,38 @@ class _JournalHomePageState extends State<JournalHomePage> {
     // Written onto the day it is being written, which is not necessarily the
     // day being read.
     final now = widget.clock();
+    final id = now.microsecondsSinceEpoch.toString();
     await widget.session.database.addNote(
       NotesCompanion(
-        id: Value(now.microsecondsSinceEpoch.toString()),
+        id: Value(id),
         dayId: Value(dayIdOf(now)),
         content: Value(result.text),
         createdAt: Value(now.millisecondsSinceEpoch),
       ),
     );
+    await _remember(id, result.text);
     if (!mounted) return;
     _goToDay(_dateOnly(now));
+  }
+
+  /// Records what a note means so it can be found later.
+  ///
+  /// Failure is swallowed on purpose: an embedding is an index, and losing one
+  /// must never cost someone the note they just wrote. #14 covers noticing and
+  /// repairing the gap.
+  Future<void> _remember(String noteId, String content) async {
+    try {
+      final embedder = await JournalEmbedder.load();
+      final vector = await embedder.embed(content);
+      await widget.session.database
+          .putEmbedding(noteId, JournalEmbedder.toBytes(vector));
+    } catch (error, stack) {
+      // Left unindexed rather than unwritten — but not silently. Swallowing
+      // this made a broken embedder look exactly like a search that found
+      // nothing, which cost several runs to tell apart.
+      debugPrint('EMBED_FAILED $error');
+      debugPrintStack(stackTrace: stack, maxFrames: 4);
+    }
   }
 
   Future<void> _openNote(Note note) async {
@@ -169,6 +194,20 @@ class _JournalHomePageState extends State<JournalHomePage> {
             icon: const Icon(Icons.search),
             tooltip: 'Search your journal',
             onPressed: _search,
+          ),
+          IconButton(
+            key: JournalHomeKeys.findByMeaning,
+            icon: const Icon(Icons.travel_explore),
+            tooltip: 'Find by meaning',
+            onPressed: () async {
+              final day = await Navigator.of(context).push<DateTime>(
+                MaterialPageRoute(
+                  builder: (_) =>
+                      MeaningSearchPage(database: widget.session.database),
+                ),
+              );
+              if (day != null && mounted) _goToDay(day);
+            },
           ),
           IconButton(
             key: JournalHomeKeys.ask,

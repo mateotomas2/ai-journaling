@@ -573,16 +573,232 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
   }
 }
 
+class $EmbeddingsTable extends Embeddings
+    with TableInfo<$EmbeddingsTable, Embedding> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $EmbeddingsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _noteIdMeta = const VerificationMeta('noteId');
+  @override
+  late final GeneratedColumn<String> noteId = GeneratedColumn<String>(
+    'note_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _vectorMeta = const VerificationMeta('vector');
+  @override
+  late final GeneratedColumn<Uint8List> vector = GeneratedColumn<Uint8List>(
+    'vector',
+    aliasedName,
+    false,
+    type: DriftSqlType.blob,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [noteId, vector];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'embeddings';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Embedding> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('note_id')) {
+      context.handle(
+        _noteIdMeta,
+        noteId.isAcceptableOrUnknown(data['note_id']!, _noteIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_noteIdMeta);
+    }
+    if (data.containsKey('vector')) {
+      context.handle(
+        _vectorMeta,
+        vector.isAcceptableOrUnknown(data['vector']!, _vectorMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_vectorMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {noteId};
+  @override
+  Embedding map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Embedding(
+      noteId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note_id'],
+      )!,
+      vector: attachedDatabase.typeMapping.read(
+        DriftSqlType.blob,
+        data['${effectivePrefix}vector'],
+      )!,
+    );
+  }
+
+  @override
+  $EmbeddingsTable createAlias(String alias) {
+    return $EmbeddingsTable(attachedDatabase, alias);
+  }
+}
+
+class Embedding extends DataClass implements Insertable<Embedding> {
+  final String noteId;
+
+  /// 384 float32s, raw. Storing them as text would cost several kilobytes a
+  /// note, and the journal is encrypted, so every byte is paid for twice.
+  final Uint8List vector;
+  const Embedding({required this.noteId, required this.vector});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['note_id'] = Variable<String>(noteId);
+    map['vector'] = Variable<Uint8List>(vector);
+    return map;
+  }
+
+  EmbeddingsCompanion toCompanion(bool nullToAbsent) {
+    return EmbeddingsCompanion(noteId: Value(noteId), vector: Value(vector));
+  }
+
+  factory Embedding.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Embedding(
+      noteId: serializer.fromJson<String>(json['noteId']),
+      vector: serializer.fromJson<Uint8List>(json['vector']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'noteId': serializer.toJson<String>(noteId),
+      'vector': serializer.toJson<Uint8List>(vector),
+    };
+  }
+
+  Embedding copyWith({String? noteId, Uint8List? vector}) =>
+      Embedding(noteId: noteId ?? this.noteId, vector: vector ?? this.vector);
+  Embedding copyWithCompanion(EmbeddingsCompanion data) {
+    return Embedding(
+      noteId: data.noteId.present ? data.noteId.value : this.noteId,
+      vector: data.vector.present ? data.vector.value : this.vector,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Embedding(')
+          ..write('noteId: $noteId, ')
+          ..write('vector: $vector')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(noteId, $driftBlobEquality.hash(vector));
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Embedding &&
+          other.noteId == this.noteId &&
+          $driftBlobEquality.equals(other.vector, this.vector));
+}
+
+class EmbeddingsCompanion extends UpdateCompanion<Embedding> {
+  final Value<String> noteId;
+  final Value<Uint8List> vector;
+  final Value<int> rowid;
+  const EmbeddingsCompanion({
+    this.noteId = const Value.absent(),
+    this.vector = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  EmbeddingsCompanion.insert({
+    required String noteId,
+    required Uint8List vector,
+    this.rowid = const Value.absent(),
+  }) : noteId = Value(noteId),
+       vector = Value(vector);
+  static Insertable<Embedding> custom({
+    Expression<String>? noteId,
+    Expression<Uint8List>? vector,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (noteId != null) 'note_id': noteId,
+      if (vector != null) 'vector': vector,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  EmbeddingsCompanion copyWith({
+    Value<String>? noteId,
+    Value<Uint8List>? vector,
+    Value<int>? rowid,
+  }) {
+    return EmbeddingsCompanion(
+      noteId: noteId ?? this.noteId,
+      vector: vector ?? this.vector,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (noteId.present) {
+      map['note_id'] = Variable<String>(noteId.value);
+    }
+    if (vector.present) {
+      map['vector'] = Variable<Uint8List>(vector.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('EmbeddingsCompanion(')
+          ..write('noteId: $noteId, ')
+          ..write('vector: $vector, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$JournalDatabase extends GeneratedDatabase {
   _$JournalDatabase(QueryExecutor e) : super(e);
   $JournalDatabaseManager get managers => $JournalDatabaseManager(this);
   late final $NotesTable notes = $NotesTable(this);
   late final $SettingsTable settings = $SettingsTable(this);
+  late final $EmbeddingsTable embeddings = $EmbeddingsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities => [notes, settings];
+  List<DatabaseSchemaEntity> get allSchemaEntities => [
+    notes,
+    settings,
+    embeddings,
+  ];
 }
 
 typedef $$NotesTableCreateCompanionBuilder =
@@ -912,6 +1128,149 @@ typedef $$SettingsTableProcessedTableManager =
       Setting,
       PrefetchHooks Function()
     >;
+typedef $$EmbeddingsTableCreateCompanionBuilder =
+    EmbeddingsCompanion Function({
+      required String noteId,
+      required Uint8List vector,
+      Value<int> rowid,
+    });
+typedef $$EmbeddingsTableUpdateCompanionBuilder =
+    EmbeddingsCompanion Function({
+      Value<String> noteId,
+      Value<Uint8List> vector,
+      Value<int> rowid,
+    });
+
+class $$EmbeddingsTableFilterComposer
+    extends Composer<_$JournalDatabase, $EmbeddingsTable> {
+  $$EmbeddingsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get noteId => $composableBuilder(
+    column: $table.noteId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<Uint8List> get vector => $composableBuilder(
+    column: $table.vector,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$EmbeddingsTableOrderingComposer
+    extends Composer<_$JournalDatabase, $EmbeddingsTable> {
+  $$EmbeddingsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get noteId => $composableBuilder(
+    column: $table.noteId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<Uint8List> get vector => $composableBuilder(
+    column: $table.vector,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$EmbeddingsTableAnnotationComposer
+    extends Composer<_$JournalDatabase, $EmbeddingsTable> {
+  $$EmbeddingsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get noteId =>
+      $composableBuilder(column: $table.noteId, builder: (column) => column);
+
+  GeneratedColumn<Uint8List> get vector =>
+      $composableBuilder(column: $table.vector, builder: (column) => column);
+}
+
+class $$EmbeddingsTableTableManager
+    extends
+        RootTableManager<
+          _$JournalDatabase,
+          $EmbeddingsTable,
+          Embedding,
+          $$EmbeddingsTableFilterComposer,
+          $$EmbeddingsTableOrderingComposer,
+          $$EmbeddingsTableAnnotationComposer,
+          $$EmbeddingsTableCreateCompanionBuilder,
+          $$EmbeddingsTableUpdateCompanionBuilder,
+          (
+            Embedding,
+            BaseReferences<_$JournalDatabase, $EmbeddingsTable, Embedding>,
+          ),
+          Embedding,
+          PrefetchHooks Function()
+        > {
+  $$EmbeddingsTableTableManager(_$JournalDatabase db, $EmbeddingsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$EmbeddingsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$EmbeddingsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$EmbeddingsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> noteId = const Value.absent(),
+                Value<Uint8List> vector = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => EmbeddingsCompanion(
+                noteId: noteId,
+                vector: vector,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String noteId,
+                required Uint8List vector,
+                Value<int> rowid = const Value.absent(),
+              }) => EmbeddingsCompanion.insert(
+                noteId: noteId,
+                vector: vector,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$EmbeddingsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$JournalDatabase,
+      $EmbeddingsTable,
+      Embedding,
+      $$EmbeddingsTableFilterComposer,
+      $$EmbeddingsTableOrderingComposer,
+      $$EmbeddingsTableAnnotationComposer,
+      $$EmbeddingsTableCreateCompanionBuilder,
+      $$EmbeddingsTableUpdateCompanionBuilder,
+      (
+        Embedding,
+        BaseReferences<_$JournalDatabase, $EmbeddingsTable, Embedding>,
+      ),
+      Embedding,
+      PrefetchHooks Function()
+    >;
 
 class $JournalDatabaseManager {
   final _$JournalDatabase _db;
@@ -920,4 +1279,6 @@ class $JournalDatabaseManager {
       $$NotesTableTableManager(_db, _db.notes);
   $$SettingsTableTableManager get settings =>
       $$SettingsTableTableManager(_db, _db.settings);
+  $$EmbeddingsTableTableManager get embeddings =>
+      $$EmbeddingsTableTableManager(_db, _db.embeddings);
 }
