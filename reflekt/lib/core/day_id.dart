@@ -31,3 +31,9 @@ String formatTimeLabel(DateTime date) {
   final minute = date.minute.toString().padLeft(2, '0');
   return '$hour:$minute';
 }
+
+/// Reads a `dayId` back into a date. The inverse of [dayIdOf].
+DateTime parseDayId(String dayId) {
+  final parts = dayId.split('-').map(int.parse).toList();
+  return DateTime(parts[0], parts[1], parts[2]);
+}
