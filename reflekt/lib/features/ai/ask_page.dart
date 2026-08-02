@@ -24,43 +24,71 @@ class AskPage extends StatefulWidget {
 
 class _AskPageState extends State<AskPage> {
   final _controller = TextEditingController();
-  String? _asked;
-  String? _answer;
+  final _scroll = ScrollController();
+
+  /// Oldest first. Held in memory only — the thread is as private as the
+  /// entries it was drawn from, so it does not outlive the unlocked session.
+  final _thread = <Exchange>[];
+
+  String? _pending;
   String? _error;
   bool _thinking = false;
 
   @override
   void dispose() {
     _controller.dispose();
+    _scroll.dispose();
     super.dispose();
+  }
+
+  /// Brings the newest exchange into view. A conversation that leaves its
+  /// latest answer below the fold makes you scroll to find out what it said,
+  /// which is a strange way to be answered.
+  void _showLatest() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scroll.hasClients) return;
+      _scroll.animateTo(
+        _scroll.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    });
   }
 
   Future<void> _ask() async {
     final question = _controller.text.trim();
     if (question.isEmpty || _thinking) return;
 
-    // The field is cleared and the question re-shown below, so it reads as a
-    // question and an answer rather than an input box echoing itself. Leaving
-    // the text in place put the same sentence on screen twice.
+    // The field is cleared and the question shown in the thread, so it reads
+    // as a conversation rather than an input box echoing itself.
     _controller.clear();
     setState(() {
-      _asked = question;
-      _answer = null;
+      _pending = question;
       _error = null;
       _thinking = true;
     });
 
     try {
       final entries = await widget.database.allNoteContents();
-      final answer = await widget.ai.ask(question: question, entries: entries);
+      final answer = await widget.ai.ask(
+        question: question,
+        entries: entries,
+        earlier: List.unmodifiable(_thread),
+      );
       if (!mounted) return;
       setState(() {
-        _answer = answer;
+        _thread.add(Exchange(question, answer));
+        _pending = null;
         _thinking = false;
       });
+      _showLatest();
     } on JournalAiException catch (failure) {
       if (!mounted) return;
       setState(() {
+        // The question stays visible on failure: retyping it to try again
+        // would be the app losing your work.
+        _controller.text = question;
+        _pending = null;
         _error = failure.message;
         _thinking = false;
       });
@@ -74,6 +102,7 @@ class _AskPageState extends State<AskPage> {
     return Scaffold(
       appBar: AppBar(title: const Text('Ask your journal')),
       body: ListView(
+        controller: _scroll,
         padding: const EdgeInsets.all(20),
         children: [
           TextField(
@@ -95,10 +124,24 @@ class _AskPageState extends State<AskPage> {
           ),
           const SizedBox(height: 24),
 
-          // The question stays on screen beside the answer: an answer alone is
-          // hard to judge once you have forgotten exactly how you phrased it.
-          if (_asked != null) ...[
-            Text(_asked!, style: theme.textTheme.titleMedium),
+          // The thread, oldest first. An answer alone is hard to judge once
+          // you have forgotten how you phrased the question.
+          for (final exchange in _thread) ...[
+            Text(exchange.question, style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Card(
+              key: AskKeys.answer,
+              margin: EdgeInsets.zero,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(exchange.answer, style: theme.textTheme.bodyLarge),
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+
+          if (_pending != null) ...[
+            Text(_pending!, style: theme.textTheme.titleMedium),
             const SizedBox(height: 12),
           ],
 
@@ -115,16 +158,6 @@ class _AskPageState extends State<AskPage> {
                   _error!,
                   style: TextStyle(color: theme.colorScheme.onErrorContainer),
                 ),
-              ),
-            ),
-
-          if (_answer != null)
-            Card(
-              key: AskKeys.answer,
-              margin: EdgeInsets.zero,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text(_answer!, style: theme.textTheme.bodyLarge),
               ),
             ),
         ],
