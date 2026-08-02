@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 
 import '../../db/journal_database.dart';
+import 'ai_settings.dart';
+import 'prompt_page.dart';
 
 /// Keys the specs drive. Keep these stable — renaming one breaks a recording.
 class SettingsKeys {
   static const apiKeyField = Key('settings_api_key_field');
   static const save = Key('settings_save');
   static const connected = Key('settings_connected');
+  static const editPrompt = Key('settings_edit_prompt');
+
+  /// One per model, so a spec can name the one it means.
+  static Key modelOf(String id) => Key('settings_model_${id.replaceAll("/", "_")}');
 }
 
 /// Where the OpenRouter key lives in the database. Namespaced because settings
@@ -32,6 +38,7 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   final _controller = TextEditingController();
   String? _savedKey;
+  String _model = AiSettings.defaultModel;
   bool _loading = true;
   bool _canSave = false;
 
@@ -53,11 +60,19 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _load() async {
     final saved = await widget.database.setting(openRouterKeySetting);
+    final model = await widget.database.setting(AiSettings.modelSetting);
     if (!mounted) return;
     setState(() {
       _savedKey = saved;
+      _model = model ?? AiSettings.defaultModel;
       _loading = false;
     });
+  }
+
+  Future<void> _chooseModel(String id) async {
+    await widget.database.putSetting(AiSettings.modelSetting, id);
+    if (!mounted) return;
+    setState(() => _model = id);
   }
 
   Future<void> _save() async {
@@ -118,6 +133,49 @@ class _SettingsPageState extends State<SettingsPage> {
                   key: SettingsKeys.save,
                   onPressed: _canSave ? _save : null,
                   child: const Text('Save'),
+                ),
+
+                const SizedBox(height: 32),
+                Text('Which model answers', style: theme.textTheme.titleMedium),
+                const SizedBox(height: 4),
+                Text(
+                  'They differ in cost and in how they write. A faster one is '
+                  'usually enough.',
+                  style: theme.textTheme.bodySmall,
+                ),
+                const SizedBox(height: 8),
+                RadioGroup<String>(
+                  groupValue: _model,
+                  onChanged: (id) => id == null ? null : _chooseModel(id),
+                  child: Column(
+                    children: [
+                      for (final entry in AiSettings.models.entries)
+                        RadioListTile<String>(
+                          key: SettingsKeys.modelOf(entry.key),
+                          title: Text(entry.value),
+                          value: entry.key,
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+                Text('How it is asked', style: theme.textTheme.titleMedium),
+                const SizedBox(height: 4),
+                Text(
+                  'What the AI is told before your entries.',
+                  style: theme.textTheme.bodySmall,
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton(
+                  key: SettingsKeys.editPrompt,
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => PromptPage(database: widget.database),
+                    ),
+                  ),
+                  child: const Text('Edit instructions'),
                 ),
               ],
             ),

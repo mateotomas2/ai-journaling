@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../settings/ai_settings.dart';
 import 'journal_ai.dart';
 
 /// Talks to OpenRouter.
@@ -13,11 +14,15 @@ class OpenRouterAi implements JournalAi {
   OpenRouterAi({
     required this.apiKey,
     this.model = 'anthropic/claude-sonnet-4.5',
+    this.systemPrompt,
     http.Client? client,
   }) : _client = client ?? http.Client();
 
   final String apiKey;
   final String model;
+
+  /// What the model is told before the entries. Null uses the built-in.
+  final String? systemPrompt;
   final http.Client _client;
 
   static final _endpoint =
@@ -47,11 +52,8 @@ class OpenRouterAi implements JournalAi {
           'messages': [
             {
               'role': 'system',
-              'content':
-                  'You answer questions about the journal entries below. Use '
-                      'only what they say. If they do not answer the question, '
-                      'say so plainly rather than guessing.\n\n'
-                      '${entries.join("\n\n")}',
+              'content': '${systemPrompt ?? AiSettings.defaultPrompt}'
+                  '\n\n${entries.join("\n\n")}',
             },
             {'role': 'user', 'content': question},
           ],

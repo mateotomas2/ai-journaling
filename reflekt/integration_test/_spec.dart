@@ -175,6 +175,25 @@ class Spec {
     }
   }
 
+  /// Scrolls until [finder] is on screen.
+  ///
+  /// A list only builds what is visible, so something below the fold is not
+  /// merely unseen — it is not in the widget tree at all. Where the screen
+  /// genuinely scrolls, reaching for something is what a person does, and the
+  /// spec should do the same rather than assert against a hidden widget.
+  /// [scrollable] defaults to the outermost one on the page. It has to be said
+  /// explicitly: a multiline `TextField` carries its own scrollable, so a page
+  /// containing one has several, and `scrollUntilVisible` refuses to guess.
+  Future<void> scrollTo(Finder finder, {Finder? scrollable}) async {
+    await tester.scrollUntilVisible(
+      finder,
+      120,
+      scrollable: scrollable ?? find.byType(Scrollable).first,
+      duration: const Duration(milliseconds: 80),
+    );
+    await _hold(400);
+  }
+
   /// Sends the app to the background, as switching apps would.
   Future<void> sendToBackground() async {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
