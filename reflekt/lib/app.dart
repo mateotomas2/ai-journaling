@@ -5,6 +5,7 @@ import 'features/ai/journal_ai.dart';
 
 import 'features/journal/journal_home_page.dart';
 import 'features/lock/journal_session.dart';
+import 'features/lock/forgotten_password_page.dart';
 import 'features/lock/set_password_page.dart';
 import 'features/lock/unlock_page.dart';
 
@@ -38,6 +39,7 @@ class ReflektApp extends StatefulWidget {
 
 class _ReflektAppState extends State<ReflektApp> {
   late final JournalSession _session;
+  final _navigator = GlobalKey<NavigatorState>();
 
   @override
   void initState() {
@@ -63,6 +65,7 @@ class _ReflektAppState extends State<ReflektApp> {
     );
 
     return MaterialApp(
+      navigatorKey: _navigator,
       title: 'Reflekt',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(colorScheme: scheme, useMaterial3: true),
@@ -73,7 +76,19 @@ class _ReflektAppState extends State<ReflektApp> {
             const Scaffold(body: Center(child: CircularProgressIndicator())),
           JournalLockState.needsPassword =>
             SetPasswordPage(onChosen: _session.createJournal),
-          JournalLockState.locked => UnlockPage(onUnlock: _session.unlock),
+          JournalLockState.locked => UnlockPage(
+              onUnlock: _session.unlock,
+              onForgotten: () => _navigator.currentState?.push(
+                MaterialPageRoute(
+                  builder: (_) => ForgottenPasswordPage(
+                    onClear: () async {
+                      await _session.destroy();
+                      _navigator.currentState?.pop();
+                    },
+                  ),
+                ),
+              ),
+            ),
           JournalLockState.open =>
             JournalHomePage(
               session: _session,

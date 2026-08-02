@@ -108,6 +108,28 @@ class JournalSession extends ChangeNotifier with WidgetsBindingObserver {
     return true;
   }
 
+  /// Destroys this journal: the database and the salt that unlocks it.
+  ///
+  /// The only thing a forgotten password permits (ADR-0006). The salt goes
+  /// last — while it exists the app believes there is a journal to unlock, so
+  /// losing it first would strand someone on a lock screen for a database that
+  /// no longer opens.
+  Future<void> destroy() async {
+    final db = _database;
+    _database = null;
+    await db?.close();
+
+    final directory = await _directory;
+    final file = File(p.join(directory, 'journal.sqlite'));
+    if (await file.exists()) await file.delete();
+
+    final salt = await _saltFile;
+    if (await salt.exists()) await salt.delete();
+
+    _state = JournalLockState.needsPassword;
+    notifyListeners();
+  }
+
   Future<void> lock() async {
     final db = _database;
     _database = null;
