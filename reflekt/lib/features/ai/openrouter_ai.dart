@@ -33,6 +33,34 @@ class OpenRouterAi implements JournalAi {
         'There is nothing written yet to answer from.',
       );
     }
+    return _complete(
+      system: 'You answer questions about the journal entries below. Use only '
+          'what they say. If they do not answer the question, say so plainly '
+          'rather than guessing.\n\n${entries.join("\n\n")}',
+      user: question,
+    );
+  }
+
+  @override
+  Future<String> summarise({required List<String> entries}) async {
+    if (entries.isEmpty) {
+      throw const JournalAiException('There is nothing written on this day.');
+    }
+    return _complete(
+      // Told not to advise. A journal summary that offers guidance stops
+      // reflecting what someone wrote and starts talking back at them.
+      system: 'You summarise a single day of journal entries in two or three '
+          'sentences. Write plainly, in the third person, about what the day '
+          'held. Do not give advice, encouragement or interpretation beyond '
+          'what is written.',
+      user: entries.join('\n\n'),
+    );
+  }
+
+  Future<String> _complete({
+    required String system,
+    required String user,
+  }) async {
 
     final http.Response response;
     try {
@@ -45,15 +73,8 @@ class OpenRouterAi implements JournalAi {
         body: jsonEncode({
           'model': model,
           'messages': [
-            {
-              'role': 'system',
-              'content':
-                  'You answer questions about the journal entries below. Use '
-                      'only what they say. If they do not answer the question, '
-                      'say so plainly rather than guessing.\n\n'
-                      '${entries.join("\n\n")}',
-            },
-            {'role': 'user', 'content': question},
+            {'role': 'system', 'content': system},
+            {'role': 'user', 'content': user},
           ],
         }),
       );

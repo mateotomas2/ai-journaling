@@ -22,6 +22,8 @@ class JournalHomeKeys {
   static const search = Key('journal_search');
   static const settings = Key('journal_settings');
   static const ask = Key('journal_ask');
+  static const summarise = Key('journal_summarise');
+  static const summary = Key('journal_summary');
 }
 
 /// One day of the journal, read from the encrypted database.
@@ -44,6 +46,8 @@ class JournalHomePage extends StatefulWidget {
 class _JournalHomePageState extends State<JournalHomePage> {
   late DateTime _day;
   late Future<List<Note>> _notes;
+  Summary? _summary;
+  bool _summarising = false;
 
   @override
   void initState() {
@@ -61,6 +65,59 @@ class _JournalHomePageState extends State<JournalHomePage> {
 
   void _load() {
     _notes = widget.session.database.notesForDay(dayIdOf(_day));
+    _loadSummary();
+  }
+
+  Future<void> _loadSummary() async {
+    final stored = await widget.session.database.summaryForDay(dayIdOf(_day));
+    if (!mounted) return;
+    setState(() => _summary = stored);
+  }
+
+  /// Writes the summary down the first time and reads it back afterwards.
+  /// Regenerating on every visit would spend money to say the same thing.
+  Future<void> _summarise() async {
+    if (_summarising) return;
+    final database = widget.session.database;
+
+    final ai = await _resolveAi();
+    if (ai == null) return;
+
+    final entries = (await database.notesForDay(dayIdOf(_day)))
+        .map((n) => n.content)
+        .toList();
+    if (entries.isEmpty) return;
+
+    setState(() => _summarising = true);
+    try {
+      final text = await ai.summarise(entries: entries);
+      await database.putSummary(dayIdOf(_day), text, widget.clock());
+      if (!mounted) return;
+      await _loadSummary();
+    } on JournalAiException catch (failure) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(failure.message)));
+    } finally {
+      if (mounted) setState(() => _summarising = false);
+    }
+  }
+
+  /// The injected AI when a spec provides one, otherwise a real client built
+  /// from the saved key. Returns null, having said why, when no key is set.
+  Future<JournalAi?> _resolveAi() async {
+    if (widget.ai != null) return widget.ai;
+    final key = await widget.session.database.setting(openRouterKeySetting);
+    if (!mounted) return null;
+    if (key == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Add an OpenRouter key in Settings to use the AI.'),
+        ),
+      );
+      return null;
+    }
+    return OpenRouterAi(apiKey: key);
   }
 
   void _goToDay(DateTime day) => setState(() {
@@ -113,26 +170,11 @@ class _JournalHomePageState extends State<JournalHomePage> {
   /// set one — at the moment it matters, rather than as a banner they learn to
   /// ignore.
   Future<void> _ask() async {
-    final database = widget.session.database;
-    var ai = widget.ai;
-
-    if (ai == null) {
-      final key = await database.setting(openRouterKeySetting);
-      if (!mounted) return;
-      if (key == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Add an OpenRouter key in Settings to ask questions.'),
-          ),
-        );
-        return;
-      }
-      ai = OpenRouterAi(apiKey: key);
-    }
-
+    final ai = await _resolveAi();
+    if (ai == null || !mounted) return;
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => AskPage(database: database, ai: ai!),
+        builder: (_) => AskPage(database: widget.session.database, ai: ai),
       ),
     );
   }
@@ -159,6 +201,18 @@ class _JournalHomePageState extends State<JournalHomePage> {
             icon: const Icon(Icons.search),
             tooltip: 'Search your journal',
             onPressed: _search,
+          ),
+          IconButton(
+            key: JournalHomeKeys.summarise,
+            icon: _summarising
+                ? const SizedBox(
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.subject),
+            tooltip: 'Summarise this day',
+            onPressed: _summarising ? null : _summarise,
           ),
           IconButton(
             key: JournalHomeKeys.ask,
@@ -226,9 +280,30 @@ class _JournalHomePageState extends State<JournalHomePage> {
           }
           final notes = snapshot.data!;
           if (notes.isEmpty) return _EmptyState(isToday: _isToday);
-          return _NoteList(
-            notes: notes.reversed.toList(),
-            onOpen: _openNote,
+          return Column(
+            children: [
+              // The summary sits above the writing, never replaces it: it is a
+              // way back into the day, not a substitute for what was written.
+              if (_summary != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  child: Card(
+                    key: JournalHomeKeys.summary,
+                    margin: EdgeInsets.zero,
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(_summary!.content),
+                    ),
+                  ),
+                ),
+              Expanded(
+                child: _NoteList(
+                  notes: notes.reversed.toList(),
+                  onOpen: _openNote,
+                ),
+              ),
+            ],
           );
         },
       ),

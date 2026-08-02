@@ -10,6 +10,9 @@ abstract interface class JournalAi {
     required String question,
     required List<String> entries,
   });
+
+  /// Draws one day's [entries] together into a few sentences.
+  Future<String> summarise({required List<String> entries});
 }
 
 /// Raised when the journal cannot reach or use the AI. Carries a sentence fit

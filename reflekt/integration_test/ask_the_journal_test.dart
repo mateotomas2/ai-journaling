@@ -88,4 +88,8 @@ class _ScriptedAi implements JournalAi {
     await Future<void>.delayed(const Duration(milliseconds: 700));
     return answer;
   }
+
+  @override
+  Future<String> summarise({required List<String> entries}) async =>
+      throw UnimplementedError('not part of this spec');
 }

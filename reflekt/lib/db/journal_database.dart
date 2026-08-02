@@ -39,18 +39,33 @@ class Settings extends Table {
   Set<Column> get primaryKey => {name};
 }
 
-@DriftDatabase(tables: [Notes, Settings])
+/// One summary per day, kept so it is not paid for twice.
+///
+/// Stored in the encrypted database like everything else: a summary is a
+/// distillation of the day's writing, which makes it every bit as private as
+/// the entries it came from.
+class Summaries extends Table {
+  TextColumn get dayId => text()();
+  TextColumn get content => text()();
+  IntColumn get generatedAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {dayId};
+}
+
+@DriftDatabase(tables: [Notes, Settings, Summaries])
 class JournalDatabase extends _$JournalDatabase {
   JournalDatabase(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onUpgrade: (m, from, to) async {
           if (from < 2) await m.addColumn(notes, notes.deletedAt);
           if (from < 3) await m.createTable(settings);
+          if (from < 4) await m.createTable(summaries);
         },
       );
 
@@ -73,6 +88,19 @@ class JournalDatabase extends _$JournalDatabase {
         .get();
     return rows.map((n) => n.content).toList();
   }
+
+  Future<Summary?> summaryForDay(String dayId) =>
+      (select(summaries)..where((s) => s.dayId.equals(dayId)))
+          .getSingleOrNull();
+
+  Future<void> putSummary(String dayId, String content, DateTime at) =>
+      into(summaries).insertOnConflictUpdate(
+        SummariesCompanion(
+          dayId: Value(dayId),
+          content: Value(content),
+          generatedAt: Value(at.millisecondsSinceEpoch),
+        ),
+      );
 
   Future<String?> setting(String name) async {
     final row = await (select(settings)..where((s) => s.name.equals(name)))

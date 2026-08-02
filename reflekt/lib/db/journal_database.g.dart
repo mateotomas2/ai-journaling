@@ -573,16 +573,290 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
   }
 }
 
+class $SummariesTable extends Summaries
+    with TableInfo<$SummariesTable, Summary> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SummariesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _dayIdMeta = const VerificationMeta('dayId');
+  @override
+  late final GeneratedColumn<String> dayId = GeneratedColumn<String>(
+    'day_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _contentMeta = const VerificationMeta(
+    'content',
+  );
+  @override
+  late final GeneratedColumn<String> content = GeneratedColumn<String>(
+    'content',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _generatedAtMeta = const VerificationMeta(
+    'generatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> generatedAt = GeneratedColumn<int>(
+    'generated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [dayId, content, generatedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'summaries';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Summary> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('day_id')) {
+      context.handle(
+        _dayIdMeta,
+        dayId.isAcceptableOrUnknown(data['day_id']!, _dayIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dayIdMeta);
+    }
+    if (data.containsKey('content')) {
+      context.handle(
+        _contentMeta,
+        content.isAcceptableOrUnknown(data['content']!, _contentMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_contentMeta);
+    }
+    if (data.containsKey('generated_at')) {
+      context.handle(
+        _generatedAtMeta,
+        generatedAt.isAcceptableOrUnknown(
+          data['generated_at']!,
+          _generatedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_generatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {dayId};
+  @override
+  Summary map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Summary(
+      dayId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}day_id'],
+      )!,
+      content: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}content'],
+      )!,
+      generatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}generated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $SummariesTable createAlias(String alias) {
+    return $SummariesTable(attachedDatabase, alias);
+  }
+}
+
+class Summary extends DataClass implements Insertable<Summary> {
+  final String dayId;
+  final String content;
+  final int generatedAt;
+  const Summary({
+    required this.dayId,
+    required this.content,
+    required this.generatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['day_id'] = Variable<String>(dayId);
+    map['content'] = Variable<String>(content);
+    map['generated_at'] = Variable<int>(generatedAt);
+    return map;
+  }
+
+  SummariesCompanion toCompanion(bool nullToAbsent) {
+    return SummariesCompanion(
+      dayId: Value(dayId),
+      content: Value(content),
+      generatedAt: Value(generatedAt),
+    );
+  }
+
+  factory Summary.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Summary(
+      dayId: serializer.fromJson<String>(json['dayId']),
+      content: serializer.fromJson<String>(json['content']),
+      generatedAt: serializer.fromJson<int>(json['generatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'dayId': serializer.toJson<String>(dayId),
+      'content': serializer.toJson<String>(content),
+      'generatedAt': serializer.toJson<int>(generatedAt),
+    };
+  }
+
+  Summary copyWith({String? dayId, String? content, int? generatedAt}) =>
+      Summary(
+        dayId: dayId ?? this.dayId,
+        content: content ?? this.content,
+        generatedAt: generatedAt ?? this.generatedAt,
+      );
+  Summary copyWithCompanion(SummariesCompanion data) {
+    return Summary(
+      dayId: data.dayId.present ? data.dayId.value : this.dayId,
+      content: data.content.present ? data.content.value : this.content,
+      generatedAt: data.generatedAt.present
+          ? data.generatedAt.value
+          : this.generatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Summary(')
+          ..write('dayId: $dayId, ')
+          ..write('content: $content, ')
+          ..write('generatedAt: $generatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(dayId, content, generatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Summary &&
+          other.dayId == this.dayId &&
+          other.content == this.content &&
+          other.generatedAt == this.generatedAt);
+}
+
+class SummariesCompanion extends UpdateCompanion<Summary> {
+  final Value<String> dayId;
+  final Value<String> content;
+  final Value<int> generatedAt;
+  final Value<int> rowid;
+  const SummariesCompanion({
+    this.dayId = const Value.absent(),
+    this.content = const Value.absent(),
+    this.generatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SummariesCompanion.insert({
+    required String dayId,
+    required String content,
+    required int generatedAt,
+    this.rowid = const Value.absent(),
+  }) : dayId = Value(dayId),
+       content = Value(content),
+       generatedAt = Value(generatedAt);
+  static Insertable<Summary> custom({
+    Expression<String>? dayId,
+    Expression<String>? content,
+    Expression<int>? generatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (dayId != null) 'day_id': dayId,
+      if (content != null) 'content': content,
+      if (generatedAt != null) 'generated_at': generatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SummariesCompanion copyWith({
+    Value<String>? dayId,
+    Value<String>? content,
+    Value<int>? generatedAt,
+    Value<int>? rowid,
+  }) {
+    return SummariesCompanion(
+      dayId: dayId ?? this.dayId,
+      content: content ?? this.content,
+      generatedAt: generatedAt ?? this.generatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (dayId.present) {
+      map['day_id'] = Variable<String>(dayId.value);
+    }
+    if (content.present) {
+      map['content'] = Variable<String>(content.value);
+    }
+    if (generatedAt.present) {
+      map['generated_at'] = Variable<int>(generatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SummariesCompanion(')
+          ..write('dayId: $dayId, ')
+          ..write('content: $content, ')
+          ..write('generatedAt: $generatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$JournalDatabase extends GeneratedDatabase {
   _$JournalDatabase(QueryExecutor e) : super(e);
   $JournalDatabaseManager get managers => $JournalDatabaseManager(this);
   late final $NotesTable notes = $NotesTable(this);
   late final $SettingsTable settings = $SettingsTable(this);
+  late final $SummariesTable summaries = $SummariesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities => [notes, settings];
+  List<DatabaseSchemaEntity> get allSchemaEntities => [
+    notes,
+    settings,
+    summaries,
+  ];
 }
 
 typedef $$NotesTableCreateCompanionBuilder =
@@ -912,6 +1186,167 @@ typedef $$SettingsTableProcessedTableManager =
       Setting,
       PrefetchHooks Function()
     >;
+typedef $$SummariesTableCreateCompanionBuilder =
+    SummariesCompanion Function({
+      required String dayId,
+      required String content,
+      required int generatedAt,
+      Value<int> rowid,
+    });
+typedef $$SummariesTableUpdateCompanionBuilder =
+    SummariesCompanion Function({
+      Value<String> dayId,
+      Value<String> content,
+      Value<int> generatedAt,
+      Value<int> rowid,
+    });
+
+class $$SummariesTableFilterComposer
+    extends Composer<_$JournalDatabase, $SummariesTable> {
+  $$SummariesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get dayId => $composableBuilder(
+    column: $table.dayId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get generatedAt => $composableBuilder(
+    column: $table.generatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SummariesTableOrderingComposer
+    extends Composer<_$JournalDatabase, $SummariesTable> {
+  $$SummariesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get dayId => $composableBuilder(
+    column: $table.dayId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get generatedAt => $composableBuilder(
+    column: $table.generatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SummariesTableAnnotationComposer
+    extends Composer<_$JournalDatabase, $SummariesTable> {
+  $$SummariesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get dayId =>
+      $composableBuilder(column: $table.dayId, builder: (column) => column);
+
+  GeneratedColumn<String> get content =>
+      $composableBuilder(column: $table.content, builder: (column) => column);
+
+  GeneratedColumn<int> get generatedAt => $composableBuilder(
+    column: $table.generatedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$SummariesTableTableManager
+    extends
+        RootTableManager<
+          _$JournalDatabase,
+          $SummariesTable,
+          Summary,
+          $$SummariesTableFilterComposer,
+          $$SummariesTableOrderingComposer,
+          $$SummariesTableAnnotationComposer,
+          $$SummariesTableCreateCompanionBuilder,
+          $$SummariesTableUpdateCompanionBuilder,
+          (
+            Summary,
+            BaseReferences<_$JournalDatabase, $SummariesTable, Summary>,
+          ),
+          Summary,
+          PrefetchHooks Function()
+        > {
+  $$SummariesTableTableManager(_$JournalDatabase db, $SummariesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SummariesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SummariesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SummariesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> dayId = const Value.absent(),
+                Value<String> content = const Value.absent(),
+                Value<int> generatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SummariesCompanion(
+                dayId: dayId,
+                content: content,
+                generatedAt: generatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String dayId,
+                required String content,
+                required int generatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => SummariesCompanion.insert(
+                dayId: dayId,
+                content: content,
+                generatedAt: generatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SummariesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$JournalDatabase,
+      $SummariesTable,
+      Summary,
+      $$SummariesTableFilterComposer,
+      $$SummariesTableOrderingComposer,
+      $$SummariesTableAnnotationComposer,
+      $$SummariesTableCreateCompanionBuilder,
+      $$SummariesTableUpdateCompanionBuilder,
+      (Summary, BaseReferences<_$JournalDatabase, $SummariesTable, Summary>),
+      Summary,
+      PrefetchHooks Function()
+    >;
 
 class $JournalDatabaseManager {
   final _$JournalDatabase _db;
@@ -920,4 +1355,6 @@ class $JournalDatabaseManager {
       $$NotesTableTableManager(_db, _db.notes);
   $$SettingsTableTableManager get settings =>
       $$SettingsTableTableManager(_db, _db.settings);
+  $$SummariesTableTableManager get summaries =>
+      $$SummariesTableTableManager(_db, _db.summaries);
 }
