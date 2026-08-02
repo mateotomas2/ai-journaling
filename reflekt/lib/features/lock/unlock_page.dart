@@ -5,15 +5,22 @@ class UnlockKeys {
   static const field = Key('unlock_field');
   static const submit = Key('unlock_submit');
   static const error = Key('unlock_error');
+  static const forgotten = Key('unlock_forgotten');
 }
 
 /// Shown whenever the journal is locked: on a cold start, or after the app has
 /// been in the background long enough (ADR-0006).
 class UnlockPage extends StatefulWidget {
-  const UnlockPage({super.key, required this.onUnlock});
+  const UnlockPage({
+    super.key,
+    required this.onUnlock,
+    required this.onForgotten,
+  });
 
   /// Returns false when the password does not open the journal.
   final Future<bool> Function(String password) onUnlock;
+
+  final VoidCallback onForgotten;
 
   @override
   State<UnlockPage> createState() => _UnlockPageState();
@@ -103,6 +110,12 @@ class _UnlockPageState extends State<UnlockPage> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Text('Unlock'),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                key: UnlockKeys.forgotten,
+                onPressed: widget.onForgotten,
+                child: const Text('I have forgotten my password'),
               ),
             ],
           ),
