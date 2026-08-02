@@ -82,6 +82,7 @@ class _ScriptedAi implements JournalAi {
   Future<String> ask({
     required String question,
     required List<String> entries,
+    List<Exchange> earlier = const [],
   }) async {
     // A real call is not instant, and an answer that appears in the same frame
     // as the question would hide whether the waiting state works at all.
