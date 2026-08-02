@@ -16,6 +16,11 @@ class Notes extends Table {
   TextColumn get content => text()();
   IntColumn get createdAt => integer()();
 
+  /// What the note is about. Empty when uncategorised, which is a first-class
+  /// state: making someone classify a thought before writing it down is a good
+  /// way to stop them writing it down.
+  TextColumn get category => text().withDefault(const Constant(''))();
+
   /// 0 while the note exists; the moment it was deleted otherwise. A deleted
   /// row survives only as a tombstone so a restore cannot resurrect it — its
   /// content is erased at the same time (ADR-0007).
@@ -44,13 +49,14 @@ class JournalDatabase extends _$JournalDatabase {
   JournalDatabase(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onUpgrade: (m, from, to) async {
           if (from < 2) await m.addColumn(notes, notes.deletedAt);
           if (from < 3) await m.createTable(settings);
+          if (from < 4) await m.addColumn(notes, notes.category);
         },
       );
 
@@ -108,9 +114,13 @@ class JournalDatabase extends _$JournalDatabase {
     return rows.map((row) => notes.map(row.data)).toList();
   }
 
-  Future<void> rewordNote(String id, String content) =>
-      (update(notes)..where((n) => n.id.equals(id)))
-          .write(NotesCompanion(content: Value(content)));
+  Future<void> rewordNote(String id, String content, {String? category}) =>
+      (update(notes)..where((n) => n.id.equals(id))).write(
+        NotesCompanion(
+          content: Value(content),
+          category: category == null ? const Value.absent() : Value(category),
+        ),
+      );
 
   /// Erases the writing and leaves the tombstone, in one write so there is no
   /// moment where the note is deleted but its text is still readable.
