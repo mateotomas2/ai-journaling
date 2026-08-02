@@ -16,6 +16,11 @@ class Notes extends Table {
   TextColumn get content => text()();
   IntColumn get createdAt => integer()();
 
+  /// 0 while the note exists; the moment it was deleted otherwise. A deleted
+  /// row survives only as a tombstone so a restore cannot resurrect it — its
+  /// content is erased at the same time (ADR-0007).
+  IntColumn get deletedAt => integer().withDefault(const Constant(0))();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -25,12 +30,37 @@ class JournalDatabase extends _$JournalDatabase {
   JournalDatabase(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
-  Future<List<Note>> notesForDay(String dayId) =>
-      (select(notes)..where((n) => n.dayId.equals(dayId))).get();
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onUpgrade: (m, from, to) async {
+          if (from < 2) await m.addColumn(notes, notes.deletedAt);
+        },
+      );
+
+  /// Tombstones are filtered here rather than at each call site: forgetting the
+  /// filter shows an empty note instead of no note, which is a quiet kind of
+  /// wrong (ADR-0007).
+  Future<List<Note>> notesForDay(String dayId) => (select(notes)
+        ..where((n) => n.dayId.equals(dayId) & n.deletedAt.equals(0)))
+      .get();
 
   Future<void> addNote(NotesCompanion note) => into(notes).insert(note);
+
+  Future<void> rewordNote(String id, String content) =>
+      (update(notes)..where((n) => n.id.equals(id)))
+          .write(NotesCompanion(content: Value(content)));
+
+  /// Erases the writing and leaves the tombstone, in one write so there is no
+  /// moment where the note is deleted but its text is still readable.
+  Future<void> deleteNote(String id, DateTime at) =>
+      (update(notes)..where((n) => n.id.equals(id))).write(
+        NotesCompanion(
+          content: const Value(''),
+          deletedAt: Value(at.millisecondsSinceEpoch),
+        ),
+      );
 }
 
 /// Thrown when the database will not open with the key it was given, which in

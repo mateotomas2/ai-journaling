@@ -48,8 +48,26 @@ class $NotesTable extends Notes with TableInfo<$NotesTable, Note> {
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, dayId, content, createdAt];
+  late final GeneratedColumn<int> deletedAt = GeneratedColumn<int>(
+    'deleted_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    dayId,
+    content,
+    createdAt,
+    deletedAt,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -91,6 +109,12 @@ class $NotesTable extends Notes with TableInfo<$NotesTable, Note> {
     } else if (isInserting) {
       context.missing(_createdAtMeta);
     }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
     return context;
   }
 
@@ -116,6 +140,10 @@ class $NotesTable extends Notes with TableInfo<$NotesTable, Note> {
         DriftSqlType.int,
         data['${effectivePrefix}created_at'],
       )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}deleted_at'],
+      )!,
     );
   }
 
@@ -132,11 +160,17 @@ class Note extends DataClass implements Insertable<Note> {
   final String dayId;
   final String content;
   final int createdAt;
+
+  /// 0 while the note exists; the moment it was deleted otherwise. A deleted
+  /// row survives only as a tombstone so a restore cannot resurrect it — its
+  /// content is erased at the same time (ADR-0007).
+  final int deletedAt;
   const Note({
     required this.id,
     required this.dayId,
     required this.content,
     required this.createdAt,
+    required this.deletedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -145,6 +179,7 @@ class Note extends DataClass implements Insertable<Note> {
     map['day_id'] = Variable<String>(dayId);
     map['content'] = Variable<String>(content);
     map['created_at'] = Variable<int>(createdAt);
+    map['deleted_at'] = Variable<int>(deletedAt);
     return map;
   }
 
@@ -154,6 +189,7 @@ class Note extends DataClass implements Insertable<Note> {
       dayId: Value(dayId),
       content: Value(content),
       createdAt: Value(createdAt),
+      deletedAt: Value(deletedAt),
     );
   }
 
@@ -167,6 +203,7 @@ class Note extends DataClass implements Insertable<Note> {
       dayId: serializer.fromJson<String>(json['dayId']),
       content: serializer.fromJson<String>(json['content']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
+      deletedAt: serializer.fromJson<int>(json['deletedAt']),
     );
   }
   @override
@@ -177,22 +214,30 @@ class Note extends DataClass implements Insertable<Note> {
       'dayId': serializer.toJson<String>(dayId),
       'content': serializer.toJson<String>(content),
       'createdAt': serializer.toJson<int>(createdAt),
+      'deletedAt': serializer.toJson<int>(deletedAt),
     };
   }
 
-  Note copyWith({String? id, String? dayId, String? content, int? createdAt}) =>
-      Note(
-        id: id ?? this.id,
-        dayId: dayId ?? this.dayId,
-        content: content ?? this.content,
-        createdAt: createdAt ?? this.createdAt,
-      );
+  Note copyWith({
+    String? id,
+    String? dayId,
+    String? content,
+    int? createdAt,
+    int? deletedAt,
+  }) => Note(
+    id: id ?? this.id,
+    dayId: dayId ?? this.dayId,
+    content: content ?? this.content,
+    createdAt: createdAt ?? this.createdAt,
+    deletedAt: deletedAt ?? this.deletedAt,
+  );
   Note copyWithCompanion(NotesCompanion data) {
     return Note(
       id: data.id.present ? data.id.value : this.id,
       dayId: data.dayId.present ? data.dayId.value : this.dayId,
       content: data.content.present ? data.content.value : this.content,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
     );
   }
 
@@ -202,13 +247,14 @@ class Note extends DataClass implements Insertable<Note> {
           ..write('id: $id, ')
           ..write('dayId: $dayId, ')
           ..write('content: $content, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('deletedAt: $deletedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, dayId, content, createdAt);
+  int get hashCode => Object.hash(id, dayId, content, createdAt, deletedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -216,7 +262,8 @@ class Note extends DataClass implements Insertable<Note> {
           other.id == this.id &&
           other.dayId == this.dayId &&
           other.content == this.content &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.deletedAt == this.deletedAt);
 }
 
 class NotesCompanion extends UpdateCompanion<Note> {
@@ -224,12 +271,14 @@ class NotesCompanion extends UpdateCompanion<Note> {
   final Value<String> dayId;
   final Value<String> content;
   final Value<int> createdAt;
+  final Value<int> deletedAt;
   final Value<int> rowid;
   const NotesCompanion({
     this.id = const Value.absent(),
     this.dayId = const Value.absent(),
     this.content = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   NotesCompanion.insert({
@@ -237,6 +286,7 @@ class NotesCompanion extends UpdateCompanion<Note> {
     required String dayId,
     required String content,
     required int createdAt,
+    this.deletedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        dayId = Value(dayId),
@@ -247,6 +297,7 @@ class NotesCompanion extends UpdateCompanion<Note> {
     Expression<String>? dayId,
     Expression<String>? content,
     Expression<int>? createdAt,
+    Expression<int>? deletedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -254,6 +305,7 @@ class NotesCompanion extends UpdateCompanion<Note> {
       if (dayId != null) 'day_id': dayId,
       if (content != null) 'content': content,
       if (createdAt != null) 'created_at': createdAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -263,6 +315,7 @@ class NotesCompanion extends UpdateCompanion<Note> {
     Value<String>? dayId,
     Value<String>? content,
     Value<int>? createdAt,
+    Value<int>? deletedAt,
     Value<int>? rowid,
   }) {
     return NotesCompanion(
@@ -270,6 +323,7 @@ class NotesCompanion extends UpdateCompanion<Note> {
       dayId: dayId ?? this.dayId,
       content: content ?? this.content,
       createdAt: createdAt ?? this.createdAt,
+      deletedAt: deletedAt ?? this.deletedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -289,6 +343,9 @@ class NotesCompanion extends UpdateCompanion<Note> {
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
     }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<int>(deletedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -302,6 +359,7 @@ class NotesCompanion extends UpdateCompanion<Note> {
           ..write('dayId: $dayId, ')
           ..write('content: $content, ')
           ..write('createdAt: $createdAt, ')
+          ..write('deletedAt: $deletedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -325,6 +383,7 @@ typedef $$NotesTableCreateCompanionBuilder =
       required String dayId,
       required String content,
       required int createdAt,
+      Value<int> deletedAt,
       Value<int> rowid,
     });
 typedef $$NotesTableUpdateCompanionBuilder =
@@ -333,6 +392,7 @@ typedef $$NotesTableUpdateCompanionBuilder =
       Value<String> dayId,
       Value<String> content,
       Value<int> createdAt,
+      Value<int> deletedAt,
       Value<int> rowid,
     });
 
@@ -362,6 +422,11 @@ class $$NotesTableFilterComposer
 
   ColumnFilters<int> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -394,6 +459,11 @@ class $$NotesTableOrderingComposer
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$NotesTableAnnotationComposer
@@ -416,6 +486,9 @@ class $$NotesTableAnnotationComposer
 
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
 }
 
 class $$NotesTableTableManager
@@ -450,12 +523,14 @@ class $$NotesTableTableManager
                 Value<String> dayId = const Value.absent(),
                 Value<String> content = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
+                Value<int> deletedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => NotesCompanion(
                 id: id,
                 dayId: dayId,
                 content: content,
                 createdAt: createdAt,
+                deletedAt: deletedAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -464,12 +539,14 @@ class $$NotesTableTableManager
                 required String dayId,
                 required String content,
                 required int createdAt,
+                Value<int> deletedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => NotesCompanion.insert(
                 id: id,
                 dayId: dayId,
                 content: content,
                 createdAt: createdAt,
+                deletedAt: deletedAt,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
