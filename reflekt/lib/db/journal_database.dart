@@ -48,6 +48,29 @@ class JournalDatabase extends _$JournalDatabase {
 
   Future<void> addNote(NotesCompanion note) => into(notes).insert(note);
 
+  /// A plain case-insensitive substring match, newest first. Deliberately not
+  /// full-text search: FTS needs its own index kept in step with the table, and
+  /// nothing yet suggests the journal is large enough to need it.
+  ///
+  /// Written as raw SQL for the `ESCAPE` clause: without it a search for "50%"
+  /// or "_" would be read as a wildcard and quietly match everything.
+  Future<List<Note>> searchNotes(String query) async {
+    final escaped = query
+        .replaceAll(r'\', r'\\')
+        .replaceAll('%', r'\%')
+        .replaceAll('_', r'\_');
+
+    final rows = await customSelect(
+      "SELECT * FROM notes WHERE deleted_at = 0 "
+      r"AND content LIKE ?1 ESCAPE '\' "
+      'ORDER BY created_at DESC',
+      variables: [Variable<String>('%$escaped%')],
+      readsFrom: {notes},
+    ).get();
+
+    return rows.map((row) => notes.map(row.data)).toList();
+  }
+
   Future<void> rewordNote(String id, String content) =>
       (update(notes)..where((n) => n.id.equals(id)))
           .write(NotesCompanion(content: Value(content)));

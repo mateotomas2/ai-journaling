@@ -6,6 +6,7 @@ import '../../core/day_id.dart';
 import '../../db/journal_database.dart';
 import '../lock/journal_session.dart';
 import 'note_composer_page.dart';
+import 'search_page.dart';
 
 /// Keys the specs drive. Keep these stable — renaming one breaks a recording.
 class JournalHomeKeys {
@@ -14,6 +15,7 @@ class JournalHomeKeys {
   static const noteList = Key('journal_note_list');
   static const previousDay = Key('journal_previous_day');
   static const nextDay = Key('journal_next_day');
+  static const search = Key('journal_search');
 }
 
 /// One day of the journal, read from the encrypted database.
@@ -98,11 +100,30 @@ class _JournalHomePageState extends State<JournalHomePage> {
     setState(_load);
   }
 
+  Future<void> _search() async {
+    final day = await Navigator.of(context).push<DateTime>(
+      MaterialPageRoute(
+        builder: (_) => SearchPage(database: widget.session.database),
+      ),
+    );
+    // Landing on the day a result came from, rather than on the note alone:
+    // what surrounds an entry is usually why you went looking for it.
+    if (day != null && mounted) _goToDay(day);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Reflekt'),
+        actions: [
+          IconButton(
+            key: JournalHomeKeys.search,
+            icon: const Icon(Icons.search),
+            tooltip: 'Search your journal',
+            onPressed: _search,
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(44),
           child: Padding(
