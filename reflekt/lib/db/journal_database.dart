@@ -63,6 +63,17 @@ class JournalDatabase extends _$JournalDatabase {
 
   Future<void> addNote(NotesCompanion note) => into(notes).insert(note);
 
+  /// Every surviving note, oldest first — the context an AI question is
+  /// answered from. Tombstones are excluded: a deleted note must not come back
+  /// through a side door (ADR-0007).
+  Future<List<String>> allNoteContents() async {
+    final rows = await (select(notes)
+          ..where((n) => n.deletedAt.equals(0))
+          ..orderBy([(n) => OrderingTerm.asc(n.createdAt)]))
+        .get();
+    return rows.map((n) => n.content).toList();
+  }
+
   Future<String?> setting(String name) async {
     final row = await (select(settings)..where((s) => s.name.equals(name)))
         .getSingleOrNull();
