@@ -175,6 +175,21 @@ class Spec {
     }
   }
 
+  /// Sends the app to the background, as switching apps would.
+  Future<void> sendToBackground() async {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    await _hold(300);
+  }
+
+  /// Brings the app back to the foreground.
+  Future<void> bringToForeground() async {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await _hold(600);
+  }
+
+  /// Lets real time pass while keeping the recording moving.
+  Future<void> waitFor(Duration duration) => _hold(duration.inMilliseconds);
+
   /// Pumps until [finder] matches something, or gives up.
   ///
   /// For outcomes that arrive on their own schedule — deriving a key is

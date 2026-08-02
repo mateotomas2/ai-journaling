@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../db/journal_database.dart';
 import 'journal_key.dart';
+import 'lock_policy.dart';
 
 enum JournalLockState {
   /// Still working out whether a password has ever been set.
@@ -33,20 +34,19 @@ enum JournalLockState {
 /// another device restoring a backup.
 class JournalSession extends ChangeNotifier with WidgetsBindingObserver {
   JournalSession({
-    this.lockAfter = const Duration(minutes: 3),
+    Duration lockAfter = const Duration(minutes: 3),
     this.overrideDirectory,
-  });
+  }) : _lockPolicy = LockPolicy(lockAfter: lockAfter);
 
-  /// How long the app may sit in the background before the journal re-locks.
-  /// Injectable so a spec can use a short one and stay watchable.
-  final Duration lockAfter;
+  /// When to re-lock. Lives in its own object so the rule can be tested without
+  /// a database — see `test/lock_policy_test.dart`.
+  final LockPolicy _lockPolicy;
 
   /// Test seam so a spec can point at a scratch directory.
   final String? overrideDirectory;
 
   JournalLockState _state = JournalLockState.starting;
   JournalDatabase? _database;
-  DateTime? _backgroundedAt;
 
   JournalLockState get state => _state;
 
@@ -121,14 +121,10 @@ class JournalSession extends ChangeNotifier with WidgetsBindingObserver {
     if (_state != JournalLockState.open) return;
 
     if (state == AppLifecycleState.resumed) {
-      final since = _backgroundedAt;
-      _backgroundedAt = null;
-      if (since != null && DateTime.now().difference(since) >= lockAfter) {
-        lock();
-      }
+      if (_lockPolicy.shouldLockOnReturn()) lock();
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden) {
-      _backgroundedAt = DateTime.now();
+      _lockPolicy.left();
     }
   }
 
