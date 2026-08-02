@@ -6,6 +6,7 @@ import '../../core/day_id.dart';
 import '../../db/journal_database.dart';
 import '../lock/journal_session.dart';
 import 'note_composer_page.dart';
+import '../settings/settings_page.dart';
 import 'search_page.dart';
 
 /// Keys the specs drive. Keep these stable — renaming one breaks a recording.
@@ -16,6 +17,7 @@ class JournalHomeKeys {
   static const previousDay = Key('journal_previous_day');
   static const nextDay = Key('journal_next_day');
   static const search = Key('journal_search');
+  static const settings = Key('journal_settings');
 }
 
 /// One day of the journal, read from the encrypted database.
@@ -122,6 +124,16 @@ class _JournalHomePageState extends State<JournalHomePage> {
             icon: const Icon(Icons.search),
             tooltip: 'Search your journal',
             onPressed: _search,
+          ),
+          IconButton(
+            key: JournalHomeKeys.settings,
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Settings',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => SettingsPage(database: widget.session.database),
+              ),
+            ),
           ),
         ],
         bottom: PreferredSize(

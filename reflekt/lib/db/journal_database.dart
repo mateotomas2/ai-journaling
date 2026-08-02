@@ -25,17 +25,32 @@ class Notes extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [Notes])
+/// Small pieces of configuration that belong to this journal.
+///
+/// Kept in the encrypted database rather than in the Keystore or shared
+/// preferences, so an API key is readable only while the journal is unlocked.
+/// A key that outlives the lock would be a way to spend the owner's money
+/// without their password.
+class Settings extends Table {
+  TextColumn get name => text()();
+  TextColumn get value => text()();
+
+  @override
+  Set<Column> get primaryKey => {name};
+}
+
+@DriftDatabase(tables: [Notes, Settings])
 class JournalDatabase extends _$JournalDatabase {
   JournalDatabase(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onUpgrade: (m, from, to) async {
           if (from < 2) await m.addColumn(notes, notes.deletedAt);
+          if (from < 3) await m.createTable(settings);
         },
       );
 
@@ -47,6 +62,17 @@ class JournalDatabase extends _$JournalDatabase {
       .get();
 
   Future<void> addNote(NotesCompanion note) => into(notes).insert(note);
+
+  Future<String?> setting(String name) async {
+    final row = await (select(settings)..where((s) => s.name.equals(name)))
+        .getSingleOrNull();
+    return row?.value;
+  }
+
+  Future<void> putSetting(String name, String value) =>
+      into(settings).insertOnConflictUpdate(
+        SettingsCompanion(name: Value(name), value: Value(value)),
+      );
 
   /// A plain case-insensitive substring match, newest first. Deliberately not
   /// full-text search: FTS needs its own index kept in step with the table, and
