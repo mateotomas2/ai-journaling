@@ -127,8 +127,15 @@ class _JournalHomePageState extends State<JournalHomePage> {
     switch (result) {
       case NoteWritten(:final text):
         await database.rewordNote(note.id, text);
+        // Re-embedded, or the index keeps finding this note by what it used to
+        // say — with the new text displayed, which looks like a working search
+        // returning the wrong thing.
+        await _remember(note.id, text);
       case NoteDeleted():
         await database.deleteNote(note.id, widget.clock());
+        // Erasing the text but leaving its vector would let a deleted note
+        // keep surfacing in meaning search (ADR-0007).
+        await database.removeEmbedding(note.id);
     }
     if (!mounted) return;
     setState(_load);

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/day_id.dart';
 import '../../db/journal_database.dart';
+import 'index_backfill.dart';
 import 'journal_embedder.dart';
 import 'meaning_search.dart';
 
@@ -13,6 +14,7 @@ class MeaningSearchKeys {
   static const nothingIndexed = Key('meaning_nothing_indexed');
   static const thinking = Key('meaning_thinking');
   static const submit = Key('meaning_submit');
+  static const catchingUp = Key('meaning_catching_up');
 }
 
 /// Finding a note from a half-remembered idea.
@@ -34,6 +36,34 @@ class _MeaningSearchPageState extends State<MeaningSearchPage> {
   bool _searched = false;
   bool _thinking = false;
   int _indexed = 0;
+  int _pending = 0;
+  int _caughtUp = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _catchUp();
+  }
+
+  /// Indexes anything written before this feature existed, or missed by a
+  /// failed embedding. Done when the search page opens rather than on every
+  /// launch: it is only here that an unindexed note actually costs anything,
+  /// and starting a model on every cold start to catch up would be a strange
+  /// way to spend someone's battery.
+  Future<void> _catchUp() async {
+    final embedder = await JournalEmbedder.load();
+    await IndexBackfill(widget.database, embedder).run(
+      onProgress: (done, total) {
+        if (!mounted) return;
+        setState(() {
+          _caughtUp = done;
+          _pending = total;
+        });
+      },
+    );
+    if (!mounted) return;
+    setState(() => _pending = 0);
+  }
 
   @override
   void dispose() {
@@ -94,6 +124,22 @@ class _MeaningSearchPageState extends State<MeaningSearchPage> {
             return const Center(
               key: MeaningSearchKeys.thinking,
               child: CircularProgressIndicator(),
+            );
+          }
+          if (_pending > 0) {
+            return Center(
+              key: MeaningSearchKeys.catchingUp,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Catching up on older notes ($_caughtUp of $_pending)',
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ],
+              ),
             );
           }
           if (!_searched) return const SizedBox.shrink();
