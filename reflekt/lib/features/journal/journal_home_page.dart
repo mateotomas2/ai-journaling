@@ -59,10 +59,10 @@ class _JournalHomePageState extends State<JournalHomePage> {
       });
 
   Future<void> _composeNote() async {
-    final text = await Navigator.of(context).push<String>(
+    final result = await Navigator.of(context).push<ComposerResult>(
       MaterialPageRoute(builder: (_) => const NoteComposerPage()),
     );
-    if (text == null || text.isEmpty) return;
+    if (result is! NoteWritten) return;
 
     // Written onto the day it is being written, which is not necessarily the
     // day being read.
@@ -71,12 +71,31 @@ class _JournalHomePageState extends State<JournalHomePage> {
       NotesCompanion(
         id: Value(now.microsecondsSinceEpoch.toString()),
         dayId: Value(dayIdOf(now)),
-        content: Value(text),
+        content: Value(result.text),
         createdAt: Value(now.millisecondsSinceEpoch),
       ),
     );
     if (!mounted) return;
     _goToDay(_dateOnly(now));
+  }
+
+  Future<void> _openNote(Note note) async {
+    final result = await Navigator.of(context).push<ComposerResult>(
+      MaterialPageRoute(
+        builder: (_) => NoteComposerPage(existingText: note.content),
+      ),
+    );
+    if (result == null) return;
+
+    final database = widget.session.database;
+    switch (result) {
+      case NoteWritten(:final text):
+        await database.rewordNote(note.id, text);
+      case NoteDeleted():
+        await database.deleteNote(note.id, widget.clock());
+    }
+    if (!mounted) return;
+    setState(_load);
   }
 
   @override
@@ -133,7 +152,10 @@ class _JournalHomePageState extends State<JournalHomePage> {
           }
           final notes = snapshot.data!;
           if (notes.isEmpty) return _EmptyState(isToday: _isToday);
-          return _NoteList(notes: notes.reversed.toList());
+          return _NoteList(
+            notes: notes.reversed.toList(),
+            onOpen: _openNote,
+          );
         },
       ),
     );
@@ -158,9 +180,10 @@ class _EmptyState extends StatelessWidget {
 }
 
 class _NoteList extends StatelessWidget {
-  const _NoteList({required this.notes});
+  const _NoteList({required this.notes, required this.onOpen});
 
   final List<Note> notes;
+  final void Function(Note note) onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -174,6 +197,7 @@ class _NoteList extends StatelessWidget {
         return Card(
           margin: EdgeInsets.zero,
           child: ListTile(
+            onTap: () => onOpen(note),
             title: Text(note.content),
             subtitle: Text(
               formatTimeLabel(

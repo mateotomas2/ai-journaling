@@ -1,23 +1,46 @@
 import 'package:flutter/material.dart';
 
-/// Keys the evidence test drives. Keep these stable — renaming one breaks the
-/// happy-flow recording.
+/// Keys the specs drive. Keep these stable — renaming one breaks a recording.
 class NoteComposerKeys {
   static const field = Key('note_composer_field');
   static const save = Key('note_composer_save');
+  static const delete = Key('note_composer_delete');
 }
 
-/// Full-screen composer. Pops with the written text, or `null` if dismissed.
+/// What the composer was closed with.
+sealed class ComposerResult {
+  const ComposerResult();
+}
+
+/// Keep this text — either as a new note or as a rewording of an existing one.
+class NoteWritten extends ComposerResult {
+  const NoteWritten(this.text);
+  final String text;
+}
+
+/// Erase the note being edited (ADR-0007).
+class NoteDeleted extends ComposerResult {
+  const NoteDeleted();
+}
+
+/// Writes a new note, or reworks one that already exists.
 class NoteComposerPage extends StatefulWidget {
-  const NoteComposerPage({super.key});
+  const NoteComposerPage({super.key, this.existingText});
+
+  /// Null when writing something new. Deleting is only offered for a note that
+  /// already exists — there is nothing to erase otherwise.
+  final String? existingText;
 
   @override
   State<NoteComposerPage> createState() => _NoteComposerPageState();
 }
 
 class _NoteComposerPageState extends State<NoteComposerPage> {
-  final _controller = TextEditingController();
-  bool _canSave = false;
+  late final TextEditingController _controller =
+      TextEditingController(text: widget.existingText ?? '');
+  late bool _canSave = _controller.text.trim().isNotEmpty;
+
+  bool get _isExisting => widget.existingText != null;
 
   @override
   void initState() {
@@ -37,15 +60,23 @@ class _NoteComposerPageState extends State<NoteComposerPage> {
   void _save() {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
-    Navigator.of(context).pop(text);
+    Navigator.of(context).pop(NoteWritten(text));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('New note'),
+        title: Text(_isExisting ? 'Note' : 'New note'),
         actions: [
+          if (_isExisting)
+            IconButton(
+              key: NoteComposerKeys.delete,
+              icon: const Icon(Icons.delete_outline),
+              tooltip: 'Delete this note',
+              onPressed: () =>
+                  Navigator.of(context).pop(const NoteDeleted()),
+            ),
           TextButton(
             key: NoteComposerKeys.save,
             onPressed: _canSave ? _save : null,
@@ -60,7 +91,6 @@ class _NoteComposerPageState extends State<NoteComposerPage> {
           controller: _controller,
           autofocus: true,
           maxLines: null,
-          expands: false,
           keyboardType: TextInputType.multiline,
           decoration: const InputDecoration(
             border: InputBorder.none,
