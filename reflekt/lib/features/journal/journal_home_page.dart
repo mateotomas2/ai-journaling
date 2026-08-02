@@ -6,6 +6,9 @@ import '../../core/day_id.dart';
 import '../../db/journal_database.dart';
 import '../lock/journal_session.dart';
 import 'note_composer_page.dart';
+import '../ai/ask_page.dart';
+import '../ai/journal_ai.dart';
+import '../ai/openrouter_ai.dart';
 import '../settings/settings_page.dart';
 import 'search_page.dart';
 
@@ -18,6 +21,7 @@ class JournalHomeKeys {
   static const nextDay = Key('journal_next_day');
   static const search = Key('journal_search');
   static const settings = Key('journal_settings');
+  static const ask = Key('journal_ask');
 }
 
 /// One day of the journal, read from the encrypted database.
@@ -26,10 +30,12 @@ class JournalHomePage extends StatefulWidget {
     super.key,
     required this.session,
     this.clock = systemClock,
+    this.ai,
   });
 
   final JournalSession session;
   final Clock clock;
+  final JournalAi? ai;
 
   @override
   State<JournalHomePage> createState() => _JournalHomePageState();
@@ -102,6 +108,35 @@ class _JournalHomePageState extends State<JournalHomePage> {
     setState(_load);
   }
 
+  /// Builds the AI from the saved key unless one was injected. Sending a
+  /// question needs a key, so this is where the user finds out they have not
+  /// set one — at the moment it matters, rather than as a banner they learn to
+  /// ignore.
+  Future<void> _ask() async {
+    final database = widget.session.database;
+    var ai = widget.ai;
+
+    if (ai == null) {
+      final key = await database.setting(openRouterKeySetting);
+      if (!mounted) return;
+      if (key == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Add an OpenRouter key in Settings to ask questions.'),
+          ),
+        );
+        return;
+      }
+      ai = OpenRouterAi(apiKey: key);
+    }
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => AskPage(database: database, ai: ai!),
+      ),
+    );
+  }
+
   Future<void> _search() async {
     final day = await Navigator.of(context).push<DateTime>(
       MaterialPageRoute(
@@ -124,6 +159,12 @@ class _JournalHomePageState extends State<JournalHomePage> {
             icon: const Icon(Icons.search),
             tooltip: 'Search your journal',
             onPressed: _search,
+          ),
+          IconButton(
+            key: JournalHomeKeys.ask,
+            icon: const Icon(Icons.auto_awesome_outlined),
+            tooltip: 'Ask your journal',
+            onPressed: _ask,
           ),
           IconButton(
             key: JournalHomeKeys.settings,

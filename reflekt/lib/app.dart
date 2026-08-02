@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'core/clock.dart';
+import 'features/ai/journal_ai.dart';
 
 import 'features/journal/journal_home_page.dart';
 import 'features/lock/journal_session.dart';
@@ -14,6 +15,7 @@ class ReflektApp extends StatefulWidget {
     this.lockAfter = const Duration(minutes: 3),
     this.storageDirectory,
     this.clock = systemClock,
+    this.ai,
   });
 
   /// How long backgrounded before the journal re-locks (ADR-0006).
@@ -25,6 +27,10 @@ class ReflektApp extends StatefulWidget {
   /// Where the app reads "now". Injected so a spec can roll the day over
   /// instead of waiting until tomorrow.
   final Clock clock;
+
+  /// Injected so specs answer from a script instead of calling OpenRouter.
+  /// When null the app builds a real client from the saved key.
+  final JournalAi? ai;
 
   @override
   State<ReflektApp> createState() => _ReflektAppState();
@@ -69,7 +75,11 @@ class _ReflektAppState extends State<ReflektApp> {
             SetPasswordPage(onChosen: _session.createJournal),
           JournalLockState.locked => UnlockPage(onUnlock: _session.unlock),
           JournalLockState.open =>
-            JournalHomePage(session: _session, clock: widget.clock),
+            JournalHomePage(
+              session: _session,
+              clock: widget.clock,
+              ai: widget.ai,
+            ),
         },
       ),
     );
