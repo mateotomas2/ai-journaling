@@ -8,6 +8,7 @@ import 'features/lock/journal_session.dart';
 import 'features/lock/forgotten_password_page.dart';
 import 'features/lock/set_password_page.dart';
 import 'features/lock/unlock_page.dart';
+import 'theme/journal_theme.dart';
 
 /// Root of the Reflekt app.
 class ReflektApp extends StatefulWidget {
@@ -70,16 +71,16 @@ class _ReflektAppState extends State<ReflektApp> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = ColorScheme.fromSeed(
-      seedColor: const Color(0xFF4C6EF5),
-      brightness: Brightness.dark,
-    );
-
     return MaterialApp(
       navigatorKey: _navigator,
       title: 'Reflekt',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(colorScheme: scheme, useMaterial3: true),
+      // Light is the designed mode (ADR-0008); dark is its own reading of the
+      // same palette rather than an inversion. Which one shows is the phone's
+      // business — someone writing at night has already told it.
+      theme: JournalTheme.light,
+      darkTheme: JournalTheme.dark,
+      themeMode: ThemeMode.system,
       home: ListenableBuilder(
         listenable: _session,
         builder: (context, _) => switch (_session.state) {

@@ -25,6 +25,20 @@ String dayIdOf(DateTime date) {
 String formatDayLabel(DateTime date) =>
     '${date.day} ${_monthNames[date.month - 1]} ${date.year}';
 
+const _weekdayNames = <String>[
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday',
+];
+
+/// The day of the week, e.g. `Saturday`. Sits under the date so a page of the
+/// journal reads as a day someone lived rather than as a database key.
+String formatWeekdayLabel(DateTime date) => _weekdayNames[date.weekday - 1];
+
 /// Clock time of a note, e.g. `09:41`.
 String formatTimeLabel(DateTime date) {
   final hour = date.hour.toString().padLeft(2, '0');

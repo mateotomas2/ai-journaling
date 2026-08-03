@@ -175,6 +175,22 @@ class Spec {
     }
   }
 
+  /// Drags [finder] sideways, as turning a page does.
+  ///
+  /// Deliberately a real drag with a fling velocity rather than jumping a
+  /// `PageController`: driving the controller would prove the pager can be told
+  /// to move, not that the gesture works — and the recording would show a day
+  /// change with nothing having touched the screen.
+  Future<void> swipeRight(Finder finder) => _swipe(finder, 320);
+
+  /// The opposite gesture. Moves forward in time, so it does nothing on today.
+  Future<void> swipeLeft(Finder finder) => _swipe(finder, -320);
+
+  Future<void> _swipe(Finder finder, double dx) async {
+    await tester.fling(finder, Offset(dx, 0), 600);
+    await _hold(700);
+  }
+
   /// Scrolls until [finder] is on screen.
   ///
   /// A list only builds what is visible, so something below the fold is not
