@@ -72,10 +72,14 @@ class _SearchJournalMemory implements JournalTool {
       return 'Nothing written matches that.';
     }
 
+    // Labelled by how it was written: "said" and "wrote" are different kinds
+    // of evidence about a day, and flattening them would let the assistant
+    // quote a passing remark back as something the person had set down.
     return found
         .map((match) =>
-            '${formatDayLabel(parseDayId(match.note.dayId))}: '
-            '${match.note.content}')
+            '${formatDayLabel(parseDayId(match.entry.dayId))} '
+            '(${match.entry.kind == IndexedKind.message ? 'said' : 'wrote'}): '
+            '${match.entry.content}')
         .join('\n');
   }
 }
