@@ -551,12 +551,21 @@ class _NoteList extends StatelessWidget {
                 // The time and what it was about, above the entry and quiet:
                 // they say where the writing came from, and then get out of
                 // the way of it.
-                Text(
-                  [
-                    formatTimeLabel(written),
-                    if (category != null) category.label.toUpperCase(),
-                  ].join('   ·   '),
-                  style: theme.textTheme.labelSmall,
+                // Each part its own Text, rather than one joined string. The
+                // category is a thing the journal is showing you, so it has to
+                // be findable as itself — joining it into "09:30 · Dream"
+                // makes it a substring of something else, which is how it
+                // stopped being visible to the spec that asks for it.
+                Row(
+                  children: [
+                    Text(formatTimeLabel(written), style: theme.textTheme.labelSmall),
+                    if (category != null) ...[
+                      Text('   ·   ', style: theme.textTheme.labelSmall),
+                      // Written the way the filter chip writes it: two casings
+                      // for one category on one screen is not a style.
+                      Text(category.label, style: theme.textTheme.labelSmall),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 6),
                 Text(note.content, style: theme.textTheme.bodyLarge),
