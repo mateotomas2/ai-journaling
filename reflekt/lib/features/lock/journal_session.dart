@@ -130,6 +130,56 @@ class JournalSession extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
   }
 
+  /// Changes the password the journal is encrypted with.
+  ///
+  /// Order matters and is the whole safety argument. The database is rekeyed
+  /// first; only once that succeeds is the new salt written. Writing the salt
+  /// first would leave the app deriving a key the file does not use, which is
+  /// indistinguishable from a forgotten password — the journal would be intact
+  /// and unreachable.
+  ///
+  /// Returns false when the current password is wrong, so nothing is touched.
+  Future<bool> changePassword({
+    required String current,
+    required String replacement,
+  }) async {
+    final saltFile = await _saltFile;
+    final currentSalt = await saltFile.readAsString();
+
+    // Proved by opening the database, not by comparing anything we stored —
+    // there is no copy of the password to compare against, by design.
+    final currentKey =
+        await JournalKey.derive(password: current, salt: currentSalt);
+    JournalDatabase probe;
+    try {
+      probe = await openJournalDatabase(
+        rawKey: currentKey,
+        overrideDirectory: overrideDirectory,
+      );
+    } on WrongPasswordException {
+      return false;
+    }
+
+    final newSalt = JournalKey.newSalt();
+    final newKey =
+        await JournalKey.derive(password: replacement, salt: newSalt);
+
+    await rekeyJournal(database: probe, newRawKey: newKey);
+    await probe.close();
+    await saltFile.writeAsString(newSalt);
+
+    // Reopened with the new key so the running session is not holding a handle
+    // encrypted under the old one.
+    await _database?.close();
+    _database = await openJournalDatabase(
+      rawKey: newKey,
+      overrideDirectory: overrideDirectory,
+    );
+    _state = JournalLockState.open;
+    notifyListeners();
+    return true;
+  }
+
   Future<void> lock() async {
     final db = _database;
     _database = null;
