@@ -198,6 +198,27 @@ class JournalDatabase extends _$JournalDatabase {
       );
 }
 
+/// Re-encrypts the database with a new key.
+///
+/// SQLCipher rewrites every page, so this is not a metadata change — it is the
+/// whole journal, and being interrupted part-way is the risk worth designing
+/// around.
+///
+/// `PRAGMA rekey` does that rewrite in a transaction: it either completes and
+/// the file opens with the new key, or it does not and the file still opens
+/// with the old one. There is no state where neither works, which is the only
+/// outcome that would actually lose someone their journal.
+///
+/// The salt is therefore written **after** the rekey succeeds. Writing it first
+/// would point the app at a key the file does not use, which looks exactly like
+/// a forgotten password.
+Future<void> rekeyJournal({
+  required JournalDatabase database,
+  required String newRawKey,
+}) async {
+  await database.customStatement('PRAGMA rekey = "x\'$newRawKey\'";');
+}
+
 /// Thrown when the database will not open with the key it was given, which in
 /// practice means the password was wrong.
 class WrongPasswordException implements Exception {

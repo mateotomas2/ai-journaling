@@ -262,7 +262,14 @@ class _JournalHomePageState extends State<JournalHomePage> {
             tooltip: 'Settings',
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) => SettingsPage(database: widget.session.database),
+                builder: (_) => SettingsPage(
+                  database: widget.session.database,
+                  onChangePassword: (current, replacement) =>
+                      widget.session.changePassword(
+                    current: current,
+                    replacement: replacement,
+                  ),
+                ),
               ),
             ),
           ),

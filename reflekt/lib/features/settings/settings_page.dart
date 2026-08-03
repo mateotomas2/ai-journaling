@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../db/journal_database.dart';
+import '../lock/change_password_page.dart';
 import 'ai_settings.dart';
 import 'prompt_page.dart';
 
@@ -10,6 +11,7 @@ class SettingsKeys {
   static const save = Key('settings_save');
   static const connected = Key('settings_connected');
   static const editPrompt = Key('settings_edit_prompt');
+  static const changePassword = Key('settings_change_password');
 
   /// One per model, so a spec can name the one it means.
   static Key modelOf(String id) => Key('settings_model_${id.replaceAll("/", "_")}');
@@ -27,9 +29,17 @@ String maskApiKey(String key) =>
     key.length <= 6 ? '••••••' : '••••••${key.substring(key.length - 6)}';
 
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key, required this.database});
+  const SettingsPage({
+    super.key,
+    required this.database,
+    this.onChangePassword,
+  });
 
   final JournalDatabase database;
+
+  /// Returns false when the current password is wrong.
+  final Future<bool> Function(String current, String replacement)?
+      onChangePassword;
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -177,6 +187,29 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                   child: const Text('Edit instructions'),
                 ),
+
+                if (widget.onChangePassword != null) ...[
+                  const SizedBox(height: 32),
+                  Text('Password', style: theme.textTheme.titleMedium),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Re-encrypts your journal. Everything you have written '
+                    'stays where it is.',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton(
+                    key: SettingsKeys.changePassword,
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => ChangePasswordPage(
+                          onChange: widget.onChangePassword!,
+                        ),
+                      ),
+                    ),
+                    child: const Text('Change password'),
+                  ),
+                ],
               ],
             ),
     );
