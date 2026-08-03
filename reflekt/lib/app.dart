@@ -39,6 +39,7 @@ class ReflektApp extends StatefulWidget {
 
 class _ReflektAppState extends State<ReflektApp> {
   late final JournalSession _session;
+  bool _biometricReady = false;
   final _navigator = GlobalKey<NavigatorState>();
 
   @override
@@ -49,6 +50,16 @@ class _ReflektAppState extends State<ReflektApp> {
       overrideDirectory: widget.storageDirectory,
     );
     _session.start();
+    _checkBiometrics();
+  }
+
+  /// Whether to offer a fingerprint at all. Both must hold: the device can do
+  /// it, and this journal has a key stored. Offering it otherwise would be a
+  /// button that cannot work.
+  Future<void> _checkBiometrics() async {
+    final ready = await _session.biometrics.isAvailable &&
+        await _session.biometrics.isEnabled;
+    if (mounted) setState(() => _biometricReady = ready);
   }
 
   @override
@@ -78,6 +89,8 @@ class _ReflektAppState extends State<ReflektApp> {
             SetPasswordPage(onChosen: _session.createJournal),
           JournalLockState.locked => UnlockPage(
               onUnlock: _session.unlock,
+              onBiometric:
+                  _biometricReady ? _session.unlockWithBiometrics : null,
               onForgotten: () => _navigator.currentState?.push(
                 MaterialPageRoute(
                   builder: (_) => ForgottenPasswordPage(

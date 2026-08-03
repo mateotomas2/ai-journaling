@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../../db/journal_database.dart';
+import 'biometric_unlock.dart';
 import 'journal_key.dart';
 import 'lock_policy.dart';
 
@@ -36,7 +37,12 @@ class JournalSession extends ChangeNotifier with WidgetsBindingObserver {
   JournalSession({
     Duration lockAfter = const Duration(minutes: 3),
     this.overrideDirectory,
-  }) : _lockPolicy = LockPolicy(lockAfter: lockAfter);
+    BiometricUnlock? biometrics,
+  })  : _lockPolicy = LockPolicy(lockAfter: lockAfter),
+        biometrics = biometrics ?? BiometricUnlock.platform();
+
+  /// Unlocking with a fingerprint. Injectable so a test can supply one.
+  final BiometricUnlock biometrics;
 
   /// When to re-lock. Lives in its own object so the rule can be tested without
   /// a database — see `test/lock_policy_test.dart`.
@@ -89,6 +95,38 @@ class JournalSession extends ChangeNotifier with WidgetsBindingObserver {
 
     _state = JournalLockState.open;
     notifyListeners();
+  }
+
+  /// Unlocks with a fingerprint, if one was set up. Returns false when that is
+  /// unavailable, declined, or the stored key no longer opens the journal.
+  Future<bool> unlockWithBiometrics() async {
+    final rawKey = await biometrics.unlock();
+    if (rawKey == null) return false;
+    try {
+      _database = await openJournalDatabase(
+        rawKey: rawKey,
+        overrideDirectory: overrideDirectory,
+      );
+    } on WrongPasswordException {
+      // The stored key does not open this journal — the password was changed
+      // on another device, or the file was replaced. Forgetting it sends the
+      // person back to the password, which still works.
+      await biometrics.disable();
+      return false;
+    }
+    _state = JournalLockState.open;
+    notifyListeners();
+    return true;
+  }
+
+  /// Remembers the current key behind a fingerprint.
+  ///
+  /// Only possible while unlocked, because the key exists only then — which is
+  /// also why this cannot be offered on the lock screen of a fresh device.
+  Future<void> enableBiometrics(String password) async {
+    final salt = await (await _saltFile).readAsString();
+    final rawKey = await JournalKey.derive(password: password, salt: salt);
+    await biometrics.enable(rawKey);
   }
 
   /// Returns false when the password does not open the journal.

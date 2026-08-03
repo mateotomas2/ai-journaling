@@ -6,6 +6,7 @@ class UnlockKeys {
   static const submit = Key('unlock_submit');
   static const error = Key('unlock_error');
   static const forgotten = Key('unlock_forgotten');
+  static const biometric = Key('unlock_biometric');
 }
 
 /// Shown whenever the journal is locked: on a cold start, or after the app has
@@ -15,12 +16,17 @@ class UnlockPage extends StatefulWidget {
     super.key,
     required this.onUnlock,
     required this.onForgotten,
+    this.onBiometric,
   });
 
   /// Returns false when the password does not open the journal.
   final Future<bool> Function(String password) onUnlock;
 
   final VoidCallback onForgotten;
+
+  /// Offered only when a fingerprint was set up on this device. Null hides it —
+  /// showing a button that cannot work would be worse than not offering it.
+  final Future<bool> Function()? onBiometric;
 
   @override
   State<UnlockPage> createState() => _UnlockPageState();
@@ -111,6 +117,15 @@ class _UnlockPageState extends State<UnlockPage> {
                       )
                     : const Text('Unlock'),
               ),
+              if (widget.onBiometric != null) ...[
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  key: UnlockKeys.biometric,
+                  onPressed: _busy ? null : () => widget.onBiometric!(),
+                  icon: const Icon(Icons.fingerprint),
+                  label: const Text('Use your fingerprint'),
+                ),
+              ],
               const SizedBox(height: 8),
               TextButton(
                 key: UnlockKeys.forgotten,
