@@ -31,13 +31,18 @@ void main() {
   const question = 'What lifted my mood?';
   const answer = 'Running, even in bad weather, seems to lift your mood.';
 
+  /// The part delivered first. The scripted AI pauses after it, long enough
+  /// that "arriving" is a state the spec can actually observe rather than a
+  /// frame it might miss.
+  const answerOpening = 'Running, even in bad weather,';
+
   runSpec(
     'Ask the journal a question',
     body: (spec) async {
       await spec.launch(
         ReflektApp(
           storageDirectory: spec.storageDirectory,
-          ai: _ScriptedAi(answer),
+          ai: _ScriptedAi(answerOpening, answer),
         ),
       );
 
@@ -59,7 +64,18 @@ void main() {
         await spec.tap(find.byKey(AskKeys.submit));
       });
 
-      await spec.then('the journal answers', () async {
+      await spec.then('the answer begins before it is finished', () async {
+        // An answer takes seconds to arrive, and a spinner for all of them
+        // says only that something is happening. This says what.
+        await spec.eventually(find.byKey(AskKeys.arriving));
+        expect(find.textContaining(answerOpening), findsOneWidget);
+
+        // Still arriving, so it is not yet part of the thread — a half-written
+        // answer must never be mistaken for one the model finished.
+        expect(find.byKey(AskKeys.answer), findsNothing);
+      });
+
+      await spec.and('the whole of it settles', () async {
         await spec.eventually(find.text(answer));
       });
 
@@ -73,20 +89,44 @@ void main() {
 }
 
 /// Answers from a script, so the spec is the same every run.
+///
+/// Delivers the answer in two parts with a pause between them. A real model
+/// streams far more finely than this, but a stream that finishes in half a
+/// second is not something a spec can assert against or a person can watch —
+/// and the point of both is that the answer is visible *before* it is done.
 class _ScriptedAi implements JournalAi {
-  const _ScriptedAi(this.answer);
+  const _ScriptedAi(this.opening, this.answer);
 
+  /// Arrives first, then the stream pauses.
+  final String opening;
+
+  /// The whole answer, [opening] included.
   final String answer;
 
   @override
-  Future<Answer> ask({
+  Stream<AiEvent> ask({
     required String question,
     required List<String> entries,
     List<Exchange> earlier = const [],
-  }) async {
-    // A real call is not instant, and an answer that appears in the same frame
-    // as the question would hide whether the waiting state works at all.
+  }) async* {
+    // A real call is not instant, and an answer that appeared in the same
+    // frame as the question would hide whether the waiting state works at all.
     await Future<void>.delayed(const Duration(milliseconds: 700));
-    return Answer(answer);
+
+    // Word by word, as a real one arrives.
+    for (final word in opening.split(' ')) {
+      yield AiText('$word ');
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+    }
+
+    // Long enough to be seen, and to be asserted against.
+    await Future<void>.delayed(const Duration(milliseconds: 1800));
+
+    for (final word in answer.substring(opening.length).trim().split(' ')) {
+      yield AiText('$word ');
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+    }
+
+    yield AiFinished(Answer(answer));
   }
 }

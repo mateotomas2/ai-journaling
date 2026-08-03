@@ -18,19 +18,28 @@ void main() {
         client: MockClient((_) async => response),
       );
 
+  /// A whole answer, delivered as one streamed frame followed by `[DONE]`.
+  /// How the stream is *split* is covered by `openrouter_streaming_test.dart`;
+  /// what is under test here is what the answer means once it has arrived.
   http.Response reply(String content) => http.Response(
-        jsonEncode({
-          'choices': [
-            {
-              'message': {'content': content},
-            }
-          ],
-        }),
+        'data: ${jsonEncode({
+              'choices': [
+                {
+                  'delta': {'content': content},
+                }
+              ],
+            })}\n\ndata: [DONE]\n\n',
         200,
       );
 
-  Future<Answer> ask(OpenRouterAi ai) =>
-      ai.ask(question: 'what lifted my mood?', entries: ['ran in the rain']);
+  /// Drains the stream down to the finished answer, which is what these tests
+  /// are about.
+  Future<Answer> ask(OpenRouterAi ai) async {
+    final events = await ai
+        .ask(question: 'what lifted my mood?', entries: ['ran in the rain'])
+        .toList();
+    return events.whereType<AiFinished>().single.answer;
+  }
 
   test('returns the answer', () async {
     expect((await ask(aiThatReturns(reply('Running did.')))).reply, 'Running did.');
@@ -47,7 +56,9 @@ void main() {
       }),
     );
 
-    await ai.ask(question: 'why?', entries: ['because']);
+    // Drained, not merely called: a stream does nothing until something
+    // listens, so an un-consumed `ask` never sends the request at all.
+    await ai.ask(question: 'why?', entries: ['because']).toList();
 
     final messages = sent['messages'] as List<dynamic>;
     expect(messages.first['content'], contains('because'));
@@ -58,7 +69,7 @@ void main() {
     // 401 is the one failure the user can actually fix, so it must point at
     // where to fix it instead of reporting a number.
     await expectLater(
-      () => ask(aiThatReturns(http.Response('nope', 401))),
+      ask(aiThatReturns(http.Response('nope', 401))),
       throwsA(
         isA<JournalAiException>().having(
           (e) => e.message,
@@ -71,7 +82,7 @@ void main() {
 
   test('survives a provider having a bad afternoon', () async {
     await expectLater(
-      () => ask(aiThatReturns(http.Response('boom', 503))),
+      ask(aiThatReturns(http.Response('boom', 503))),
       throwsA(isA<JournalAiException>()),
     );
   });
@@ -104,7 +115,7 @@ void main() {
     // A blank answer rendered as an answer looks like the journal had nothing
     // to say, which is a different and more discouraging claim.
     await expectLater(
-      () => ask(aiThatReturns(reply('   '))),
+      ask(aiThatReturns(reply('   '))),
       throwsA(isA<JournalAiException>()),
     );
   });
@@ -116,7 +127,7 @@ void main() {
     );
 
     await expectLater(
-      () => ask(ai),
+      ask(ai),
       throwsA(
         isA<JournalAiException>().having(
           (e) => e.message,
@@ -130,8 +141,9 @@ void main() {
   test('refuses to ask about an empty journal', () async {
     // Sending no context would spend money to be told nothing.
     await expectLater(
-      () => aiThatReturns(reply('anything'))
-          .ask(question: 'why?', entries: const []),
+      aiThatReturns(reply('anything'))
+          .ask(question: 'why?', entries: const [])
+          .toList(),
       throwsA(isA<JournalAiException>()),
     );
   });
