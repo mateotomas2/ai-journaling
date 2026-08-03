@@ -164,14 +164,16 @@ class _AskPageState extends State<AskPage> {
           // The thread, oldest first. An answer alone is hard to judge once
           // you have forgotten how you phrased the question.
           for (final exchange in _thread) ...[
-            Text(exchange.question, style: theme.textTheme.titleMedium),
+            // The question in the reading face, the answer in the interface
+            // one: the serif is the person's voice (ADR-0008).
+            Text(exchange.question, style: theme.textTheme.titleLarge),
             const SizedBox(height: 8),
             Card(
               key: AskKeys.answer,
               margin: EdgeInsets.zero,
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: Text(exchange.answer, style: theme.textTheme.bodyLarge),
+                child: Text(exchange.answer, style: theme.textTheme.bodyMedium),
               ),
             ),
             const SizedBox(height: 20),
