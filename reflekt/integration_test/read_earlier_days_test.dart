@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reflekt/app.dart';
 import 'package:reflekt/features/journal/journal_home_page.dart';
@@ -18,7 +17,7 @@ import '_spec.dart';
 /// tomorrow is not a test strategy.
 ///
 /// Deliberately out of scope, so their absence is not mistaken for a gap:
-///   * jumping to an arbitrary date rather than stepping day by day
+///   * jumping to an arbitrary date, which `jump_to_a_date_test.dart` covers
 ///   * searching across days, which is a different feature entirely
 ///   * writing a note onto a past day — notes are written on the day you write
 ///     them, and back-dating is not a decision we have made
@@ -69,7 +68,7 @@ void main() {
       });
 
       await spec.when('the journal is turned back a day', () async {
-        await spec.tap(find.byKey(JournalHomeKeys.previousDay));
+        await spec.swipeRight(find.byKey(JournalHomeKeys.dayPager));
       });
 
       await spec.then("yesterday's note is there", () async {
@@ -78,7 +77,7 @@ void main() {
       });
 
       await spec.when('the journal is turned forward again', () async {
-        await spec.tap(find.byKey(JournalHomeKeys.nextDay));
+        await spec.swipeLeft(find.byKey(JournalHomeKeys.dayPager));
       });
 
       await spec.then('today is blank once more', () async {
@@ -86,15 +85,12 @@ void main() {
         expect(find.text('2 August 2026'), findsOneWidget);
       });
 
-      await spec.and('there is no way to walk into the future', () async {
-        // Days that have not happened cannot hold anything, so offering them
-        // would be an invitation to a dead end.
-        expect(
-          spec.tester
-              .widget<IconButton>(find.byKey(JournalHomeKeys.nextDay))
-              .onPressed,
-          isNull,
-        );
+      await spec.and('there is no way to turn into the future', () async {
+        // Days that have not happened cannot hold anything, so the journal
+        // does not extend into them: the gesture is available and simply has
+        // nowhere to go.
+        await spec.swipeLeft(find.byKey(JournalHomeKeys.dayPager));
+        expect(find.text('2 August 2026'), findsOneWidget);
       });
     },
   );

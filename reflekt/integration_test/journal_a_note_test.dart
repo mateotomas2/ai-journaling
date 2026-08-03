@@ -50,7 +50,8 @@ void main() {
         // Deriving the key is deliberately slow, so wait for the journal
         // rather than assume it is already there.
         await spec.eventually(find.byKey(JournalHomeKeys.emptyState));
-        expect(find.text('Reflekt'), findsOneWidget);
+        // The day names the page, where a wordmark used to (ADR-0008).
+        expect(find.byKey(JournalHomeKeys.dayHeader), findsOneWidget);
         expect(find.byKey(JournalHomeKeys.emptyState), findsOneWidget);
       });
 
