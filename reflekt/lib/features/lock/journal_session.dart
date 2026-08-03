@@ -206,6 +206,12 @@ class JournalSession extends ChangeNotifier with WidgetsBindingObserver {
     await probe.close();
     await saltFile.writeAsString(newSalt);
 
+    // The stored fingerprint key opens nothing now. It self-heals on the next
+    // attempt, but leaving it means someone's first unlock after changing
+    // their password fails for no reason they can see — which reads as the
+    // journal being broken rather than a setting needing to be redone.
+    await biometrics.disable();
+
     // Reopened with the new key so the running session is not holding a handle
     // encrypted under the old one.
     await _database?.close();
