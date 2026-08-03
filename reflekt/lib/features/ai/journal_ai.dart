@@ -1,3 +1,5 @@
+import 'journal_tool.dart';
+
 /// What the app needs from an AI, and nothing more.
 ///
 /// An interface rather than a client so specs can run offline against a fixed
@@ -19,10 +21,15 @@ abstract interface class JournalAi {
   /// with a [JournalAiException] and no [AiFinished] — a stream that simply
   /// stopped early must not close cleanly, or half an answer is
   /// indistinguishable from a short one.
+  ///
+  /// [tools] are what the assistant may do besides talk. Running them and
+  /// feeding the results back is the client's job — a caller sees only that
+  /// something was done, through [AiToolRan].
   Stream<AiEvent> ask({
     required String question,
     required List<String> entries,
     List<Exchange> earlier = const [],
+    List<JournalTool> tools = const [],
   });
 }
 
@@ -37,6 +44,17 @@ sealed class AiEvent {
 class AiText extends AiEvent {
   const AiText(this.delta);
   final String delta;
+}
+
+/// The assistant did something to the journal, and has gone back to thinking.
+///
+/// Reported so a pause can say what is happening. Someone waiting deserves to
+/// know their journal is being read rather than that the app has hung.
+class AiToolRan extends AiEvent {
+  const AiToolRan(this.tool);
+
+  /// The tool's name, as the journal knows it.
+  final String tool;
 }
 
 /// The answer, whole. Emitted once, at the end of a stream that succeeded.

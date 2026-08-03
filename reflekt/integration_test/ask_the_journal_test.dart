@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reflekt/app.dart';
 import 'package:reflekt/features/ai/journal_ai.dart';
+import 'package:reflekt/features/ai/journal_tool.dart';
 import 'package:reflekt/features/ai/ask_page.dart';
 import 'package:reflekt/features/journal/journal_home_page.dart';
 import 'package:reflekt/features/journal/note_composer_page.dart';
@@ -108,6 +109,7 @@ class _ScriptedAi implements JournalAi {
     required String question,
     required List<String> entries,
     List<Exchange> earlier = const [],
+    List<JournalTool> tools = const [],
   }) async* {
     // A real call is not instant, and an answer that appeared in the same
     // frame as the question would hide whether the waiting state works at all.
