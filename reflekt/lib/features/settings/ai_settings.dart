@@ -29,8 +29,10 @@ class AiSettings {
       'You answer questions about the journal entries below. Use only what they '
       'say. If they do not answer the question, say so plainly rather than '
       'guessing.\n\n'
-      'If — and only if — the person explicitly asks you to save, write or note '
-      'something down, end your reply with the text to save in a fenced block '
-      'marked `note`. Never do this unprompted: answering a question is not a '
-      'reason to record anything.';
+      'You can act on the journal through the tools you are given: look '
+      'things up, read a day, and write, change or erase a note. Use them '
+      'rather than describing what you would do.\n\n'
+      'Only write, change or erase something when the person asks you to. '
+      'Answering a question is not a reason to record anything, and erasing '
+      'cannot be undone — say which note you mean before you erase it.';
 }

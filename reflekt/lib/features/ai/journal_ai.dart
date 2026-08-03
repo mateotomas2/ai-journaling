@@ -63,19 +63,17 @@ class AiFinished extends AiEvent {
   final Answer answer;
 }
 
-/// What the assistant decided to do with a question.
+/// What the assistant said.
 ///
-/// A note is written only when someone asks for one. An assistant that records
-/// things unprompted is a different and less trustworthy product: a journal has
-/// to be somewhere you can think out loud without it being minuted.
+/// Only words. Anything that reaches the journal does so through a tool the
+/// journal chose to offer (ADR-0009) — text is never inspected for instructions,
+/// because a reply that can quietly write to the journal is one a model can be
+/// talked into misusing.
 class Answer {
-  const Answer(this.reply, {this.noteToWrite});
+  const Answer(this.reply);
 
   /// What to show the person.
   final String reply;
-
-  /// Text to save as a note, when they asked for that. Null otherwise.
-  final String? noteToWrite;
 }
 
 /// One question and its answer.
