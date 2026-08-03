@@ -79,7 +79,7 @@ class _ScriptedAi implements JournalAi {
   final String answer;
 
   @override
-  Future<String> ask({
+  Future<Answer> ask({
     required String question,
     required List<String> entries,
     List<Exchange> earlier = const [],
@@ -87,6 +87,6 @@ class _ScriptedAi implements JournalAi {
     // A real call is not instant, and an answer that appears in the same frame
     // as the question would hide whether the waiting state works at all.
     await Future<void>.delayed(const Duration(milliseconds: 700));
-    return answer;
+    return Answer(answer);
   }
 }

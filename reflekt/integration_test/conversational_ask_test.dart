@@ -82,13 +82,13 @@ void main() {
 /// Answers the second question only if the first one reached it.
 class _ThreadAwareAi implements JournalAi {
   @override
-  Future<String> ask({
+  Future<Answer> ask({
     required String question,
     required List<String> entries,
     List<Exchange> earlier = const [],
   }) async {
     await Future<void>.delayed(const Duration(milliseconds: 600));
-    if (earlier.isEmpty) return 'You started running.';
-    return 'After a long gap — the ${earlier.last.answer.split(" ").last}';
+    if (earlier.isEmpty) return const Answer('You started running.');
+    return Answer('After a long gap — the ${earlier.last.answer.split(" ").last}');
   }
 }

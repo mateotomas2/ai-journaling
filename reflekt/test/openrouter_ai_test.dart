@@ -29,11 +29,11 @@ void main() {
         200,
       );
 
-  Future<String> ask(OpenRouterAi ai) =>
+  Future<Answer> ask(OpenRouterAi ai) =>
       ai.ask(question: 'what lifted my mood?', entries: ['ran in the rain']);
 
   test('returns the answer', () async {
-    expect(await ask(aiThatReturns(reply('Running did.'))), 'Running did.');
+    expect((await ask(aiThatReturns(reply('Running did.')))).reply, 'Running did.');
   });
 
   test('sends the entries and the question', () async {
@@ -74,6 +74,30 @@ void main() {
       () => ask(aiThatReturns(http.Response('boom', 503))),
       throwsA(isA<JournalAiException>()),
     );
+  });
+
+  test('writes nothing unless a note was asked for', () async {
+    // The default, and the one that must never drift: answering a question is
+    // not a reason to record anything.
+    final answer = await ask(aiThatReturns(reply('Running did.')));
+    expect(answer.noteToWrite, isNull);
+  });
+
+  test('saves the marked text when a note was asked for', () async {
+    final answer = await ask(aiThatReturns(
+      reply('Done.\n\n```note\nRunning lifts my mood.\n```'),
+    ));
+    expect(answer.noteToWrite, 'Running lifts my mood.');
+    expect(answer.reply, 'Done.');
+    // The marker itself must not be shown to the reader.
+    expect(answer.reply, isNot(contains('```')));
+  });
+
+  test('an empty marker writes nothing', () async {
+    // A model emitting the block with nothing in it should not create a blank
+    // note, which would look like a bug in the journal rather than in the AI.
+    final answer = await ask(aiThatReturns(reply('Sure.\n\n```note\n\n```')));
+    expect(answer.noteToWrite, isNull);
   });
 
   test('does not present an empty reply as an answer', () async {

@@ -15,10 +15,19 @@ class AskKeys {
 
 /// Asks a question of everything written so far.
 class AskPage extends StatefulWidget {
-  const AskPage({super.key, required this.database, required this.ai});
+  const AskPage({
+    super.key,
+    required this.database,
+    required this.ai,
+    this.onWriteNote,
+  });
 
   final JournalDatabase database;
   final JournalAi ai;
+
+  /// Called when the assistant was asked to save something. Null means the
+  /// caller does not allow writes from here.
+  final Future<void> Function(String text)? onWriteNote;
 
   @override
   State<AskPage> createState() => _AskPageState();
@@ -96,9 +105,16 @@ class _AskPageState extends State<AskPage> {
         entries: entries,
         earlier: List.unmodifiable(_thread),
       );
+
+      // Saved only when it was asked for. The write happens here rather than
+      // inside the client so that the journal, not the model, owns what goes
+      // into it.
+      final toWrite = answer.noteToWrite;
+      if (toWrite != null) await widget.onWriteNote?.call(toWrite);
+
       if (!mounted) return;
       setState(() {
-        _thread.add(Exchange(question, answer));
+        _thread.add(Exchange(question, answer.reply));
         _pending = null;
         _thinking = false;
       });
