@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../db/journal_database.dart';
+import '../memory/journal_embedder.dart';
+import '../memory/meaning_search.dart';
 import 'journal_ai.dart';
 
 /// Keys the specs drive. Keep these stable — renaming one breaks a recording.
@@ -69,7 +71,26 @@ class _AskPageState extends State<AskPage> {
     });
 
     try {
-      final entries = await widget.database.allNoteContents();
+      // Only the entries this question is about. Sending the whole journal
+      // was the earlier behaviour: it grows more expensive the longer someone
+      // keeps writing, and exposes years of entries to answer something about
+      // a week of them.
+      //
+      // Falls back to everything if the index cannot be used, because an
+      // answer from too much context is better than no answer at all — but the
+      // fallback is loud in the logs rather than silent.
+      List<String> entries;
+      try {
+        final embedder = await JournalEmbedder.load();
+        entries = await MeaningSearch(widget.database, embedder)
+            .contextFor(question);
+      } catch (error) {
+        debugPrint('CONTEXT_FALLBACK $error');
+        entries = await widget.database.allNoteContents();
+      }
+      if (entries.isEmpty) {
+        entries = await widget.database.allNoteContents();
+      }
       final answer = await widget.ai.ask(
         question: question,
         entries: entries,
