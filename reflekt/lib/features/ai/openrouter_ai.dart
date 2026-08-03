@@ -32,6 +32,7 @@ class OpenRouterAi implements JournalAi {
   Future<String> ask({
     required String question,
     required List<String> entries,
+    List<Exchange> earlier = const [],
   }) async {
     if (entries.isEmpty) {
       throw const JournalAiException(

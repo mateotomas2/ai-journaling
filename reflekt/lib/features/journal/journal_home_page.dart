@@ -5,6 +5,7 @@ import '../../core/clock.dart';
 import '../../core/day_id.dart';
 import '../../db/journal_database.dart';
 import '../lock/journal_session.dart';
+import 'note_category.dart';
 import 'note_composer_page.dart';
 import '../ai/ask_page.dart';
 import '../ai/journal_ai.dart';
@@ -26,6 +27,9 @@ class JournalHomeKeys {
   static const settings = Key('journal_settings');
   static const ask = Key('journal_ask');
   static const findByMeaning = Key('journal_find_by_meaning');
+
+  /// One per category, so a spec can name the filter it means.
+  static Key filterOf(String id) => Key('journal_filter_$id');
 }
 
 /// One day of the journal, read from the encrypted database.
@@ -48,6 +52,7 @@ class JournalHomePage extends StatefulWidget {
 class _JournalHomePageState extends State<JournalHomePage> {
   late DateTime _day;
   late Future<List<Note>> _notes;
+  NoteCategory? _filter;
 
   @override
   void initState() {
@@ -87,6 +92,7 @@ class _JournalHomePageState extends State<JournalHomePage> {
         id: Value(id),
         dayId: Value(dayIdOf(now)),
         content: Value(result.text),
+        category: Value(result.category?.id ?? ''),
         createdAt: Value(now.millisecondsSinceEpoch),
       ),
     );
@@ -118,15 +124,18 @@ class _JournalHomePageState extends State<JournalHomePage> {
   Future<void> _openNote(Note note) async {
     final result = await Navigator.of(context).push<ComposerResult>(
       MaterialPageRoute(
-        builder: (_) => NoteComposerPage(existingText: note.content),
+        builder: (_) => NoteComposerPage(
+          existingText: note.content,
+          existingCategory: NoteCategory.fromId(note.category),
+        ),
       ),
     );
     if (result == null) return;
 
     final database = widget.session.database;
     switch (result) {
-      case NoteWritten(:final text):
-        await database.rewordNote(note.id, text);
+      case NoteWritten(:final text, :final category):
+        await database.rewordNote(note.id, text, category: category?.id ?? '');
         // Re-embedded, or the index keeps finding this note by what it used to
         // say — with the new text displayed, which looks like a working search
         // returning the wrong thing.
@@ -280,11 +289,51 @@ class _JournalHomePageState extends State<JournalHomePage> {
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
-          final notes = snapshot.data!;
-          if (notes.isEmpty) return _EmptyState(isToday: _isToday);
-          return _NoteList(
-            notes: notes.reversed.toList(),
-            onOpen: _openNote,
+          final all = snapshot.data!;
+          if (all.isEmpty) return _EmptyState(isToday: _isToday);
+
+          final notes = _filter == null
+              ? all
+              : all.where((n) => n.category == _filter!.id).toList();
+
+          // Only what this day actually holds — a chip with nothing behind it
+          // is a dead end.
+          final present = {
+            for (final n in all)
+              if (NoteCategory.fromId(n.category) != null)
+                NoteCategory.fromId(n.category)!,
+          };
+
+          return Column(
+            children: [
+              // Offered whenever the day holds anything categorised. Even a
+              // single chip is useful: it hides the notes that were never
+              // sorted, which is most of the point.
+              if (present.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: Wrap(
+                    spacing: 8,
+                    children: [
+                      for (final category in present)
+                        FilterChip(
+                          key: JournalHomeKeys.filterOf(category.id),
+                          label: Text(category.label),
+                          selected: _filter == category,
+                          onSelected: (selected) => setState(
+                            () => _filter = selected ? category : null,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              Expanded(
+                child: _NoteList(
+                  notes: notes.reversed.toList(),
+                  onOpen: _openNote,
+                ),
+              ),
+            ],
           );
         },
       ),
@@ -324,15 +373,26 @@ class _NoteList extends StatelessWidget {
       separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final note = notes[index];
+        final category = NoteCategory.fromId(note.category);
         return Card(
           margin: EdgeInsets.zero,
           child: ListTile(
             onTap: () => onOpen(note),
             title: Text(note.content),
-            subtitle: Text(
-              formatTimeLabel(
-                DateTime.fromMillisecondsSinceEpoch(note.createdAt),
-              ),
+            subtitle: Row(
+              children: [
+                Text(
+                  formatTimeLabel(
+                    DateTime.fromMillisecondsSinceEpoch(note.createdAt),
+                  ),
+                ),
+                if (category != null) ...[
+                  const SizedBox(width: 8),
+                  Text('·'),
+                  const SizedBox(width: 8),
+                  Text(category.label),
+                ],
+              ],
             ),
           ),
         );
