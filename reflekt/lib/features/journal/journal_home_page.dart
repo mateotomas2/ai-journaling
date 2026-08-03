@@ -10,6 +10,7 @@ import 'note_composer_page.dart';
 import '../ai/ask_page.dart';
 import '../ai/journal_ai.dart';
 import '../ai/openrouter_ai.dart';
+import '../settings/ai_settings.dart';
 import '../settings/settings_page.dart';
 import 'search_page.dart';
 
@@ -136,9 +137,18 @@ class _JournalHomePageState extends State<JournalHomePage> {
         );
         return;
       }
-      ai = OpenRouterAi(apiKey: key);
+      // The saved choices, or the defaults. Read at the moment of asking so a
+      // change in settings takes effect without restarting.
+      final model = await database.setting(AiSettings.modelSetting);
+      final prompt = await database.setting(AiSettings.promptSetting);
+      ai = OpenRouterAi(
+        apiKey: key,
+        model: model ?? AiSettings.defaultModel,
+        systemPrompt: prompt,
+      );
     }
 
+    if (!mounted) return;
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => AskPage(database: database, ai: ai!),
