@@ -14,6 +14,7 @@ import '../memory/journal_embedder.dart';
 import '../memory/meaning_search_page.dart';
 import '../settings/ai_settings.dart';
 import '../settings/settings_page.dart';
+import '../chat/day_chat.dart';
 import 'search_page.dart';
 
 /// Keys the specs drive. Keep these stable — renaming one breaks a recording.
@@ -23,6 +24,8 @@ class JournalHomeKeys {
   static const noteList = Key('journal_note_list');
   static const dayPager = Key('journal_day_pager');
   static const dayHeader = Key('journal_day_header');
+  static const showNotes = Key('journal_show_notes');
+  static const showChat = Key('journal_show_chat');
   static const search = Key('journal_search');
   static const settings = Key('journal_settings');
   static const ask = Key('journal_ask');
@@ -31,6 +34,14 @@ class JournalHomeKeys {
   /// One per category, so a spec can name the filter it means.
   static Key filterOf(String id) => Key('journal_filter_$id');
 }
+
+/// Which of a day's two surfaces is showing.
+enum _DayView { notes, chat }
+
+/// Where that choice is kept, so it survives closing the app. In the journal
+/// rather than in shared preferences: it is a small fact about how someone
+/// uses their journal, and it belongs with the journal.
+const _viewSetting = 'journal.day_view';
 
 /// The journal, one day to a page.
 ///
@@ -69,10 +80,32 @@ class _JournalHomePageState extends State<JournalHomePage> {
   /// erased. A day page reads its own notes, so it needs telling.
   int _revision = 0;
 
+  /// Which of the day's two surfaces is showing. Held here rather than inside
+  /// the pager, or swiping to another day would reset it — and the choice is
+  /// about how you are reading the journal, not about which day.
+  _DayView _view = _DayView.notes;
+
   @override
   void initState() {
     super.initState();
     _today = _dateOnly(widget.clock());
+    _restoreView();
+  }
+
+  /// Remembers which surface was last used. Someone who journals by writing
+  /// and someone who journals by talking should each find their own way of
+  /// doing it when they open the app, rather than the other one's.
+  Future<void> _restoreView() async {
+    final saved = await widget.session.database.setting(_viewSetting);
+    if (!mounted || saved == null) return;
+    setState(() => _view = saved == _DayView.chat.name
+        ? _DayView.chat
+        : _DayView.notes);
+  }
+
+  void _show(_DayView view) {
+    setState(() => _view = view);
+    widget.session.database.putSetting(_viewSetting, view.name);
   }
 
   @override
@@ -189,6 +222,26 @@ class _JournalHomePageState extends State<JournalHomePage> {
     }
     if (!mounted) return;
     setState(() => _revision++);
+  }
+
+  /// The AI as configured, or null when no key has been saved.
+  ///
+  /// Read at the moment it is needed rather than held, so a key or model
+  /// changed in Settings takes effect without restarting the app.
+  Future<JournalAi?> _configuredAi() async {
+    if (widget.ai != null) return widget.ai;
+
+    final database = widget.session.database;
+    final key = await database.setting(openRouterKeySetting);
+    if (key == null) return null;
+
+    final model = await database.setting(AiSettings.modelSetting);
+    final prompt = await database.setting(AiSettings.promptSetting);
+    return OpenRouterAi(
+      apiKey: key,
+      model: model ?? AiSettings.defaultModel,
+      systemPrompt: prompt,
+    );
   }
 
   /// Builds the AI from the saved key unless one was injected. Sending a
@@ -319,18 +372,26 @@ class _JournalHomePageState extends State<JournalHomePage> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        key: JournalHomeKeys.addNote,
-        onPressed: _composeNote,
-        icon: const Icon(Icons.edit_outlined),
-        label: const Text('New note'),
-      ),
+      // Writing a note is the thing that always works — no key, no signal, no
+      // account. It is offered on the notes surface only, because a button
+      // that opens a composer over a conversation is answering a question
+      // nobody asked.
+      floatingActionButton: _view == _DayView.notes
+          ? FloatingActionButton.extended(
+              key: JournalHomeKeys.addNote,
+              onPressed: _composeNote,
+              icon: const Icon(Icons.edit_outlined),
+              label: const Text('New note'),
+            )
+          : null,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Outside the pager on purpose: it names which page you are on, and
-          // a header that scrolled away with the day would leave you unsure.
+          // Both outside the pager on purpose. The header names which page you
+          // are on, and the toggle is about how you are reading the journal
+          // rather than about which day — inside, a swipe would reset it.
           _DayHeader(day: _day, isToday: _isToday, onPick: _pickDay),
+          _ViewToggle(showing: _view, onShow: _show),
           Expanded(
             child: PageView.builder(
               key: JournalHomeKeys.dayPager,
@@ -339,6 +400,27 @@ class _JournalHomePageState extends State<JournalHomePage> {
               onPageChanged: (page) => setState(() => _daysAgo = page),
               itemBuilder: (context, page) {
                 final day = _today.subtract(Duration(days: page));
+
+                if (_view == _DayView.chat) {
+                  return FutureBuilder<JournalAi?>(
+                    // Rebuilt per day so each page reads its own conversation.
+                    key: ValueKey('chat-${dayIdOf(day)}#$_revision'),
+                    future: _configuredAi(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState != ConnectionState.done) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      return DayChat(
+                        database: widget.session.database,
+                        day: day,
+                        ai: snapshot.data,
+                        clock: widget.clock,
+                        onWriteNote: _writeNoteFromAssistant,
+                      );
+                    },
+                  );
+                }
+
                 return _DayPage(
                   // The revision forces a reload after a write; without it the
                   // page keeps showing the notes it read when it was built.
@@ -352,6 +434,84 @@ class _JournalHomePageState extends State<JournalHomePage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Which of the day's two surfaces to show.
+///
+/// Deliberately not a tab bar: these are two ways of putting something into
+/// the same day, not two sections of an app. It sits under the date because
+/// what it switches belongs to that day.
+class _ViewToggle extends StatelessWidget {
+  const _ViewToggle({required this.showing, required this.onShow});
+
+  final _DayView showing;
+  final void Function(_DayView view) onShow;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+      child: Row(
+        children: [
+          _Choice(
+            key: JournalHomeKeys.showNotes,
+            label: 'Notes',
+            chosen: showing == _DayView.notes,
+            onChoose: () => onShow(_DayView.notes),
+          ),
+          const SizedBox(width: 8),
+          _Choice(
+            key: JournalHomeKeys.showChat,
+            label: 'Chat',
+            chosen: showing == _DayView.chat,
+            onChoose: () => onShow(_DayView.chat),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Choice extends StatelessWidget {
+  const _Choice({
+    super.key,
+    required this.label,
+    required this.chosen,
+    required this.onChoose,
+  });
+
+  final String label;
+  final bool chosen;
+  final VoidCallback onChoose;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return GestureDetector(
+      onTap: onChoose,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: chosen
+              ? theme.colorScheme.secondary.withValues(alpha: 0.18)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: chosen ? Colors.transparent : theme.colorScheme.outline,
+          ),
+        ),
+        child: Text(
+          label,
+          style: theme.textTheme.labelLarge?.copyWith(
+            color: chosen
+                ? theme.colorScheme.onSurface
+                : theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
       ),
     );
   }
