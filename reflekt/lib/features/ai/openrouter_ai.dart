@@ -29,7 +29,7 @@ class OpenRouterAi implements JournalAi {
       Uri.parse('https://openrouter.ai/api/v1/chat/completions');
 
   @override
-  Future<String> ask({
+  Future<Answer> ask({
     required String question,
     required List<String> entries,
     List<Exchange> earlier = const [],
@@ -91,6 +91,29 @@ class OpenRouterAi implements JournalAi {
     if (content is! String || content.trim().isEmpty) {
       throw const JournalAiException('The AI replied with nothing.');
     }
-    return content.trim();
+    return _readAnswer(content.trim());
+  }
+
+  /// Pulls a requested note out of the reply.
+  ///
+  /// The model is told to mark one with a fenced `note` block when — and only
+  /// when — it was asked to save something. Parsing a marker rather than using
+  /// tool calls keeps this working across every model OpenRouter offers, which
+  /// differ in whether and how they support tools.
+  ///
+  /// A reply with no marker writes nothing. That is the default and it has to
+  /// be: silence must never be read as consent to record something.
+  static Answer _readAnswer(String reply) {
+    final match = RegExp(r'```note\s*\n([\s\S]*?)```').firstMatch(reply);
+    if (match == null) return Answer(reply);
+
+    final note = match.group(1)?.trim();
+    if (note == null || note.isEmpty) return Answer(reply);
+
+    final withoutBlock = reply.replaceRange(match.start, match.end, '').trim();
+    return Answer(
+      withoutBlock.isEmpty ? 'Saved that as a note.' : withoutBlock,
+      noteToWrite: note,
+    );
   }
 }

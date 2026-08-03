@@ -28,5 +28,9 @@ class AiSettings {
   static const defaultPrompt =
       'You answer questions about the journal entries below. Use only what they '
       'say. If they do not answer the question, say so plainly rather than '
-      'guessing.';
+      'guessing.\n\n'
+      'If — and only if — the person explicitly asks you to save, write or note '
+      'something down, end your reply with the text to save in a fenced block '
+      'marked `note`. Never do this unprompted: answering a question is not a '
+      'reason to record anything.';
 }
