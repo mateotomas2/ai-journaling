@@ -222,6 +222,14 @@ evidence pipeline, usually without a useful error message.
 - **Never use `pumpAndSettle` once a text field has focus.** The cursor blinks
   forever, so the tree never settles and `pumpAndSettle` times out. The harness
   paces with `_hold()` instead.
+- **`flutter test` skipping everything database-shaped is an environment fact, not
+  a passing run.** The build hook compiles `build/native_assets/linux/libsqlcipher.so`
+  against **GLIBC 2.38**. On an older host (Ubuntu 22.04 is 2.35) it cannot load,
+  every test that opens a journal calls `markTestSkipped('SQLCipher unavailable
+  here')`, and the run still reports *All tests passed*. Read the counts: `+0 ~7`
+  means nothing was verified. CI runs `ubuntu-latest` (24.04, GLIBC 2.39), where
+  these tests genuinely execute — so **CI is the verification for anything
+  touching the database**, and a green local run is not.
 - **Scripts use `grep`, not `ripgrep`.** A committed script must not depend on a
   tool that a CI runner or a colleague's machine may not have.
 
