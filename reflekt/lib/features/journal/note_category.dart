@@ -1,32 +1,28 @@
 /// What a note is about.
 ///
-/// A small fixed set, taken from the categories the PWA settled on. Open-ended
-/// tags would let a journal grow a vocabulary nobody can remember, and the
-/// point is to be able to scan a day, not to file it.
+/// Free text, not a fixed set (ADR-0012). The four the app used to insist on
+/// were chosen by us for someone else's life, and had nothing for work, for
+/// the people they live with, or for whatever they are actually preoccupied
+/// with this year.
 ///
-/// Uncategorised is deliberately allowed: making someone classify a thought
+/// Uncategorised is still first-class: making someone classify a thought
 /// before writing it down is a good way to stop them writing it down.
-enum NoteCategory {
-  personal('personal', 'Personal'),
-  health('health', 'Health'),
-  dream('dream', 'Dream'),
-  insight('insight', 'Insight');
+class NoteCategories {
+  const NoteCategories._();
 
-  const NoteCategory(this.id, this.label);
+  /// Offered to a journal that has not named anything yet, so the first note
+  /// is not faced with a blank field. They carry no special status — the
+  /// moment someone writes their own, these are just the ones nobody used.
+  static const suggestions = ['personal', 'health', 'dream', 'insight'];
 
-  /// Stored value. Kept stable — it is written into the database.
-  final String id;
+  /// How a category reads on screen. Stored lowercase and shown capitalised,
+  /// so "Work" and "work" are the same category rather than two.
+  static String label(String category) => category.isEmpty
+      ? ''
+      : category[0].toUpperCase() + category.substring(1);
 
-  /// How it is shown.
-  final String label;
-
-  static NoteCategory? fromId(String? id) {
-    if (id == null || id.isEmpty) return null;
-    for (final category in values) {
-      if (category.id == id) return category;
-    }
-    // An unknown category means data written by a newer version. Showing the
-    // note uncategorised is better than hiding it.
-    return null;
-  }
+  /// What gets stored. Trimmed and lowercased, because a category that
+  /// differs from another only by a capital letter is a filter that quietly
+  /// splits a day in two.
+  static String store(String typed) => typed.trim().toLowerCase();
 }
