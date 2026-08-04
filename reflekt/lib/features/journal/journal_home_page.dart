@@ -12,6 +12,7 @@ import '../ai/openrouter_ai.dart';
 import '../memory/journal_embedder.dart';
 import '../settings/ai_settings.dart';
 import '../settings/model_catalogue.dart';
+import '../settings/spend.dart';
 import '../settings/settings_page.dart';
 import '../chat/day_chat.dart';
 import 'search_page.dart';
@@ -342,6 +343,11 @@ class _JournalHomePageState extends State<JournalHomePage> {
                         // taps, so the notes surface has to be told to re-read
                         // rather than being written to twice.
                         onJournalChanged: () => _revision++,
+                        onSpend: (cost, tokens) => Spend.record(
+                          widget.session.database,
+                          cost: cost,
+                          tokens: tokens,
+                        ),
                       );
                     },
                   );

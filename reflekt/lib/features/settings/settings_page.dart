@@ -4,6 +4,7 @@ import '../../db/journal_database.dart';
 import '../lock/change_password_page.dart';
 import 'ai_settings.dart';
 import 'model_catalogue.dart';
+import 'spend.dart';
 import 'prompt_page.dart';
 
 /// Keys the specs drive. Keep these stable — renaming one breaks a recording.
@@ -14,6 +15,7 @@ class SettingsKeys {
   static const editPrompt = Key('settings_edit_prompt');
   static const changePassword = Key('settings_change_password');
   static const models = Key('settings_models');
+  static const spent = Key('settings_spent');
   static const loadingModels = Key('settings_loading_models');
 
   /// One per model, so a spec can name the one it means.
@@ -64,6 +66,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   bool _loading = true;
   bool _canSave = false;
+  Spend _spend = Spend.none;
 
   @override
   void initState() {
@@ -84,8 +87,10 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _load() async {
     final saved = await widget.database.setting(openRouterKeySetting);
     final model = await widget.database.setting(AiSettings.modelSetting);
+    final spend = await Spend.read(widget.database);
     if (!mounted) return;
     setState(() {
+      _spend = spend;
       _savedKey = saved;
       _model = model ?? AiSettings.defaultModel;
       _loading = false;
@@ -151,6 +156,15 @@ class _SettingsPageState extends State<SettingsPage> {
                       title: const Text('AI is ready'),
                       subtitle: Text(maskApiKey(_savedKey!)),
                     ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Your own credit, spent on your own questions. Shown here
+                  // rather than in the conversation: a journal that prices
+                  // each thought is a journal you think less in.
+                  Text(
+                    key: SettingsKeys.spent,
+                    _spend.inWords,
+                    style: theme.textTheme.bodySmall,
                   ),
                   const SizedBox(height: 16),
                 ],

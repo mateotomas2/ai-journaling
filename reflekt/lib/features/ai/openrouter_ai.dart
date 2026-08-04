@@ -154,6 +154,9 @@ class OpenRouterAi implements JournalAi {
       ..body = jsonEncode({
         'model': model,
         'stream': true,
+        // Asked for explicitly, or the final frame carries no figures at all
+        // and a conversation's cost is unknowable from inside the app.
+        'usage': {'include': true},
         'messages': conversation,
         // Omitted rather than sent empty: some providers reject `tools: []`.
         if (tools.isNotEmpty)
@@ -214,6 +217,9 @@ class OpenRouterAi implements JournalAi {
             complete = true;
             break;
           }
+
+          final spent = _spendOf(payload);
+          if (spent != null) yield spent;
 
           final delta = _textOf(payload);
           if (delta != null && delta.isNotEmpty) {
@@ -282,6 +288,29 @@ class OpenRouterAi implements JournalAi {
       }
     } catch (_) {
       // A frame that does not parse carries nothing worth having.
+    }
+  }
+
+  /// What one `data:` payload says a request cost, if it says anything.
+  ///
+  /// The usage frame arrives at the end and carries `choices: []`, so it must
+  /// not be read as the model having said nothing.
+  static AiSpent? _spendOf(String payload) {
+    try {
+      final body = jsonDecode(payload) as Map<String, dynamic>;
+      final usage = body['usage'];
+      if (usage is! Map<String, dynamic>) return null;
+
+      final cost = usage['cost'];
+      if (cost is! num) return null;
+
+      final tokens = usage['total_tokens'];
+      return AiSpent(
+        cost: cost.toDouble(),
+        tokens: tokens is num ? tokens.toInt() : 0,
+      );
+    } catch (_) {
+      return null;
     }
   }
 

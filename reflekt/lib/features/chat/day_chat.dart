@@ -36,6 +36,7 @@ class DayChat extends StatefulWidget {
     this.clock = systemClock,
     this.onRemember,
     this.onJournalChanged,
+    this.onSpend,
   });
 
   final JournalDatabase database;
@@ -55,6 +56,9 @@ class DayChat extends StatefulWidget {
   /// Told when the assistant changed the journal, so the day being displayed
   /// can catch up with what is now in it.
   final VoidCallback? onJournalChanged;
+
+  /// Told what a request cost, each time one is billed.
+  final Future<void> Function(double cost, int tokens)? onSpend;
 
   @override
   State<DayChat> createState() => _DayChatState();
@@ -226,6 +230,11 @@ class _DayChatState extends State<DayChat> {
             if (_changesTheJournal.contains(tool)) {
               widget.onJournalChanged?.call();
             }
+          case AiSpent(:final cost, :final tokens):
+            // Recorded as it happens rather than at the end, so an answer that
+            // fails part-way still accounts for what it already spent — the
+            // money is gone either way.
+            await widget.onSpend?.call(cost, tokens);
           case AiFinished(answer: final finished):
             answer = finished;
         }
