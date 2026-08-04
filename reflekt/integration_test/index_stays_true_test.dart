@@ -3,7 +3,7 @@ import 'package:reflekt/app.dart';
 import 'package:reflekt/features/journal/journal_home_page.dart';
 import 'package:reflekt/features/journal/note_composer_page.dart';
 import 'package:reflekt/features/lock/set_password_page.dart';
-import 'package:reflekt/features/memory/meaning_search_page.dart';
+import 'package:reflekt/features/journal/search_page.dart';
 
 import '_spec.dart';
 
@@ -24,10 +24,12 @@ void main() {
   const aboutRunning = 'Went for a long run before work.';
 
   Future<void> searchFor(Spec spec, String query) async {
-    await spec.tap(find.byKey(JournalHomeKeys.findByMeaning));
-    await spec.eventually(find.byKey(MeaningSearchKeys.field));
-    await spec.type(find.byKey(MeaningSearchKeys.field), query);
-    await spec.tap(find.byKey(MeaningSearchKeys.submit));
+    await spec.tap(find.byKey(JournalHomeKeys.search));
+        await spec.eventually(find.byKey(SearchKeys.field));
+        await spec.tap(find.byKey(SearchKeys.byMeaning));
+    await spec.eventually(find.byKey(SearchKeys.field));
+    await spec.type(find.byKey(SearchKeys.field), query);
+    await spec.tap(find.byKey(SearchKeys.submit));
   }
 
   runSpec(
@@ -63,11 +65,11 @@ void main() {
 
       await spec.when('the search is repeated for what it used to say',
           () async {
-        await spec.tap(find.byKey(MeaningSearchKeys.field));
-        await spec.type(find.byKey(MeaningSearchKeys.field), 'bread',
+        await spec.tap(find.byKey(SearchKeys.field));
+        await spec.type(find.byKey(SearchKeys.field), 'bread',
             clear: true);
-        await spec.tap(find.byKey(MeaningSearchKeys.submit));
-        await spec.eventually(find.byKey(MeaningSearchKeys.results));
+        await spec.tap(find.byKey(SearchKeys.submit));
+        await spec.eventually(find.byKey(SearchKeys.results));
       });
 
       await spec.then('the old wording no longer finds it', () async {

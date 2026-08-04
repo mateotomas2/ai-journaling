@@ -3,7 +3,7 @@ import 'package:reflekt/app.dart';
 import 'package:reflekt/features/journal/journal_home_page.dart';
 import 'package:reflekt/features/journal/note_composer_page.dart';
 import 'package:reflekt/features/lock/set_password_page.dart';
-import 'package:reflekt/features/memory/meaning_search_page.dart';
+import 'package:reflekt/features/journal/search_page.dart';
 
 import '_spec.dart';
 
@@ -54,13 +54,14 @@ void main() {
 
       await spec.when('the journal is asked about exercise', () async {
         // Shares no words with the note it should find.
-        await spec.tap(find.byKey(JournalHomeKeys.findByMeaning));
-        await spec.eventually(find.byKey(MeaningSearchKeys.field));
-        await spec.type(find.byKey(MeaningSearchKeys.field), 'exercise');
+        await spec.tap(find.byKey(JournalHomeKeys.search));
+        await spec.eventually(find.byKey(SearchKeys.field));
+        await spec.tap(find.byKey(SearchKeys.byMeaning));
+        await spec.type(find.byKey(SearchKeys.field), 'exercise');
         // Tapped rather than sending a submit action: typing goes straight to
         // EditableTextState, so there is no platform text-input connection for
         // an action to travel down.
-        await spec.tap(find.byKey(MeaningSearchKeys.submit));
+        await spec.tap(find.byKey(SearchKeys.submit));
       });
 
       await spec.then('the note about running comes back', () async {
