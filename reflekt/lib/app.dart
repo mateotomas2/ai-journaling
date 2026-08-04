@@ -8,6 +8,7 @@ import 'features/lock/journal_session.dart';
 import 'features/lock/forgotten_password_page.dart';
 import 'features/lock/set_password_page.dart';
 import 'features/lock/unlock_page.dart';
+import 'features/settings/model_catalogue.dart';
 import 'theme/journal_theme.dart';
 
 /// Root of the Reflekt app.
@@ -18,6 +19,7 @@ class ReflektApp extends StatefulWidget {
     this.storageDirectory,
     this.clock = systemClock,
     this.ai,
+    this.catalogue,
   });
 
   /// How long backgrounded before the journal re-locks (ADR-0006).
@@ -33,6 +35,10 @@ class ReflektApp extends StatefulWidget {
   /// Injected so specs answer from a script instead of calling OpenRouter.
   /// When null the app builds a real client from the saved key.
   final JournalAi? ai;
+
+  /// Injected so a spec offers a fixed set of models. Null fetches the real
+  /// catalogue.
+  final ModelCatalogue? catalogue;
 
   @override
   State<ReflektApp> createState() => _ReflektAppState();
@@ -108,6 +114,7 @@ class _ReflektAppState extends State<ReflektApp> {
               session: _session,
               clock: widget.clock,
               ai: widget.ai,
+              catalogue: widget.catalogue,
             ),
         },
       ),

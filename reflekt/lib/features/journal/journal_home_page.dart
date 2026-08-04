@@ -11,6 +11,7 @@ import '../ai/journal_ai.dart';
 import '../ai/openrouter_ai.dart';
 import '../memory/journal_embedder.dart';
 import '../settings/ai_settings.dart';
+import '../settings/model_catalogue.dart';
 import '../settings/settings_page.dart';
 import '../chat/day_chat.dart';
 import 'search_page.dart';
@@ -50,11 +51,15 @@ class JournalHomePage extends StatefulWidget {
     required this.session,
     this.clock = systemClock,
     this.ai,
+    this.catalogue,
   });
 
   final JournalSession session;
   final Clock clock;
   final JournalAi? ai;
+
+  /// Passed through to Settings. Null there means the real catalogue.
+  final ModelCatalogue? catalogue;
 
   @override
   State<JournalHomePage> createState() => _JournalHomePageState();
@@ -277,6 +282,7 @@ class _JournalHomePageState extends State<JournalHomePage> {
               MaterialPageRoute(
                 builder: (_) => SettingsPage(
                   database: widget.session.database,
+                  catalogue: widget.catalogue ?? const _LiveCatalogue(),
                   onChangePassword: (current, replacement) =>
                       widget.session.changePassword(
                     current: current,
@@ -656,4 +662,14 @@ class _NoteList extends StatelessWidget {
       },
     );
   }
+}
+
+
+/// The real catalogue. Named here so `JournalHomePage` can pass one along
+/// without importing OpenRouter's client into the journal itself.
+class _LiveCatalogue implements ModelCatalogue {
+  const _LiveCatalogue();
+
+  @override
+  Future<List<AiModel>> models() => OpenRouterCatalogue().models();
 }
