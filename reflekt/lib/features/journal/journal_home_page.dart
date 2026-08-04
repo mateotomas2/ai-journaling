@@ -22,6 +22,7 @@ import 'written_text.dart';
 /// Keys the specs drive. Keep these stable — renaming one breaks a recording.
 class JournalHomeKeys {
   static const emptyState = Key('journal_empty_state');
+  static const firstRun = Key('journal_first_run');
   static const addNote = Key('journal_add_note');
   static const noteList = Key('journal_note_list');
   static const dayPager = Key('journal_day_pager');
@@ -89,11 +90,16 @@ class _JournalHomePageState extends State<JournalHomePage> {
   /// about how you are reading the journal, not about which day.
   _DayView _view = _DayView.notes;
 
+  /// Whether this journal has ever held anything. Only a journal with nothing
+  /// in it gets told what it is.
+  bool _untouched = false;
+
   @override
   void initState() {
     super.initState();
     _today = _dateOnly(widget.clock());
     _restoreView();
+    _checkIfUntouched();
   }
 
   /// Remembers which surface was last used. Someone who journals by writing
@@ -105,6 +111,11 @@ class _JournalHomePageState extends State<JournalHomePage> {
     setState(() => _view = saved == _DayView.chat.name
         ? _DayView.chat
         : _DayView.notes);
+  }
+
+  Future<void> _checkIfUntouched() async {
+    final untouched = await widget.session.database.isUntouched();
+    if (mounted) setState(() => _untouched = untouched);
   }
 
   void _show(_DayView view) {
@@ -187,6 +198,7 @@ class _JournalHomePageState extends State<JournalHomePage> {
     await _remember(IndexedKind.note, id, result.text);
     if (!mounted) return;
     _goToDay(_dateOnly(now));
+    _checkIfUntouched();
   }
 
   /// Records what a note means so it can be found later.
@@ -384,6 +396,7 @@ class _JournalHomePageState extends State<JournalHomePage> {
                   database: widget.session.database,
                   day: day,
                   isToday: page == 0,
+                  untouched: _untouched,
                   onOpen: _openNote,
                 );
               },
@@ -518,12 +531,16 @@ class _DayPage extends StatefulWidget {
     required this.database,
     required this.day,
     required this.isToday,
+    required this.untouched,
     required this.onOpen,
   });
 
   final JournalDatabase database;
   final DateTime day;
   final bool isToday;
+
+  /// Whether the journal as a whole has never held anything.
+  final bool untouched;
   final void Function(Note note) onOpen;
 
   @override
@@ -545,7 +562,12 @@ class _DayPageState extends State<_DayPage> {
           return const Center(child: CircularProgressIndicator());
         }
         final all = snapshot.data!;
-        if (all.isEmpty) return _EmptyState(isToday: widget.isToday);
+        if (all.isEmpty) {
+          return _EmptyState(
+            isToday: widget.isToday,
+            untouched: widget.untouched,
+          );
+        }
 
         final notes = _filter == null
             ? all
@@ -596,9 +618,10 @@ class _DayPageState extends State<_DayPage> {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.isToday});
+  const _EmptyState({required this.isToday, this.untouched = false});
 
   final bool isToday;
+  final bool untouched;
 
   @override
   Widget build(BuildContext context) {
@@ -607,7 +630,7 @@ class _EmptyState extends StatelessWidget {
     return Center(
       key: JournalHomeKeys.emptyState,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 48),
+        padding: const EdgeInsets.symmetric(horizontal: 40),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -619,14 +642,66 @@ class _EmptyState extends StatelessWidget {
               style: theme.textTheme.bodyLarge
                   ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Swipe right for earlier days.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall,
-            ),
+            if (untouched) ...[
+              const SizedBox(height: 28),
+              // Said once, to a journal with nothing in it, and gone the
+              // moment there is. Not a modal: something you must dismiss
+              // before you can write is a strange greeting from an app whose
+              // whole claim is that writing is frictionless — and it arrives
+              // before any of this means anything.
+              const _WhatThisIs(
+                Icons.edit_outlined,
+                'Write a note, or talk to the day. Both go into the same '
+                'day, and the two chips above switch between them.',
+              ),
+              const _WhatThisIs(
+                Icons.swipe_right_outlined,
+                'Swipe right for earlier days, or touch the date to go '
+                'further back.',
+              ),
+              const _WhatThisIs(
+                Icons.auto_awesome_outlined,
+                'The assistant can read your journal and write notes in it — '
+                'when you ask it to, and not otherwise.',
+              ),
+            ] else ...[
+              const SizedBox(height: 8),
+              Text(
+                'Swipe right for earlier days.',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodySmall,
+              ),
+            ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// One thing worth knowing before anything has been written.
+class _WhatThisIs extends StatelessWidget {
+  const _WhatThisIs(this.icon, this.said);
+
+  final IconData icon;
+  final String said;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      key: JournalHomeKeys.firstRun,
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: theme.colorScheme.onSurfaceVariant),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(said, style: theme.textTheme.bodySmall),
+          ),
+        ],
       ),
     );
   }
