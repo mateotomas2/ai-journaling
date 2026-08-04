@@ -3,6 +3,7 @@ import 'package:reflekt/app.dart';
 import 'package:reflekt/features/journal/journal_home_page.dart';
 import 'package:reflekt/features/journal/note_composer_page.dart';
 import 'package:reflekt/features/lock/set_password_page.dart';
+import 'package:reflekt/features/journal/which_day_sheet.dart';
 import 'package:reflekt/features/lock/unlock_page.dart';
 
 import '_spec.dart';
@@ -23,7 +24,8 @@ import '_spec.dart';
 /// Deliberately out of scope, so their absence is not mistaken for a gap:
 ///   * stepping day by day, which `read_earlier_days_test.dart` covers
 ///   * choosing a day in the future — a day that has not happened cannot hold
-///     anything, so the picker does not offer one
+///     anything, so the calendar does not offer one
+///   * the calendar itself, which is one tap further in and is Flutter's
 ///   * writing onto the day you land on; notes are written on the day you write
 ///     them
 void main() {
@@ -73,12 +75,17 @@ void main() {
       });
 
       await spec.then('the journal asks which day was meant', () async {
-        await spec.eventually(find.text('OK'));
+        await spec.eventually(find.byKey(WhichDayKeys.sheet));
       });
 
-      await spec.when('the 1st is chosen', () async {
-        await spec.tap(find.text('1'));
-        await spec.tap(find.text('OK'));
+      await spec.and('it offers the day already written on', () async {
+        // Recognising a day is how you find the recent past. The calendar is
+        // for the date you can name.
+        expect(find.byKey(WhichDayKeys.dayOf('2026-08-01')), findsOneWidget);
+      });
+
+      await spec.when('that day is chosen', () async {
+        await spec.tap(find.byKey(WhichDayKeys.dayOf('2026-08-01')));
       });
 
       await spec.then('that day is open, with its note on it', () async {

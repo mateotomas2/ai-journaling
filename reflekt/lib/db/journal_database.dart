@@ -332,6 +332,28 @@ class JournalDatabase extends _$JournalDatabase {
     return [for (final row in rows) row.data['category'] as String];
   }
 
+  /// The days that hold something, newest first, with how much is on each.
+  ///
+  /// Notes and messages together: a day spent talking is as much a day of the
+  /// journal as a day spent writing (see `../../CONTEXT.md`).
+  Future<List<(String, int)>> daysWithSomething() async {
+    final rows = await customSelect(
+      'SELECT day_id, SUM(n) AS held FROM ('
+      '  SELECT day_id, COUNT(*) AS n FROM notes WHERE deleted_at = 0 '
+      '  GROUP BY day_id'
+      '  UNION ALL'
+      '  SELECT day_id, COUNT(*) AS n FROM messages WHERE deleted_at = 0 '
+      '  GROUP BY day_id'
+      ') GROUP BY day_id ORDER BY day_id DESC',
+      readsFrom: {notes, messages},
+    ).get();
+
+    return [
+      for (final row in rows)
+        (row.data['day_id'] as String, (row.data['held'] as int?) ?? 0),
+    ];
+  }
+
   Future<String?> setting(String name) async {
     final row = await (select(settings)..where((s) => s.name.equals(name)))
         .getSingleOrNull();
