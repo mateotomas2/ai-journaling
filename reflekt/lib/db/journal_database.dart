@@ -295,6 +295,28 @@ class JournalDatabase extends _$JournalDatabase {
     return [for (final row in rows) row.readTable(messages)];
   }
 
+  /// Everything still standing, for an export. Tombstones are left out: a
+  /// deletion is meant to be final (ADR-0007), and writing erased rows into a
+  /// file someone might re-import would work against that.
+  Future<List<Note>> allLivingNotes() => (select(notes)
+        ..where((n) => n.deletedAt.equals(0))
+        ..orderBy([(n) => OrderingTerm.asc(n.createdAt)]))
+      .get();
+
+  Future<List<Message>> allLivingMessages() => (select(messages)
+        ..where((m) => m.deletedAt.equals(0))
+        ..orderBy([(m) => OrderingTerm.asc(m.createdAt)]))
+      .get();
+
+  Future<List<Setting>> allSettings() => select(settings).get();
+
+  /// Writes a note that may already exist, as an import does.
+  Future<void> putNote(NotesCompanion note) =>
+      into(notes).insertOnConflictUpdate(note);
+
+  Future<void> putMessage(MessagesCompanion message) =>
+      into(messages).insertOnConflictUpdate(message);
+
   Future<String?> setting(String name) async {
     final row = await (select(settings)..where((s) => s.name.equals(name)))
         .getSingleOrNull();

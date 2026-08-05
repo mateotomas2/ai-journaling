@@ -279,7 +279,8 @@ class _JournalHomePageState extends State<JournalHomePage> {
             key: JournalHomeKeys.settings,
             icon: const Icon(Icons.settings_outlined),
             tooltip: 'Settings',
-            onPressed: () => Navigator.of(context).push(
+            onPressed: () => Navigator.of(context)
+                .push(
               MaterialPageRoute(
                 builder: (_) => SettingsPage(
                   database: widget.session.database,
@@ -291,7 +292,14 @@ class _JournalHomePageState extends State<JournalHomePage> {
                   ),
                 ),
               ),
-            ),
+            )
+                // Settings can change what the journal holds — importing a
+                // copy puts writing back. Without this the day on screen keeps
+                // showing what it read before, and someone who has just
+                // restored their journal is looking at an empty page.
+                .then((_) {
+              if (mounted) setState(() => _revision++);
+            }),
           ),
         ],
       ),

@@ -57,10 +57,12 @@ void main() {
       });
 
       await spec.when('a faster model is chosen', () async {
+        await spec.tap(find.byKey(SettingsKeys.chooseModel));
         // The list arrives over the network, so it is waited for rather than
         // assumed — before it lands there is nothing to choose from.
         await spec.eventually(find.byKey(SettingsKeys.modelOf(faster)));
         await spec.tap(find.byKey(SettingsKeys.modelOf(faster)));
+        await spec.tester.pageBack();
       });
 
       await spec.when('the instructions are rewritten', () async {

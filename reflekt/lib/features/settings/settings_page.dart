@@ -2,8 +2,15 @@ import 'package:flutter/material.dart';
 
 import '../../db/journal_database.dart';
 import '../lock/change_password_page.dart';
+import 'dart:io';
+
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+
 import 'ai_settings.dart';
+import 'journal_archive.dart';
 import 'model_catalogue.dart';
+import 'model_page.dart';
 import 'spend.dart';
 import 'prompt_page.dart';
 
@@ -16,6 +23,15 @@ class SettingsKeys {
   static const changePassword = Key('settings_change_password');
   static const models = Key('settings_models');
   static const spent = Key('settings_spent');
+  static const export = Key('settings_export');
+  static const import = Key('settings_import');
+  static const archiveSaid = Key('settings_archive_said');
+
+  /// The page itself. Settings holds several scrollables — the model list and
+  /// a text field carry their own — so anything reaching for something below
+  /// the fold has to say which one it means.
+  static const page = Key('settings_page');
+  static const chooseModel = Key('settings_choose_model');
   static const loadingModels = Key('settings_loading_models');
 
   /// One per model, so a spec can name the one it means.
@@ -68,6 +84,9 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _canSave = false;
   Spend _spend = Spend.none;
 
+  /// What happened to the last export or import, in a sentence.
+  String? _archiveSaid;
+
   @override
   void initState() {
     super.initState();
@@ -111,10 +130,52 @@ class _SettingsPageState extends State<SettingsPage> {
     return [AiModel(_model, _model), ..._models];
   }
 
-  Future<void> _chooseModel(String id) async {
-    await widget.database.putSetting(AiSettings.modelSetting, id);
-    if (!mounted) return;
-    setState(() => _model = id);
+  /// Where an exported journal is written.
+  ///
+  /// The app's own external directory: reachable with a file manager or a
+  /// cable, and needing no permission to write. A save dialog would be better
+  /// and needs a plugin; this gets the file out of the app, which is the part
+  /// that matters.
+  Future<String> get _archiveDirectory async {
+    final external = await getExternalStorageDirectory();
+    return (external ?? await getApplicationDocumentsDirectory()).path;
+  }
+
+  Future<void> _export() async {
+    try {
+      final file =
+          await JournalArchive.write(widget.database, await _archiveDirectory);
+      if (!mounted) return;
+      setState(() => _archiveSaid = 'Written to ${file.path}');
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _archiveSaid = 'Could not write the file: $error');
+    }
+  }
+
+  Future<void> _import() async {
+    try {
+      final file = File(
+        p.join(await _archiveDirectory, JournalArchive.fileName),
+      );
+      if (!await file.exists()) {
+        if (!mounted) return;
+        setState(() => _archiveSaid =
+            'No ${JournalArchive.fileName} found. Put one there and try again.');
+        return;
+      }
+
+      final restored = await JournalArchive.read(widget.database, file);
+      if (!mounted) return;
+      setState(() => _archiveSaid = 'Brought back $restored '
+          '${restored == 1 ? 'entry' : 'entries'}.');
+    } on ArchiveUnreadable catch (refused) {
+      if (!mounted) return;
+      setState(() => _archiveSaid = refused.message);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _archiveSaid = 'Could not read the file: $error');
+    }
   }
 
   Future<void> _save() async {
@@ -135,6 +196,7 @@ class _SettingsPageState extends State<SettingsPage> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
+              key: SettingsKeys.page,
               padding: const EdgeInsets.all(20),
               children: [
                 Text('OpenRouter', style: theme.textTheme.titleMedium),
@@ -190,44 +252,26 @@ class _SettingsPageState extends State<SettingsPage> {
                 Text('Which model answers', style: theme.textTheme.titleMedium),
                 const SizedBox(height: 4),
                 Text(
-                  'Only models that can use the journal are listed — reading a '
-                  'day, looking something up, writing a note. They differ in '
-                  'cost and in how they write.',
+                  _models.isEmpty
+                      ? 'Loading the list…'
+                      : (_choices.firstWhere((m) => m.id == _model).name),
                   style: theme.textTheme.bodySmall,
                 ),
                 const SizedBox(height: 8),
-                if (_models.isEmpty)
-                  const Padding(
-                    key: SettingsKeys.loadingModels,
-                    padding: EdgeInsets.symmetric(vertical: 12),
-                    child: SizedBox(
-                      height: 18,
-                      width: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  )
-                else
-                  SizedBox(
-                    // Tall enough to be a list you scroll rather than a page
-                    // that never ends. OpenRouter offers hundreds.
-                    height: 260,
-                    child: RadioGroup<String>(
-                      groupValue: _model,
-                      onChanged: (id) => id == null ? null : _chooseModel(id),
-                      child: ListView(
-                        key: SettingsKeys.models,
-                        children: [
-                          for (final model in _choices)
-                            RadioListTile<String>(
-                              key: SettingsKeys.modelOf(model.id),
-                              title: Text(model.name),
-                              value: model.id,
-                              contentPadding: EdgeInsets.zero,
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
+                OutlinedButton(
+                  key: SettingsKeys.chooseModel,
+                  onPressed: () => Navigator.of(context)
+                      .push(
+                        MaterialPageRoute(
+                          builder: (_) => ModelPage(
+                            database: widget.database,
+                            catalogue: widget.catalogue,
+                          ),
+                        ),
+                      )
+                      .then((_) => _load()),
+                  child: const Text('Choose a model'),
+                ),
 
                 const SizedBox(height: 24),
                 Text('How it is asked', style: theme.textTheme.titleMedium),
@@ -246,6 +290,48 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                   child: const Text('Edit instructions'),
                 ),
+
+                const SizedBox(height: 32),
+                Text('Your journal as a file', style: theme.textTheme.titleMedium),
+                const SizedBox(height: 4),
+                Text(
+                  // Said here rather than buried in a decision record. The
+                  // journal is encrypted right up until this button, and then
+                  // it is not (ADR-0011).
+                  'Writes everything you have written to a plain file you can '
+                  'read, keep, or open elsewhere. It is not encrypted — anyone '
+                  'who can reach the file can read your journal. Your API key '
+                  'is never included.',
+                  style: theme.textTheme.bodySmall,
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        key: SettingsKeys.export,
+                        onPressed: _export,
+                        child: const Text('Export'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton(
+                        key: SettingsKeys.import,
+                        onPressed: _import,
+                        child: const Text('Import'),
+                      ),
+                    ),
+                  ],
+                ),
+                if (_archiveSaid != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    key: SettingsKeys.archiveSaid,
+                    _archiveSaid!,
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
 
                 if (widget.onChangePassword != null) ...[
                   const SizedBox(height: 32),
