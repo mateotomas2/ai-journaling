@@ -16,6 +16,7 @@ import '../settings/spend.dart';
 import '../settings/settings_page.dart';
 import '../chat/day_chat.dart';
 import 'search_page.dart';
+import 'written_text.dart';
 
 /// Keys the specs drive. Keep these stable — renaming one breaks a recording.
 class JournalHomeKeys {
@@ -681,7 +682,7 @@ class _NoteList extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 6),
-                Text(note.content, style: theme.textTheme.bodyLarge),
+                WrittenText(note.content, style: theme.textTheme.bodyLarge),
               ],
             ),
           ),

@@ -7,6 +7,7 @@ import '../../core/clock.dart';
 import '../../core/day_id.dart';
 import '../../db/journal_database.dart';
 import '../ai/journal_ai.dart';
+import '../journal/written_text.dart';
 import '../ai/journal_tools.dart';
 
 /// Keys the specs drive. Keep these stable — renaming one breaks a recording.
@@ -351,7 +352,10 @@ class _Turn extends StatelessWidget {
     if (!mine) {
       return Padding(
         padding: const EdgeInsets.only(top: 12, bottom: 20, right: 8),
-        child: Text(text, style: theme.textTheme.bodyMedium),
+        // The assistant writes markdown whether or not anyone asked it to.
+        // Rendered, a list reads as a list; unrendered it is a paragraph of
+        // hyphens in the middle of someone's journal.
+        child: WrittenText(text, style: theme.textTheme.bodyMedium),
       );
     }
 
