@@ -7,7 +7,6 @@ import '../../db/journal_database.dart';
 import '../lock/journal_session.dart';
 import 'note_category.dart';
 import 'note_composer_page.dart';
-import '../ai/ask_page.dart';
 import '../ai/journal_ai.dart';
 import '../ai/openrouter_ai.dart';
 import '../memory/journal_embedder.dart';
@@ -28,7 +27,6 @@ class JournalHomeKeys {
   static const showChat = Key('journal_show_chat');
   static const search = Key('journal_search');
   static const settings = Key('journal_settings');
-  static const ask = Key('journal_ask');
   static const findByMeaning = Key('journal_find_by_meaning');
 
   /// One per category, so a spec can name the filter it means.
@@ -248,44 +246,6 @@ class _JournalHomePageState extends State<JournalHomePage> {
     );
   }
 
-  /// Builds the AI from the saved key unless one was injected. Sending a
-  /// question needs a key, so this is where the user finds out they have not
-  /// set one — at the moment it matters, rather than as a banner they learn to
-  /// ignore.
-  Future<void> _ask() async {
-    final database = widget.session.database;
-    var ai = widget.ai;
-
-    if (ai == null) {
-      final key = await database.setting(openRouterKeySetting);
-      if (!mounted) return;
-      if (key == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Add an OpenRouter key in Settings to ask questions.'),
-          ),
-        );
-        return;
-      }
-      // The saved choices, or the defaults. Read at the moment of asking so a
-      // change in settings takes effect without restarting.
-      final model = await database.setting(AiSettings.modelSetting);
-      final prompt = await database.setting(AiSettings.promptSetting);
-      ai = OpenRouterAi(
-        apiKey: key,
-        model: model ?? AiSettings.defaultModel,
-        systemPrompt: prompt,
-      );
-    }
-
-    if (!mounted) return;
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => AskPage(database: database, ai: ai!),
-      ),
-    );
-  }
-
   Future<void> _search() async {
     final day = await Navigator.of(context).push<DateTime>(
       MaterialPageRoute(
@@ -325,12 +285,6 @@ class _JournalHomePageState extends State<JournalHomePage> {
             icon: const Icon(Icons.travel_explore),
             tooltip: 'Find by meaning',
             onPressed: _findByMeaning,
-          ),
-          IconButton(
-            key: JournalHomeKeys.ask,
-            icon: const Icon(Icons.auto_awesome_outlined),
-            tooltip: 'Ask your journal',
-            onPressed: _ask,
           ),
           IconButton(
             key: JournalHomeKeys.settings,

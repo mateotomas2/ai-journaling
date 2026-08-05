@@ -8,8 +8,6 @@ import '../../core/day_id.dart';
 import '../../db/journal_database.dart';
 import '../ai/journal_ai.dart';
 import '../ai/journal_tools.dart';
-import '../memory/journal_embedder.dart';
-import '../memory/meaning_search.dart';
 
 /// Keys the specs drive. Keep these stable — renaming one breaks a recording.
 class ChatKeys {
@@ -182,22 +180,15 @@ class _DayChatState extends State<DayChat> {
     await _load();
 
     try {
-      // Only the entries the question is about. Sending the whole journal
-      // costs more the longer someone has kept one, and exposes years of
-      // writing to answer something about a week of it.
-      List<String> entries;
-      try {
-        final embedder = await JournalEmbedder.load();
-        entries =
-            await MeaningSearch(widget.database, embedder).contextFor(said);
-      } catch (error) {
-        debugPrint('CONTEXT_FALLBACK $error');
-        entries = await widget.database.allNoteContents();
-      }
-      if (entries.isEmpty) entries = await widget.database.allNoteContents();
-
-      Answer? answer;
-      final written = StringBuffer();
+      // The day on screen, and nothing else. Reaching other days is something
+      // the assistant does through search_journal_memory when it decides it
+      // needs to — rather than this guessing up front, paying for an embedding
+      // on every message and sending entries the question may have nothing to
+      // do with (ADR-0009).
+      final entries = [
+        for (final note in await widget.database.notesForDay(dayIdOf(widget.day)))
+          note.content,
+      ];
 
       // What the assistant may do, scoped to the day on screen — "read the
       // notes" means this day unless it says otherwise.
@@ -208,6 +199,9 @@ class _DayChatState extends State<DayChat> {
         remember: (id, content) async =>
             widget.onRemember?.call(IndexedKind.note, id, content),
       );
+
+      Answer? answer;
+      final written = StringBuffer();
 
       await for (final event in ai.ask(
         question: said,

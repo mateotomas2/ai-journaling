@@ -43,7 +43,10 @@ class OpenRouterAi implements JournalAi {
     List<Exchange> earlier = const [],
     List<JournalTool> tools = const [],
   }) async* {
-    if (entries.isEmpty) {
+    // With tools, an empty day is not an empty journal: the assistant can go
+    // and look. Without them there is genuinely nothing to answer from, and
+    // asking anyway would spend money to be told nothing.
+    if (entries.isEmpty && tools.isEmpty) {
       throw const JournalAiException(
         'There is nothing written yet to answer from.',
       );
