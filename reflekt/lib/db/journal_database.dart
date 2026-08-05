@@ -354,6 +354,22 @@ class JournalDatabase extends _$JournalDatabase {
     ];
   }
 
+  /// Whether anything has ever been put into this journal.
+  ///
+  /// Notes or conversation — either counts. Used to decide whether someone is
+  /// standing in front of a journal for the first time, which is the only
+  /// moment explaining it is welcome.
+  Future<bool> isUntouched() async {
+    final row = await customSelect(
+      'SELECT ('
+      '  (SELECT COUNT(*) FROM notes WHERE deleted_at = 0) +'
+      '  (SELECT COUNT(*) FROM messages WHERE deleted_at = 0)'
+      ') AS held',
+      readsFrom: {notes, messages},
+    ).getSingle();
+    return (row.data['held'] as int? ?? 0) == 0;
+  }
+
   Future<String?> setting(String name) async {
     final row = await (select(settings)..where((s) => s.name.equals(name)))
         .getSingleOrNull();
