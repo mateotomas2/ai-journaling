@@ -5,7 +5,7 @@ import 'package:reflekt/app.dart';
 import 'package:reflekt/features/chat/day_chat.dart';
 import 'package:reflekt/features/journal/journal_home_page.dart';
 import 'package:reflekt/features/lock/set_password_page.dart';
-import 'package:reflekt/features/memory/meaning_search_page.dart';
+import 'package:reflekt/features/journal/search_page.dart';
 
 import '_spec.dart';
 
@@ -55,10 +55,11 @@ void main() {
       });
 
       await spec.when('it is looked for by what it meant', () async {
-        await spec.tap(find.byKey(JournalHomeKeys.findByMeaning));
-        await spec.eventually(find.byKey(MeaningSearchKeys.field));
-        await spec.type(find.byKey(MeaningSearchKeys.field), halfRemembered);
-        await spec.tap(find.byKey(MeaningSearchKeys.submit));
+        await spec.tap(find.byKey(JournalHomeKeys.search));
+        await spec.eventually(find.byKey(SearchKeys.field));
+        await spec.tap(find.byKey(SearchKeys.byMeaning));
+        await spec.type(find.byKey(SearchKeys.field), halfRemembered);
+        await spec.tap(find.byKey(SearchKeys.submit));
       });
 
       await spec.then('it is found, though the words do not match', () async {

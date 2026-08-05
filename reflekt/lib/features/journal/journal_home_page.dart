@@ -10,7 +10,6 @@ import 'note_composer_page.dart';
 import '../ai/journal_ai.dart';
 import '../ai/openrouter_ai.dart';
 import '../memory/journal_embedder.dart';
-import '../memory/meaning_search_page.dart';
 import '../settings/ai_settings.dart';
 import '../settings/settings_page.dart';
 import '../chat/day_chat.dart';
@@ -27,7 +26,6 @@ class JournalHomeKeys {
   static const showChat = Key('journal_show_chat');
   static const search = Key('journal_search');
   static const settings = Key('journal_settings');
-  static const findByMeaning = Key('journal_find_by_meaning');
 
   /// One per category, so a spec can name the filter it means.
   static Key filterOf(String id) => Key('journal_filter_$id');
@@ -257,15 +255,6 @@ class _JournalHomePageState extends State<JournalHomePage> {
     if (day != null && mounted) _goToDay(day);
   }
 
-  Future<void> _findByMeaning() async {
-    final day = await Navigator.of(context).push<DateTime>(
-      MaterialPageRoute(
-        builder: (_) => MeaningSearchPage(database: widget.session.database),
-      ),
-    );
-    if (day != null && mounted) _goToDay(day);
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -279,12 +268,6 @@ class _JournalHomePageState extends State<JournalHomePage> {
             icon: const Icon(Icons.search),
             tooltip: 'Search your journal',
             onPressed: _search,
-          ),
-          IconButton(
-            key: JournalHomeKeys.findByMeaning,
-            icon: const Icon(Icons.travel_explore),
-            tooltip: 'Find by meaning',
-            onPressed: _findByMeaning,
           ),
           IconButton(
             key: JournalHomeKeys.settings,
