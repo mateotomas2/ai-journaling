@@ -3,6 +3,7 @@ import 'package:drift/drift.dart' show Value, Variable;
 import '../../core/clock.dart';
 import '../../core/day_id.dart';
 import '../../db/journal_database.dart';
+import '../journal/note_category.dart';
 import '../memory/journal_embedder.dart';
 import '../memory/meaning_search.dart';
 import 'journal_tool.dart';
@@ -161,8 +162,11 @@ class _WriteNote implements JournalTool {
           },
           'category': {
             'type': 'string',
-            'description': 'One of personal, health, dream, insight. Omit if '
-                'none of them fits.',
+            'description': 'What the note is about, in one lowercase word. '
+                'Reuse a category the journal already uses — call read_notes '
+                'if you do not know them. Omit it rather than inventing a new '
+                'one: a journal whose categories are all slightly different '
+                'words cannot be scanned.',
           },
         },
         'required': ['content'],
@@ -183,7 +187,9 @@ class _WriteNote implements JournalTool {
         id: Value(id),
         dayId: Value(dayIdOf(now)),
         content: Value(content),
-        category: Value((arguments['category'] as String? ?? '').trim()),
+        category: Value(
+          NoteCategories.store(arguments['category'] as String? ?? ''),
+        ),
         createdAt: Value(now.millisecondsSinceEpoch),
       ),
     );

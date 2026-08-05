@@ -317,6 +317,21 @@ class JournalDatabase extends _$JournalDatabase {
   Future<void> putMessage(MessagesCompanion message) =>
       into(messages).insertOnConflictUpdate(message);
 
+  /// Every category this journal actually uses, most-used first.
+  ///
+  /// Offered before a blank field, so reaching for a word already in the
+  /// journal is easier than coining a new one — which is the only thing
+  /// holding the vocabulary together now that it is free text (ADR-0012).
+  Future<List<String>> knownCategories() async {
+    final rows = await customSelect(
+      'SELECT category, COUNT(*) AS uses FROM notes '
+      "WHERE deleted_at = 0 AND category != '' "
+      'GROUP BY category ORDER BY uses DESC, category ASC',
+      readsFrom: {notes},
+    ).get();
+    return [for (final row in rows) row.data['category'] as String];
+  }
+
   Future<String?> setting(String name) async {
     final row = await (select(settings)..where((s) => s.name.equals(name)))
         .getSingleOrNull();

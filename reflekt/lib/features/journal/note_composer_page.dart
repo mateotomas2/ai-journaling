@@ -10,6 +10,9 @@ class NoteComposerKeys {
 
   /// One per category, so a spec can name the one it means.
   static Key categoryOf(String id) => Key('note_composer_category_$id');
+  static const addCategory = Key('note_composer_add_category');
+  static const newCategory = Key('note_composer_new_category');
+  static const saveCategory = Key('note_composer_save_category');
 }
 
 /// What the composer was closed with.
@@ -22,8 +25,8 @@ class NoteWritten extends ComposerResult {
   const NoteWritten(this.text, this.category);
   final String text;
 
-  /// Null when the writer did not pick one, which is allowed.
-  final NoteCategory? category;
+  /// Empty when the writer did not name one, which is allowed.
+  final String category;
 }
 
 /// Erase the note being edited (ADR-0007).
@@ -36,13 +39,19 @@ class NoteComposerPage extends StatefulWidget {
   const NoteComposerPage({
     super.key,
     this.existingText,
-    this.existingCategory,
+    this.existingCategory = '',
+    this.known = const [],
   });
 
   /// Null when writing something new. Deleting is only offered for a note that
   /// already exists — there is nothing to erase otherwise.
   final String? existingText;
-  final NoteCategory? existingCategory;
+  final String existingCategory;
+
+  /// What this journal already calls things, most-used first. Offered before
+  /// the blank field so reaching for an existing word is the easy path
+  /// (ADR-0012).
+  final List<String> known;
 
   @override
   State<NoteComposerPage> createState() => _NoteComposerPageState();
@@ -52,7 +61,7 @@ class _NoteComposerPageState extends State<NoteComposerPage> {
   late final TextEditingController _controller =
       TextEditingController(text: widget.existingText ?? '');
   late bool _canSave = _controller.text.trim().isNotEmpty;
-  late NoteCategory? _category = widget.existingCategory;
+  late String _category = widget.existingCategory;
 
   bool get _isExisting => widget.existingText != null;
 
@@ -75,6 +84,54 @@ class _NoteComposerPageState extends State<NoteComposerPage> {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
     Navigator.of(context).pop(NoteWritten(text, _category));
+  }
+
+  /// What to offer: the journal's own words first, then the starting few for a
+  /// journal that has none, plus whatever this note already says.
+  List<String> get _offered {
+    final offered = [
+      ...widget.known,
+      if (widget.known.isEmpty) ...NoteCategories.suggestions,
+    ];
+    if (_category.isNotEmpty && !offered.contains(_category)) {
+      offered.insert(0, _category);
+    }
+    return offered;
+  }
+
+  /// Somewhere to type a category this journal has never used.
+  Future<void> _nameOne() async {
+    final typed = TextEditingController();
+    final named = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('What is this about?'),
+        content: TextField(
+          key: NoteComposerKeys.newCategory,
+          controller: typed,
+          autofocus: true,
+          textCapitalization: TextCapitalization.none,
+          decoration: const InputDecoration(hintText: 'work, mum, running…'),
+          onSubmitted: (value) => Navigator.of(context).pop(value),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            key: NoteComposerKeys.saveCategory,
+            onPressed: () => Navigator.of(context).pop(typed.text),
+            child: const Text('Use it'),
+          ),
+        ],
+      ),
+    );
+    typed.dispose();
+
+    final category = NoteCategories.store(named ?? '');
+    if (category.isEmpty || !mounted) return;
+    setState(() => _category = category);
   }
 
   @override
@@ -106,17 +163,23 @@ class _NoteComposerPageState extends State<NoteComposerPage> {
             child: Wrap(
               spacing: 8,
               children: [
-                for (final category in NoteCategory.values)
+                for (final category in _offered)
                   ChoiceChip(
-                    key: NoteComposerKeys.categoryOf(category.id),
-                    label: Text(category.label),
+                    key: NoteComposerKeys.categoryOf(category),
+                    label: Text(NoteCategories.label(category)),
                     selected: _category == category,
                     // Tapping the chosen one again clears it: picking a
                     // category should never be a one-way door.
                     onSelected: (selected) => setState(
-                      () => _category = selected ? category : null,
+                      () => _category = selected ? category : '',
                     ),
                   ),
+                ActionChip(
+                  key: NoteComposerKeys.addCategory,
+                  avatar: const Icon(Icons.add, size: 18),
+                  label: const Text('Something else'),
+                  onPressed: _nameOne,
+                ),
               ],
             ),
           ),

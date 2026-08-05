@@ -154,8 +154,15 @@ class _JournalHomePageState extends State<JournalHomePage> {
   }
 
   Future<void> _composeNote() async {
+    // Read before the composer opens, so it can offer this journal's own
+    // words rather than a blank field (ADR-0012).
+    final known = await widget.session.database.knownCategories();
+    if (!mounted) return;
+
     final result = await Navigator.of(context).push<ComposerResult>(
-      MaterialPageRoute(builder: (_) => const NoteComposerPage()),
+      MaterialPageRoute(
+        builder: (_) => NoteComposerPage(known: known),
+      ),
     );
     if (result is! NoteWritten) return;
 
@@ -168,7 +175,7 @@ class _JournalHomePageState extends State<JournalHomePage> {
         id: Value(id),
         dayId: Value(dayIdOf(now)),
         content: Value(result.text),
-        category: Value(result.category?.id ?? ''),
+        category: Value(result.category),
         createdAt: Value(now.millisecondsSinceEpoch),
       ),
     );
@@ -202,11 +209,15 @@ class _JournalHomePageState extends State<JournalHomePage> {
   }
 
   Future<void> _openNote(Note note) async {
+    final known = await widget.session.database.knownCategories();
+    if (!mounted) return;
+
     final result = await Navigator.of(context).push<ComposerResult>(
       MaterialPageRoute(
         builder: (_) => NoteComposerPage(
           existingText: note.content,
-          existingCategory: NoteCategory.fromId(note.category),
+          existingCategory: note.category,
+          known: known,
         ),
       ),
     );
@@ -215,7 +226,7 @@ class _JournalHomePageState extends State<JournalHomePage> {
     final database = widget.session.database;
     switch (result) {
       case NoteWritten(:final text, :final category):
-        await database.rewordNote(note.id, text, category: category?.id ?? '');
+        await database.rewordNote(note.id, text, category: category);
         // Re-embedded, or the index keeps finding this note by what it used to
         // say — with the new text displayed, which looks like a working search
         // returning the wrong thing.
@@ -518,7 +529,7 @@ class _DayPageState extends State<_DayPage> {
   late final Future<List<Note>> _notes =
       widget.database.notesForDay(dayIdOf(widget.day));
 
-  NoteCategory? _filter;
+  String? _filter;
 
   @override
   Widget build(BuildContext context) {
@@ -533,14 +544,13 @@ class _DayPageState extends State<_DayPage> {
 
         final notes = _filter == null
             ? all
-            : all.where((n) => n.category == _filter!.id).toList();
+            : all.where((n) => n.category == _filter).toList();
 
         // Only what this day actually holds — a chip with nothing behind it is
         // a dead end.
         final present = {
           for (final n in all)
-            if (NoteCategory.fromId(n.category) != null)
-              NoteCategory.fromId(n.category)!,
+            if (n.category.isNotEmpty) n.category,
         };
 
         return Column(
@@ -557,8 +567,8 @@ class _DayPageState extends State<_DayPage> {
                   children: [
                     for (final category in present)
                       FilterChip(
-                        key: JournalHomeKeys.filterOf(category.id),
-                        label: Text(category.label),
+                        key: JournalHomeKeys.filterOf(category),
+                        label: Text(NoteCategories.label(category)),
                         selected: _filter == category,
                         onSelected: (selected) => setState(
                           () => _filter = selected ? category : null,
@@ -638,7 +648,7 @@ class _NoteList extends StatelessWidget {
       separatorBuilder: (_, _) => const Divider(indent: 20, endIndent: 20),
       itemBuilder: (context, index) {
         final note = notes[index];
-        final category = NoteCategory.fromId(note.category);
+        final category = note.category;
         final written = DateTime.fromMillisecondsSinceEpoch(note.createdAt);
 
         return InkWell(
@@ -659,11 +669,14 @@ class _NoteList extends StatelessWidget {
                 Row(
                   children: [
                     Text(formatTimeLabel(written), style: theme.textTheme.labelSmall),
-                    if (category != null) ...[
+                    if (category.isNotEmpty) ...[
                       Text('   ·   ', style: theme.textTheme.labelSmall),
                       // Written the way the filter chip writes it: two casings
                       // for one category on one screen is not a style.
-                      Text(category.label, style: theme.textTheme.labelSmall),
+                      Text(
+                        NoteCategories.label(category),
+                        style: theme.textTheme.labelSmall,
+                      ),
                     ],
                   ],
                 ),
