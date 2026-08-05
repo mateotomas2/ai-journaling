@@ -16,6 +16,7 @@ import '../settings/spend.dart';
 import '../settings/settings_page.dart';
 import '../chat/day_chat.dart';
 import 'search_page.dart';
+import 'which_day_sheet.dart';
 import 'written_text.dart';
 
 /// Keys the specs drive. Keep these stable — renaming one breaks a recording.
@@ -141,17 +142,20 @@ class _JournalHomePageState extends State<JournalHomePage> {
     if (_pages.hasClients) _pages.jumpToPage(daysAgo);
   }
 
-  /// Jumping to an arbitrary date, for when the day you want is further back
-  /// than anyone wants to swipe. Also what makes the swipe discoverable: the
-  /// date is visibly a control, so the header is worth touching.
+  /// Getting to another day, for when the one you want is further back than
+  /// anyone wants to swipe. Also what makes the swipe discoverable: the date is
+  /// visibly a control, so the header is worth touching.
+  ///
+  /// The days you have written on and the calendar live in the same sheet.
+  /// Recognising a day is how you find the recent past; naming a date is how
+  /// you find last March.
   Future<void> _pickDay() async {
-    final chosen = await showDatePicker(
+    final chosen = await chooseDay(
       context: context,
-      initialDate: _day,
-      firstDate: DateTime(2020),
-      lastDate: _dateOnly(widget.clock()),
+      database: widget.session.database,
+      today: _dateOnly(widget.clock()),
     );
-    if (chosen != null) _goToDay(chosen);
+    if (chosen != null && mounted) _goToDay(chosen);
   }
 
   Future<void> _composeNote() async {
