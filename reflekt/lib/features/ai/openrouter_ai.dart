@@ -80,7 +80,7 @@ class OpenRouterAi implements JournalAi {
         if (reply.isEmpty) {
           throw const JournalAiException('The AI replied with nothing.');
         }
-        yield AiFinished(_readAnswer(reply));
+        yield AiFinished(Answer(reply));
         return;
       }
 
@@ -303,31 +303,6 @@ class OpenRouterAi implements JournalAi {
     }
   }
 
-  /// Pulls a requested note out of the reply.
-  ///
-  /// The model is told to mark one with a fenced `note` block when — and only
-  /// when — it was asked to save something.
-  ///
-  /// The marker is on its way out: ADR-0009 replaces it with real tool calls,
-  /// which can carry a result back into the conversation where a marker cannot.
-  /// It survives here so streaming lands on its own, rather than taking a
-  /// working feature away in the same change.
-  ///
-  /// A reply with no marker writes nothing. That is the default and it has to
-  /// be: silence must never be read as consent to record something.
-  static Answer _readAnswer(String reply) {
-    final match = RegExp(r'```note\s*\n([\s\S]*?)```').firstMatch(reply);
-    if (match == null) return Answer(reply);
-
-    final note = match.group(1)?.trim();
-    if (note == null || note.isEmpty) return Answer(reply);
-
-    final withoutBlock = reply.replaceRange(match.start, match.end, '').trim();
-    return Answer(
-      withoutBlock.isEmpty ? 'Saved that as a note.' : withoutBlock,
-      noteToWrite: note,
-    );
-  }
 }
 
 /// Everything one request streamed back.

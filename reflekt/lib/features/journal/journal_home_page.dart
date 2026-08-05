@@ -277,34 +277,9 @@ class _JournalHomePageState extends State<JournalHomePage> {
     if (!mounted) return;
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => AskPage(
-          database: database,
-          ai: ai!,
-          onWriteNote: _writeNoteFromAssistant,
-        ),
+        builder: (_) => AskPage(database: database, ai: ai!),
       ),
     );
-  }
-
-  /// Saves something the assistant was asked to write down.
-  ///
-  /// Goes through the same path as a note someone types: onto today, embedded
-  /// like any other, editable and deletable afterwards. A note the assistant
-  /// wrote is not a special kind of note — treating it as one would make it
-  /// harder to correct, which is exactly backwards.
-  Future<void> _writeNoteFromAssistant(String text) async {
-    final now = widget.clock();
-    final id = now.microsecondsSinceEpoch.toString();
-    await widget.session.database.addNote(
-      NotesCompanion(
-        id: Value(id),
-        dayId: Value(dayIdOf(now)),
-        content: Value(text),
-        createdAt: Value(now.millisecondsSinceEpoch),
-      ),
-    );
-    await _remember(id, text);
-    if (mounted) setState(() => _revision++);
   }
 
   Future<void> _search() async {
@@ -415,7 +390,11 @@ class _JournalHomePageState extends State<JournalHomePage> {
                         day: day,
                         ai: snapshot.data,
                         clock: widget.clock,
-                        onWriteNote: _writeNoteFromAssistant,
+                        onRemember: _remember,
+                        // The assistant writes through the same tools a person
+                        // taps, so the notes surface has to be told to re-read
+                        // rather than being written to twice.
+                        onJournalChanged: () => _revision++,
                       );
                     },
                   );

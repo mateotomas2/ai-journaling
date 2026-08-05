@@ -8,6 +8,10 @@ import 'package:reflekt/features/ai/openrouter_ai.dart';
 
 /// The OpenRouter client, against a stubbed transport.
 ///
+/// Note-writing is not here any more: a reply is only ever words, and anything
+/// that reaches the journal goes through a tool (ADR-0009). The round trip that
+/// replaced it lives in `tool_loop_test.dart`.
+///
 /// The failure paths matter more than the happy one here. An AI call fails in
 /// ordinary ways — no signal, a key that has been revoked, a provider having a
 /// bad afternoon — and each needs to become a sentence someone can act on
@@ -85,30 +89,6 @@ void main() {
       ask(aiThatReturns(http.Response('boom', 503))),
       throwsA(isA<JournalAiException>()),
     );
-  });
-
-  test('writes nothing unless a note was asked for', () async {
-    // The default, and the one that must never drift: answering a question is
-    // not a reason to record anything.
-    final answer = await ask(aiThatReturns(reply('Running did.')));
-    expect(answer.noteToWrite, isNull);
-  });
-
-  test('saves the marked text when a note was asked for', () async {
-    final answer = await ask(aiThatReturns(
-      reply('Done.\n\n```note\nRunning lifts my mood.\n```'),
-    ));
-    expect(answer.noteToWrite, 'Running lifts my mood.');
-    expect(answer.reply, 'Done.');
-    // The marker itself must not be shown to the reader.
-    expect(answer.reply, isNot(contains('```')));
-  });
-
-  test('an empty marker writes nothing', () async {
-    // A model emitting the block with nothing in it should not create a blank
-    // note, which would look like a bug in the journal rather than in the AI.
-    final answer = await ask(aiThatReturns(reply('Sure.\n\n```note\n\n```')));
-    expect(answer.noteToWrite, isNull);
   });
 
   test('does not present an empty reply as an answer', () async {

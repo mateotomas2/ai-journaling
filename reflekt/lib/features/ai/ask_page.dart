@@ -20,15 +20,10 @@ class AskPage extends StatefulWidget {
     super.key,
     required this.database,
     required this.ai,
-    this.onWriteNote,
   });
 
   final JournalDatabase database;
   final JournalAi ai;
-
-  /// Called when the assistant was asked to save something. Null means the
-  /// caller does not allow writes from here.
-  final Future<void> Function(String text)? onWriteNote;
 
   @override
   State<AskPage> createState() => _AskPageState();
@@ -138,12 +133,6 @@ class _AskPageState extends State<AskPage> {
       if (answer == null) {
         throw const JournalAiException('The answer stopped part-way.');
       }
-
-      // Saved only when it was asked for. The write happens here rather than
-      // inside the client so that the journal, not the model, owns what goes
-      // into it.
-      final toWrite = answer.noteToWrite;
-      if (toWrite != null) await widget.onWriteNote?.call(toWrite);
 
       if (!mounted) return;
       setState(() {

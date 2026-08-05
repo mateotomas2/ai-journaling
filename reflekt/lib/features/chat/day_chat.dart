@@ -5,6 +5,7 @@ import '../../core/clock.dart';
 import '../../core/day_id.dart';
 import '../../db/journal_database.dart';
 import '../ai/journal_ai.dart';
+import '../ai/journal_tools.dart';
 import '../memory/journal_embedder.dart';
 import '../memory/meaning_search.dart';
 
@@ -33,7 +34,8 @@ class DayChat extends StatefulWidget {
     required this.day,
     required this.ai,
     this.clock = systemClock,
-    this.onWriteNote,
+    this.onRemember,
+    this.onJournalChanged,
   });
 
   final JournalDatabase database;
@@ -46,12 +48,20 @@ class DayChat extends StatefulWidget {
 
   final Clock clock;
 
-  /// Saves something the assistant was asked to write down.
-  final Future<void> Function(String text)? onWriteNote;
+  /// Records what a note means, so anything the assistant writes is findable
+  /// like anything else.
+  final Future<void> Function(String noteId, String content)? onRemember;
+
+  /// Told when the assistant changed the journal, so the day being displayed
+  /// can catch up with what is now in it.
+  final VoidCallback? onJournalChanged;
 
   @override
   State<DayChat> createState() => _DayChatState();
 }
+
+/// The tools that leave the journal different from how they found it.
+const _changesTheJournal = {'write_note', 'update_note', 'delete_note'};
 
 class _DayChatState extends State<DayChat> {
   final _controller = TextEditingController();
@@ -174,10 +184,20 @@ class _DayChatState extends State<DayChat> {
       Answer? answer;
       final written = StringBuffer();
 
+      // What the assistant may do, scoped to the day on screen — "read the
+      // notes" means this day unless it says otherwise.
+      final tools = journalTools(
+        database: widget.database,
+        day: widget.day,
+        clock: widget.clock,
+        remember: widget.onRemember ?? (_, _) async {},
+      );
+
       await for (final event in ai.ask(
         question: said,
         entries: entries,
         earlier: earlier,
+        tools: tools,
       )) {
         if (!mounted) return;
         switch (event) {
@@ -190,6 +210,12 @@ class _DayChatState extends State<DayChat> {
             // deserves to know their journal is being read rather than that
             // the app has stopped.
             setState(() => _doing = tool);
+            // A tool may have written or erased something. The notes surface
+            // is one swipe away and would otherwise still show what was there
+            // before.
+            if (_changesTheJournal.contains(tool)) {
+              widget.onJournalChanged?.call();
+            }
           case AiFinished(answer: final finished):
             answer = finished;
         }
@@ -209,11 +235,6 @@ class _DayChatState extends State<DayChat> {
           createdAt: Value(replied.millisecondsSinceEpoch),
         ),
       );
-
-      // Saved only when it was asked for. The write happens here rather than
-      // inside the client so the journal, not the model, owns what goes in it.
-      final toWrite = answer.noteToWrite;
-      if (toWrite != null) await widget.onWriteNote?.call(toWrite);
 
       if (!mounted) return;
       setState(() {
