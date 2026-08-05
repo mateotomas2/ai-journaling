@@ -1,10 +1,31 @@
+import 'dart:typed_data';
+
 import '../../db/journal_database.dart';
 import 'journal_embedder.dart';
 
-/// A note found by meaning, and how close it was.
+/// Something the person wrote, whichever way they wrote it.
+///
+/// Meaning search reaches notes and the person's own messages alike — both are
+/// their words, and which surface they used to write them is not something
+/// anyone remembers later (ADR-0010).
+class Remembered {
+  const Remembered({
+    required this.kind,
+    required this.dayId,
+    required this.content,
+  });
+
+  final IndexedKind kind;
+
+  /// The day it belongs to, so a result can be opened where it was written.
+  final String dayId;
+  final String content;
+}
+
+/// Something found by meaning, and how close it was.
 class Match {
-  const Match(this.note, this.closeness);
-  final Note note;
+  const Match(this.entry, this.closeness);
+  final Remembered entry;
   final double closeness;
 }
 
@@ -60,6 +81,10 @@ class MeaningSearch {
   /// If nothing clears the floor, the closest few go anyway — a thin answer
   /// beats refusing to answer, and by then the cost is a handful of entries
   /// rather than the whole journal.
+  /// Deliberately notes only, where [search] covers messages too. Context is
+  /// what gets sent to a third party to answer a question, and feeding a
+  /// conversation back into the thing having it makes the model circle its own
+  /// earlier phrasing. Notes are what the person actually settled on.
   Future<List<String>> contextFor(String question, {int limit = 12}) async {
     final target = await _embedder.embed(question);
     final candidates = await _database.notesWithEmbeddings();
@@ -67,14 +92,18 @@ class MeaningSearch {
     final ranked = [
       for (final (note, bytes) in candidates)
         Match(
-          note,
+          Remembered(
+            kind: IndexedKind.note,
+            dayId: note.dayId,
+            content: note.content,
+          ),
           JournalEmbedder.similarity(target, JournalEmbedder.fromBytes(bytes)),
         ),
     ]..sort((a, b) => b.closeness.compareTo(a.closeness));
 
     final related = ranked.where((m) => m.closeness >= _contextFloor).toList();
     final chosen = related.isNotEmpty ? related : ranked.take(3).toList();
-    return chosen.take(limit).map((m) => m.note.content).toList();
+    return chosen.take(limit).map((m) => m.entry.content).toList();
   }
 
   Future<List<Match>> search(String query, {int limit = 20}) async {
@@ -82,15 +111,35 @@ class MeaningSearch {
     if (trimmed.isEmpty) return const [];
 
     final target = await _embedder.embed(trimmed);
-    final candidates = await _database.notesWithEmbeddings();
+
+    final candidates = <(Remembered, Uint8List)>[
+      for (final (note, bytes) in await _database.notesWithEmbeddings())
+        (
+          Remembered(
+            kind: IndexedKind.note,
+            dayId: note.dayId,
+            content: note.content,
+          ),
+          bytes
+        ),
+      for (final (message, bytes) in await _database.messagesWithEmbeddings())
+        (
+          Remembered(
+            kind: IndexedKind.message,
+            dayId: message.dayId,
+            content: message.content,
+          ),
+          bytes
+        ),
+    ];
 
     final matches = <Match>[];
-    for (final (note, bytes) in candidates) {
+    for (final (entry, bytes) in candidates) {
       final closeness = JournalEmbedder.similarity(
         target,
         JournalEmbedder.fromBytes(bytes),
       );
-      if (closeness >= _floor) matches.add(Match(note, closeness));
+      if (closeness >= _floor) matches.add(Match(entry, closeness));
     }
 
     matches.sort((a, b) => b.closeness.compareTo(a.closeness));

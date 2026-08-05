@@ -170,7 +170,7 @@ class _JournalHomePageState extends State<JournalHomePage> {
         createdAt: Value(now.millisecondsSinceEpoch),
       ),
     );
-    await _remember(id, result.text);
+    await _remember(IndexedKind.note, id, result.text);
     if (!mounted) return;
     _goToDay(_dateOnly(now));
   }
@@ -180,12 +180,16 @@ class _JournalHomePageState extends State<JournalHomePage> {
   /// Failure is swallowed on purpose: an embedding is an index, and losing one
   /// must never cost someone the note they just wrote. #14 covers noticing and
   /// repairing the gap.
-  Future<void> _remember(String noteId, String content) async {
+  Future<void> _remember(
+    IndexedKind kind,
+    String id,
+    String content,
+  ) async {
     try {
       final embedder = await JournalEmbedder.load();
       final vector = await embedder.embed(content);
       await widget.session.database
-          .putEmbedding(noteId, JournalEmbedder.toBytes(vector));
+          .putEmbeddingFor(kind, id, JournalEmbedder.toBytes(vector));
     } catch (error, stack) {
       // Left unindexed rather than unwritten — but not silently. Swallowing
       // this made a broken embedder look exactly like a search that found
@@ -213,7 +217,7 @@ class _JournalHomePageState extends State<JournalHomePage> {
         // Re-embedded, or the index keeps finding this note by what it used to
         // say — with the new text displayed, which looks like a working search
         // returning the wrong thing.
-        await _remember(note.id, text);
+        await _remember(IndexedKind.note, note.id, text);
       case NoteDeleted():
         await database.deleteNote(note.id, widget.clock());
         // Erasing the text but leaving its vector would let a deleted note

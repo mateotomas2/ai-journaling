@@ -71,6 +71,61 @@ void main() {
     expect(await db.countEmbeddings(), 1);
   });
 
+  test('what the person said is offered for indexing, what the machine said '
+      'is not', () async {
+    if (skip) return markTestSkipped('SQLCipher unavailable here');
+
+    await db.addMessage(MessagesCompanion(
+      id: const Value('m1'),
+      dayId: const Value('2026-08-01'),
+      role: Value(MessageRole.user.name),
+      content: const Value('mine'),
+      createdAt: const Value(100),
+    ));
+    await db.addMessage(MessagesCompanion(
+      id: const Value('m2'),
+      dayId: const Value('2026-08-01'),
+      role: Value(MessageRole.assistant.name),
+      content: const Value('the machine'),
+      createdAt: const Value(200),
+    ));
+
+    expect(
+      (await db.messagesWithoutEmbeddings()).map((m) => m.content),
+      ['mine'],
+    );
+  });
+
+  test('an indexed message is searchable, an assistant reply never is',
+      () async {
+    if (skip) return markTestSkipped('SQLCipher unavailable here');
+
+    await db.addMessage(MessagesCompanion(
+      id: const Value('m1'),
+      dayId: const Value('2026-08-01'),
+      role: Value(MessageRole.user.name),
+      content: const Value('mine'),
+      createdAt: const Value(100),
+    ));
+    await db.addMessage(MessagesCompanion(
+      id: const Value('m2'),
+      dayId: const Value('2026-08-01'),
+      role: Value(MessageRole.assistant.name),
+      content: const Value('the machine'),
+      createdAt: const Value(200),
+    ));
+
+    // Even if an assistant reply somehow acquired a vector, it must not come
+    // back from the index — the filter is on the read as well as the write.
+    await db.putEmbeddingFor(IndexedKind.message, 'm1', vector(1));
+    await db.putEmbeddingFor(IndexedKind.message, 'm2', vector(2));
+
+    expect(
+      (await db.messagesWithEmbeddings()).map((row) => row.$1.content),
+      ['mine'],
+    );
+  });
+
   test('a message vector is never mistaken for a note', () async {
     if (skip) return markTestSkipped('SQLCipher unavailable here');
 

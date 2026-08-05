@@ -172,12 +172,18 @@ class _MeaningSearchPageState extends State<MeaningSearchPage> {
             separatorBuilder: (_, _) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final match = _matches[index];
-              final day = parseDayId(match.note.dayId);
+              final day = parseDayId(match.entry.dayId);
               return Card(
                 margin: EdgeInsets.zero,
                 child: ListTile(
-                  title: Text(match.note.content),
-                  subtitle: Text(formatDayLabel(day)),
+                  title: Text(match.entry.content),
+                  // Says which way it was written, because "I said this" and
+                  // "I wrote this down" are different memories of a day.
+                  subtitle: Text(
+                    match.entry.kind == IndexedKind.message
+                        ? '${formatDayLabel(day)}  ·  said'
+                        : formatDayLabel(day),
+                  ),
                   onTap: () => Navigator.of(context).pop(day),
                 ),
               );

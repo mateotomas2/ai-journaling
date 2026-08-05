@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 
@@ -48,9 +50,9 @@ class DayChat extends StatefulWidget {
 
   final Clock clock;
 
-  /// Records what a note means, so anything the assistant writes is findable
-  /// like anything else.
-  final Future<void> Function(String noteId, String content)? onRemember;
+  /// Records what something means, so it can be found later by meaning.
+  final Future<void> Function(IndexedKind kind, String id, String content)?
+      onRemember;
 
   /// Told when the assistant changed the journal, so the day being displayed
   /// can catch up with what is now in it.
@@ -145,17 +147,30 @@ class _DayChatState extends State<DayChat> {
 
     final now = widget.clock();
     final earlier = _earlier;
+    final saidId = now.microsecondsSinceEpoch.toString();
 
     // Written down before it is answered. If the answer fails, what the person
     // said is still theirs and still on the day they said it.
     await widget.database.addMessage(
       MessagesCompanion(
-        id: Value(now.microsecondsSinceEpoch.toString()),
+        id: Value(saidId),
         dayId: Value(dayIdOf(now)),
         role: Value(MessageRole.user.name),
         content: Value(said),
         createdAt: Value(now.millisecondsSinceEpoch),
       ),
+    );
+
+    // Indexed like a note, because it is the person's own writing (ADR-0010).
+    // The assistant's reply is never indexed, which is why this happens here
+    // rather than around both.
+    //
+    // Deliberately not awaited. Embedding loads a model the first time it is
+    // asked, and making someone wait on an *index* before they can be answered
+    // gets the priority exactly backwards. If it fails or lags, the backfill
+    // on the meaning-search page picks it up — that is what it is for.
+    unawaited(
+      Future(() => widget.onRemember?.call(IndexedKind.message, saidId, said)),
     );
 
     _controller.clear();
@@ -190,7 +205,8 @@ class _DayChatState extends State<DayChat> {
         database: widget.database,
         day: widget.day,
         clock: widget.clock,
-        remember: widget.onRemember ?? (_, _) async {},
+        remember: (id, content) async =>
+            widget.onRemember?.call(IndexedKind.note, id, content),
       );
 
       await for (final event in ai.ask(

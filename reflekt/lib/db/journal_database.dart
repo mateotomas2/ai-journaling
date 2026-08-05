@@ -258,6 +258,43 @@ class JournalDatabase extends _$JournalDatabase {
     return [for (final row in rows) row.readTable(notes)];
   }
 
+  /// Every indexed message, with its vector. Only the person's own, and only
+  /// those still standing (ADR-0010).
+  Future<List<(Message, Uint8List)>> messagesWithEmbeddings() async {
+    final query = select(messages).join([
+      innerJoin(
+        embeddings,
+        embeddings.entityId.equalsExp(messages.id) &
+            embeddings.entityType.equals(IndexedKind.message.name),
+      ),
+    ])
+      ..where(messages.deletedAt.equals(0) &
+          messages.role.equals(MessageRole.user.name));
+
+    final rows = await query.get();
+    return [
+      for (final row in rows)
+        (row.readTable(messages), row.readTable(embeddings).vector),
+    ];
+  }
+
+  /// The person's messages that have never been embedded.
+  Future<List<Message>> messagesWithoutEmbeddings() async {
+    final query = select(messages).join([
+      leftOuterJoin(
+        embeddings,
+        embeddings.entityId.equalsExp(messages.id) &
+            embeddings.entityType.equals(IndexedKind.message.name),
+      ),
+    ])
+      ..where(messages.deletedAt.equals(0) &
+          messages.role.equals(MessageRole.user.name) &
+          embeddings.entityId.isNull());
+
+    final rows = await query.get();
+    return [for (final row in rows) row.readTable(messages)];
+  }
+
   Future<String?> setting(String name) async {
     final row = await (select(settings)..where((s) => s.name.equals(name)))
         .getSingleOrNull();
