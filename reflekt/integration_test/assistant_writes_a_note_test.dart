@@ -95,16 +95,23 @@ class _AssistantThatSavesOnRequest implements JournalAi {
   int notesWritten = 0;
 
   @override
-  Future<Answer> ask({
+  Stream<AiEvent> ask({
     required String question,
     required List<String> entries,
     List<Exchange> earlier = const [],
-  }) async {
+  }) async* {
     await Future<void>.delayed(const Duration(milliseconds: 500));
+
     if (!question.toLowerCase().contains('save')) {
-      return const Answer('Not well — three poor nights in a row.');
+      const reply = 'Not well — three poor nights in a row.';
+      yield const AiText(reply);
+      yield const AiFinished(Answer(reply));
+      return;
     }
+
     notesWritten++;
-    return Answer('Saved that as a note.', noteToWrite: note);
+    const reply = 'Saved that as a note.';
+    yield const AiText(reply);
+    yield AiFinished(Answer(reply, noteToWrite: note));
   }
 }

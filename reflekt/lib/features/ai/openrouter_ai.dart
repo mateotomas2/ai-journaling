@@ -29,37 +29,42 @@ class OpenRouterAi implements JournalAi {
       Uri.parse('https://openrouter.ai/api/v1/chat/completions');
 
   @override
-  Future<Answer> ask({
+  Stream<AiEvent> ask({
     required String question,
     required List<String> entries,
     List<Exchange> earlier = const [],
-  }) async {
+  }) async* {
     if (entries.isEmpty) {
       throw const JournalAiException(
         'There is nothing written yet to answer from.',
       );
     }
 
-    final http.Response response;
-    try {
-      response = await _client.post(
-        _endpoint,
-        headers: {
-          'Authorization': 'Bearer $apiKey',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'model': model,
-          'messages': [
-            {
-              'role': 'system',
-              'content': '${systemPrompt ?? AiSettings.defaultPrompt}'
-                  '\n\n${entries.join("\n\n")}',
-            },
-            {'role': 'user', 'content': question},
+    final request = http.Request('POST', _endpoint)
+      ..headers.addAll({
+        'Authorization': 'Bearer $apiKey',
+        'Content-Type': 'application/json',
+      })
+      ..body = jsonEncode({
+        'model': model,
+        'stream': true,
+        'messages': [
+          {
+            'role': 'system',
+            'content': '${systemPrompt ?? AiSettings.defaultPrompt}'
+                '\n\n${entries.join("\n\n")}',
+          },
+          for (final exchange in earlier) ...[
+            {'role': 'user', 'content': exchange.question},
+            {'role': 'assistant', 'content': exchange.answer},
           ],
-        }),
-      );
+          {'role': 'user', 'content': question},
+        ],
+      });
+
+    final http.StreamedResponse response;
+    try {
+      response = await _client.send(request);
     } catch (_) {
       // Deliberately not surfacing the underlying error: it is usually a socket
       // message that tells the reader nothing they can act on.
@@ -79,27 +84,102 @@ class OpenRouterAi implements JournalAi {
       );
     }
 
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    final choices = body['choices'];
-    if (choices is! List || choices.isEmpty) {
+    final written = StringBuffer();
+    var complete = false;
+
+    // Decoded as a character stream rather than chunk by chunk: a chunk can
+    // split a multi-byte character, and decoding the halves separately turns a
+    // perfectly good answer into replacement characters.
+    final stream = utf8.decoder.bind(response.stream);
+
+    // Whatever arrived after the last newline. Events are delimited by lines
+    // and the transport splits wherever it likes — including mid-line — so a
+    // partial line is carried forward rather than parsed.
+    var carried = '';
+
+    try {
+      await for (final chunk in stream) {
+        final lines = (carried + chunk).split('\n');
+        carried = lines.removeLast();
+
+        for (final line in lines) {
+          final event = line.trim();
+
+          // Blank lines separate events, and a line starting with ':' is a
+          // comment — OpenRouter sends ": OPENROUTER PROCESSING" to hold the
+          // connection open. Parsed as data it would fail the whole answer.
+          if (event.isEmpty || event.startsWith(':')) continue;
+          if (!event.startsWith('data:')) continue;
+
+          final payload = event.substring(5).trim();
+          if (payload == '[DONE]') {
+            complete = true;
+            break;
+          }
+
+          final delta = _textOf(payload);
+          if (delta != null && delta.isNotEmpty) {
+            written.write(delta);
+            yield AiText(delta);
+          }
+        }
+        if (complete) break;
+      }
+    } on JournalAiException {
+      rethrow;
+    } catch (_) {
+      throw const JournalAiException(
+        'Could not reach the AI. Check your connection and try again.',
+      );
+    }
+
+    // A stream that stopped without saying it was done carries a truncated
+    // answer. Presenting it as a whole one would be the journal inventing an
+    // ending, which is worse than admitting the call failed.
+    if (!complete) {
+      throw const JournalAiException(
+        'The answer stopped part-way. Try asking again.',
+      );
+    }
+
+    final reply = written.toString().trim();
+    if (reply.isEmpty) {
       throw const JournalAiException('The AI replied with nothing.');
     }
 
-    final message = (choices.first as Map<String, dynamic>)['message'];
-    final content = message is Map<String, dynamic> ? message['content'] : null;
+    yield AiFinished(_readAnswer(reply));
+  }
 
-    if (content is! String || content.trim().isEmpty) {
-      throw const JournalAiException('The AI replied with nothing.');
+  /// The text carried by one `data:` payload, or null when it carries none.
+  ///
+  /// A frame that does not parse is skipped rather than thrown: providers send
+  /// frames carrying only a role, a finish reason or usage figures, and failing
+  /// an otherwise good answer over one of those would be absurd.
+  static String? _textOf(String payload) {
+    try {
+      final body = jsonDecode(payload) as Map<String, dynamic>;
+      final choices = body['choices'];
+      if (choices is! List || choices.isEmpty) return null;
+
+      final delta = (choices.first as Map<String, dynamic>)['delta'];
+      if (delta is! Map<String, dynamic>) return null;
+
+      final content = delta['content'];
+      return content is String ? content : null;
+    } catch (_) {
+      return null;
     }
-    return _readAnswer(content.trim());
   }
 
   /// Pulls a requested note out of the reply.
   ///
   /// The model is told to mark one with a fenced `note` block when — and only
-  /// when — it was asked to save something. Parsing a marker rather than using
-  /// tool calls keeps this working across every model OpenRouter offers, which
-  /// differ in whether and how they support tools.
+  /// when — it was asked to save something.
+  ///
+  /// The marker is on its way out: ADR-0009 replaces it with real tool calls,
+  /// which can carry a result back into the conversation where a marker cannot.
+  /// It survives here so streaming lands on its own, rather than taking a
+  /// working feature away in the same change.
   ///
   /// A reply with no marker writes nothing. That is the default and it has to
   /// be: silence must never be read as consent to record something.

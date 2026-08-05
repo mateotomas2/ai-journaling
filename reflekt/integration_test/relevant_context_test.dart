@@ -86,13 +86,16 @@ class _ReportingAi implements JournalAi {
   List<String> received = const [];
 
   @override
-  Future<Answer> ask({
+  Stream<AiEvent> ask({
     required String question,
     required List<String> entries,
     List<Exchange> earlier = const [],
-  }) async {
+  }) async* {
     received = entries;
     await Future<void>.delayed(const Duration(milliseconds: 500));
-    return const Answer('It sounds like running helped.');
+
+    const reply = 'It sounds like running helped.';
+    yield const AiText(reply);
+    yield const AiFinished(Answer(reply));
   }
 }

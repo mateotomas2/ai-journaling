@@ -10,6 +10,7 @@ class AskKeys {
   static const field = Key('ask_field');
   static const submit = Key('ask_submit');
   static const answer = Key('ask_answer');
+  static const arriving = Key('ask_arriving');
   static const error = Key('ask_error');
 }
 
@@ -44,6 +45,11 @@ class _AskPageState extends State<AskPage> {
   String? _pending;
   String? _error;
   bool _thinking = false;
+
+  /// The answer so far, while it is still being written. Null when nothing is
+  /// arriving. Kept apart from [_thread] so a half-written answer is never
+  /// mistaken for one the model finished.
+  String? _arriving;
 
   @override
   void dispose() {
@@ -100,11 +106,34 @@ class _AskPageState extends State<AskPage> {
       if (entries.isEmpty) {
         entries = await widget.database.allNoteContents();
       }
-      final answer = await widget.ai.ask(
+      Answer? answer;
+      final written = StringBuffer();
+
+      await for (final event in widget.ai.ask(
         question: question,
         entries: entries,
         earlier: List.unmodifiable(_thread),
-      );
+      )) {
+        if (!mounted) return;
+        switch (event) {
+          case AiText(:final delta):
+            // Shown as it arrives. The scroll follows it, or a long answer
+            // writes itself off the bottom of the screen while you watch the
+            // top of it.
+            written.write(delta);
+            setState(() => _arriving = written.toString());
+            _showLatest();
+          case AiFinished(answer: final finished):
+            answer = finished;
+        }
+      }
+
+      // The stream ended without saying it was finished. The client raises for
+      // this, so reaching here would mean a contract change went unnoticed —
+      // better to say nothing happened than to commit half an answer.
+      if (answer == null) {
+        throw const JournalAiException('The answer stopped part-way.');
+      }
 
       // Saved only when it was asked for. The write happens here rather than
       // inside the client so that the journal, not the model, owns what goes
@@ -114,8 +143,9 @@ class _AskPageState extends State<AskPage> {
 
       if (!mounted) return;
       setState(() {
-        _thread.add(Exchange(question, answer.reply));
+        _thread.add(Exchange(question, answer!.reply));
         _pending = null;
+        _arriving = null;
         _thinking = false;
       });
       _showLatest();
@@ -126,6 +156,9 @@ class _AskPageState extends State<AskPage> {
         // would be the app losing your work.
         _controller.text = question;
         _pending = null;
+        // Whatever had arrived is dropped. A partial answer left on screen
+        // beside an error reads as an answer that is merely short.
+        _arriving = null;
         _error = failure.message;
         _thinking = false;
       });
@@ -184,7 +217,21 @@ class _AskPageState extends State<AskPage> {
             const SizedBox(height: 12),
           ],
 
-          if (_thinking) const Center(child: CircularProgressIndicator()),
+          // The answer as it is being written. Once anything has arrived the
+          // spinner goes: two signs that something is happening, one of which
+          // is the actual answer, is one too many.
+          if (_arriving != null)
+            Card(
+              key: AskKeys.arriving,
+              margin: EdgeInsets.zero,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(_arriving!, style: theme.textTheme.bodyLarge),
+              ),
+            ),
+
+          if (_thinking && _arriving == null)
+            const Center(child: CircularProgressIndicator()),
 
           if (_error != null)
             Card(
