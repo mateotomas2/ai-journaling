@@ -123,6 +123,10 @@ class _AskPageState extends State<AskPage> {
             written.write(delta);
             setState(() => _arriving = written.toString());
             _showLatest();
+          case AiToolRan():
+            // The Ask page offers the assistant no tools, so this cannot
+            // happen here. It goes when this page does (ADR-0009).
+            break;
           case AiFinished(answer: final finished):
             answer = finished;
         }

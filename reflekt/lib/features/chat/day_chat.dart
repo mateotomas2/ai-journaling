@@ -16,6 +16,7 @@ class ChatKeys {
   static const arriving = Key('chat_arriving');
   static const empty = Key('chat_empty');
   static const error = Key('chat_error');
+  static const doing = Key('chat_doing');
   static const noKey = Key('chat_no_key');
 }
 
@@ -62,6 +63,10 @@ class _DayChatState extends State<DayChat> {
   /// until it is finished, so a half-written answer is never mistaken for one
   /// the model completed — and never written to the database as one.
   String? _arriving;
+
+  /// What the assistant is doing to the journal right now, if anything. Named
+  /// by tool, and turned into a sentence at the point of showing it.
+  String? _doing;
 
   String? _error;
   bool _thinking = false;
@@ -180,6 +185,11 @@ class _DayChatState extends State<DayChat> {
             written.write(delta);
             setState(() => _arriving = written.toString());
             _showLatest();
+          case AiToolRan(:final tool):
+            // Said out loud, so a pause explains itself. Someone waiting
+            // deserves to know their journal is being read rather than that
+            // the app has stopped.
+            setState(() => _doing = tool);
           case AiFinished(answer: final finished):
             answer = finished;
         }
@@ -208,6 +218,7 @@ class _DayChatState extends State<DayChat> {
       if (!mounted) return;
       setState(() {
         _arriving = null;
+        _doing = null;
         _thinking = false;
       });
       await _load();
@@ -218,6 +229,7 @@ class _DayChatState extends State<DayChat> {
         // screen beside an error reads as a reply that is merely short. What
         // the person said stays, because it is already written down.
         _arriving = null;
+        _doing = null;
         _error = failure.message;
         _thinking = false;
       });
@@ -257,9 +269,14 @@ class _DayChatState extends State<DayChat> {
                         mine: false,
                       ),
 
-                    // Only before anything has arrived: once there are words
-                    // on screen, they say more than a spinner does.
-                    if (_thinking && _arriving == null) const _Thinking(),
+                    // What it is doing, while it is doing it. Preferred over
+                    // the spinner: naming the action is more reassuring than
+                    // animating, and quieter than either is not an option
+                    // while someone waits.
+                    if (_doing != null && _arriving == null)
+                      _Doing(_doing!)
+                    else if (_thinking && _arriving == null)
+                      const _Thinking(),
                   ],
                 ),
         ),
@@ -334,6 +351,53 @@ class _Thinking extends StatelessWidget {
           ),
         ),
       );
+}
+
+/// What the assistant is doing to the journal, in a sentence.
+///
+/// Deliberately plain and deliberately small. It is a footnote about how an
+/// answer was arrived at, not a feature to show off — and a journal narrating
+/// its own machinery loudly would be tiring to sit with.
+class _Doing extends StatelessWidget {
+  const _Doing(this.tool);
+
+  final String tool;
+
+  static const _sentences = <String, String>{
+    'search_journal_memory': 'Looking through your journal',
+    'read_notes': 'Reading that day',
+    'write_note': 'Writing that down',
+    'update_note': 'Changing that note',
+    'delete_note': 'Erasing that note',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      key: ChatKeys.doing,
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Row(
+        children: [
+          SizedBox(
+            height: 12,
+            width: 12,
+            child: CircularProgressIndicator(
+              strokeWidth: 1.5,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            // An unknown tool still says something true rather than nothing.
+            _sentences[tool] ?? 'Working on it',
+            style: theme.textTheme.bodySmall,
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _NothingSaidYet extends StatelessWidget {
