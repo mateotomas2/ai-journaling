@@ -57,6 +57,22 @@ class AiToolRan extends AiEvent {
   final String tool;
 }
 
+/// What a request cost.
+///
+/// Emitted once per request, so an answer that took several — a tool loop does
+/// — reports several. Nothing is emitted when the provider does not say:
+/// recording nothing as zero would quietly understate a total, which is worse
+/// than admitting it is not known.
+class AiSpent extends AiEvent {
+  const AiSpent({required this.cost, required this.tokens});
+
+  /// In US dollars, as OpenRouter reports it.
+  final double cost;
+
+  /// Prompt and completion together.
+  final int tokens;
+}
+
 /// The answer, whole. Emitted once, at the end of a stream that succeeded.
 class AiFinished extends AiEvent {
   const AiFinished(this.answer);
