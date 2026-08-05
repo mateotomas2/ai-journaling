@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../db/journal_database.dart';
 import '../lock/change_password_page.dart';
 import 'ai_settings.dart';
+import 'model_catalogue.dart';
 import 'prompt_page.dart';
 
 /// Keys the specs drive. Keep these stable — renaming one breaks a recording.
@@ -12,6 +13,8 @@ class SettingsKeys {
   static const connected = Key('settings_connected');
   static const editPrompt = Key('settings_edit_prompt');
   static const changePassword = Key('settings_change_password');
+  static const models = Key('settings_models');
+  static const loadingModels = Key('settings_loading_models');
 
   /// One per model, so a spec can name the one it means.
   static Key modelOf(String id) => Key('settings_model_${id.replaceAll("/", "_")}');
@@ -33,9 +36,14 @@ class SettingsPage extends StatefulWidget {
     super.key,
     required this.database,
     this.onChangePassword,
+    this.catalogue = const _LiveCatalogue(),
   });
 
   final JournalDatabase database;
+
+  /// Where the choice of models comes from. Injected so a spec offers a fixed
+  /// list rather than whatever OpenRouter is serving today.
+  final ModelCatalogue catalogue;
 
   /// Returns false when the current password is wrong.
   final Future<bool> Function(String current, String replacement)?
@@ -49,6 +57,11 @@ class _SettingsPageState extends State<SettingsPage> {
   final _controller = TextEditingController();
   String? _savedKey;
   String _model = AiSettings.defaultModel;
+
+  /// What there is to choose from. Starts as the built-in list so the section
+  /// is never empty while the real one is being fetched.
+  List<AiModel> _models = const [];
+
   bool _loading = true;
   bool _canSave = false;
 
@@ -77,6 +90,20 @@ class _SettingsPageState extends State<SettingsPage> {
       _model = model ?? AiSettings.defaultModel;
       _loading = false;
     });
+
+    // Fetched after the page is on screen, not before it. Settings has other
+    // things in it, and none of them should wait on a network call.
+    final models = await widget.catalogue.models();
+    if (!mounted) return;
+    setState(() => _models = models);
+  }
+
+  /// The chosen model, kept in the list even when the catalogue no longer
+  /// offers it. Dropping it would silently move someone onto a different model
+  /// than the one their journal says they picked.
+  List<AiModel> get _choices {
+    if (_models.any((model) => model.id == _model)) return _models;
+    return [AiModel(_model, _model), ..._models];
   }
 
   Future<void> _chooseModel(String id) async {
@@ -149,26 +176,44 @@ class _SettingsPageState extends State<SettingsPage> {
                 Text('Which model answers', style: theme.textTheme.titleMedium),
                 const SizedBox(height: 4),
                 Text(
-                  'They differ in cost and in how they write. A faster one is '
-                  'usually enough.',
+                  'Only models that can use the journal are listed — reading a '
+                  'day, looking something up, writing a note. They differ in '
+                  'cost and in how they write.',
                   style: theme.textTheme.bodySmall,
                 ),
                 const SizedBox(height: 8),
-                RadioGroup<String>(
-                  groupValue: _model,
-                  onChanged: (id) => id == null ? null : _chooseModel(id),
-                  child: Column(
-                    children: [
-                      for (final entry in AiSettings.models.entries)
-                        RadioListTile<String>(
-                          key: SettingsKeys.modelOf(entry.key),
-                          title: Text(entry.value),
-                          value: entry.key,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                    ],
+                if (_models.isEmpty)
+                  const Padding(
+                    key: SettingsKeys.loadingModels,
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                else
+                  SizedBox(
+                    // Tall enough to be a list you scroll rather than a page
+                    // that never ends. OpenRouter offers hundreds.
+                    height: 260,
+                    child: RadioGroup<String>(
+                      groupValue: _model,
+                      onChanged: (id) => id == null ? null : _chooseModel(id),
+                      child: ListView(
+                        key: SettingsKeys.models,
+                        children: [
+                          for (final model in _choices)
+                            RadioListTile<String>(
+                              key: SettingsKeys.modelOf(model.id),
+                              title: Text(model.name),
+                              value: model.id,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
 
                 const SizedBox(height: 24),
                 Text('How it is asked', style: theme.textTheme.titleMedium),
@@ -214,4 +259,13 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
     );
   }
+}
+
+
+/// The real catalogue, built lazily so `SettingsPage` can stay `const`.
+class _LiveCatalogue implements ModelCatalogue {
+  const _LiveCatalogue();
+
+  @override
+  Future<List<AiModel>> models() => OpenRouterCatalogue().models();
 }
